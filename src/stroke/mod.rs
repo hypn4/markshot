@@ -165,7 +165,7 @@ pub fn bezier_path(pts: &[Pt], origin: V2) -> PathData {
 }
 
 /// `|v|` the way the reference app computes it: `sqrt(x² + y²)`, not `hypot`.
-fn norm(v: V2) -> f64 {
+pub(crate) fn norm(v: V2) -> f64 {
     dot(v, v).sqrt()
 }
 

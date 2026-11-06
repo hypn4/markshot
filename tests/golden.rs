@@ -105,3 +105,119 @@ fn golden_highlight_polyline() {
         ]}"##,
     );
 }
+
+/// The same five `shaped` arrows in outline `variant`: long (the head grows, the tail shrinks),
+/// size 0, size 5 in blue, short (both ends shrink) and straight up at size 4.
+fn shaped(variant: u8) -> String {
+    format!(
+        r##"{{"annotations": [
+            {{"type": "arrow", "variant": {variant}, "from": [30, 40], "to": [570, 110]}},
+            {{"type": "arrow", "variant": {variant}, "size": 0, "from": [60, 250], "to": [250, 170]}},
+            {{"type": "arrow", "variant": {variant}, "size": 5, "color": "#2E7CF6",
+             "from": [580, 385], "to": [380, 235]}},
+            {{"type": "arrow", "variant": {variant}, "from": [300, 380], "to": [350, 345]}},
+            {{"type": "arrow", "variant": {variant}, "size": 4, "from": [110, 390], "to": [110, 290]}}
+        ]}}"##
+    )
+}
+
+#[test]
+fn golden_arrow_shaped_0() {
+    check("arrow-shaped-0", &shaped(0));
+}
+
+#[test]
+fn golden_arrow_shaped_1() {
+    check("arrow-shaped-1", &shaped(1));
+}
+
+#[test]
+fn golden_arrow_shaped_2() {
+    check("arrow-shaped-2", &shaped(2));
+}
+
+#[test]
+fn golden_arrow_shaped_3() {
+    check("arrow-shaped-3", &shaped(3));
+}
+
+#[test]
+fn golden_arrow_shaped_curved() {
+    // The first is over 520 px long, so its head grows and its tail shrinks.
+    check(
+        "arrow-shaped-curved",
+        r#"{"annotations": [
+            {"type": "arrow", "from": [30, 120], "to": [570, 120], "via": [300, 40]},
+            {"type": "arrow", "variant": 1, "size": 1, "from": [60, 200], "to": [280, 370],
+             "via": [70, 330]},
+            {"type": "arrow", "variant": 2, "size": 4, "from": [560, 170], "to": [330, 380],
+             "via": [520, 360]},
+            {"type": "arrow", "variant": 3, "from": [300, 160], "to": [470, 250],
+             "via": [400, 150]}
+        ]}"#,
+    );
+}
+
+/// Six `line` or `double` arrows: long, size 0, size 7 in blue, short (under 20 px: 45°
+/// chevrons), and two bent ways.
+fn lines(style: &str) -> String {
+    format!(
+        r##"{{"annotations": [
+            {{"type": "arrow", "style": "{style}", "from": [40, 40], "to": [560, 100]}},
+            {{"type": "arrow", "style": "{style}", "size": 0, "from": [60, 200], "to": [230, 140]}},
+            {{"type": "arrow", "style": "{style}", "size": 7, "color": "#2E7CF6",
+             "from": [560, 380], "to": [330, 220]}},
+            {{"type": "arrow", "style": "{style}", "from": [300, 160], "to": [315, 165]}},
+            {{"type": "arrow", "style": "{style}", "from": [60, 370], "to": [260, 280],
+             "via": [90, 280]}},
+            {{"type": "arrow", "style": "{style}", "size": 4, "from": [400, 130], "to": [560, 200],
+             "via": [500, 120]}}
+        ]}}"##
+    )
+}
+
+#[test]
+fn golden_arrow_line() {
+    check("arrow-line", &lines("line"));
+}
+
+#[test]
+fn golden_arrow_double() {
+    check("arrow-double", &lines("double"));
+}
+
+#[test]
+fn golden_arrow_sketch() {
+    // Seed 42 draws an open head; the others cover the random branches: 1 a closed head, 33 a
+    // wobbly shaft, 23 a closed head with a short base, 2 a shorter shaft, 43 all three.
+    check(
+        "arrow-sketch",
+        r##"{"annotations": [
+            {"type": "arrow", "style": "sketch", "seed": 42, "from": [40, 60], "to": [560, 110]},
+            {"type": "arrow", "style": "sketch", "seed": 1, "from": [60, 250], "to": [260, 170]},
+            {"type": "arrow", "style": "sketch", "seed": 33, "from": [300, 240], "to": [560, 160]},
+            {"type": "arrow", "style": "sketch", "seed": 23, "size": 5, "color": "#2E7CF6",
+             "from": [560, 390], "to": [360, 300]},
+            {"type": "arrow", "style": "sketch", "seed": 2, "size": 0, "from": [80, 380],
+             "to": [140, 330]},
+            {"type": "arrow", "style": "sketch", "seed": 43, "from": [180, 300], "to": [320, 360]}
+        ]}"##,
+    );
+}
+
+#[test]
+fn golden_arrow_sketch_curved() {
+    check(
+        "arrow-sketch-curved",
+        r##"{"annotations": [
+            {"type": "arrow", "style": "sketch", "seed": 42, "from": [40, 120], "to": [560, 120],
+             "via": [300, 40]},
+            {"type": "arrow", "style": "sketch", "seed": 1, "from": [60, 200], "to": [280, 370],
+             "via": [70, 330]},
+            {"type": "arrow", "style": "sketch", "seed": 23, "size": 4, "color": "#2E7CF6",
+             "from": [560, 170], "to": [330, 380], "via": [520, 360]},
+            {"type": "arrow", "style": "sketch", "seed": 2, "from": [300, 160], "to": [470, 250],
+             "via": [400, 150]}
+        ]}"##,
+    );
+}

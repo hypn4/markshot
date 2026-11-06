@@ -49,7 +49,7 @@ pub fn render(
         match item {
             Resolved::Blur(_) => {} // Drawn first.
             Resolved::Line(l) => tools::line::draw(&mut canvas, l),
-            Resolved::Arrow(_) => return Err(unsupported("arrow")),
+            Resolved::Arrow(a) => tools::arrow::draw(&mut canvas, a),
             Resolved::Rect(_) => return Err(unsupported("rect")),
             Resolved::Oval(_) => return Err(unsupported("oval")),
             Resolved::Highlight(h) => tools::highlight::draw(&mut canvas, h),
@@ -115,7 +115,6 @@ mod tests {
         let blur = r#"{"type": "blur", "rect": [10, 75, 20, 10]}"#;
         let spotlight = r#"{"type": "spotlight", "rect": [60, 5, 30, 30]}"#;
         for (annotations, want) in [
-            (vec![arrow], "arrow"),
             (vec![rect], "rect"),
             (vec![oval], "oval"),
             (vec![counter], "counter"),

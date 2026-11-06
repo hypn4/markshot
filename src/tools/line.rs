@@ -113,7 +113,8 @@ pub fn bullet_radius(len: f64, lw: f64) -> f64 {
     clippy::float_cmp,
     reason = "the reference app tests dpr == 1 exactly, and the rounded width is a whole number"
 )]
-fn pixel_offset(lw: f64, dpr: f64) -> f64 {
+#[must_use]
+pub fn pixel_offset(lw: f64, dpr: f64) -> f64 {
     if dpr != 1.0 {
         return 0.0;
     }
