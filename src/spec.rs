@@ -31,12 +31,13 @@ pub struct Spec {
 
 /// The coordinate space of the spec. The origin is the top-left corner; y grows downward.
 /// Every coordinate must lie within 16× the longer image side, in pixels, of the origin.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
+// `Pixels` and `Normalized` are empty struct variants, not unit ones, so that serde rejects
+// unknown keys next to their `space` as it does for `Scaled`.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "space", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Coords {
     /// Pixels of the input image.
-    #[default]
-    Pixels,
+    Pixels {},
     /// Pixels of the image scaled to `width` × `height`, e.g. the size you viewed it at.
     /// Each axis is mapped separately.
     Scaled {
@@ -46,7 +47,13 @@ pub enum Coords {
         height: f64,
     },
     /// 0 to 1000 across the image on each axis.
-    Normalized,
+    Normalized {},
+}
+
+impl Default for Coords {
+    fn default() -> Self {
+        Self::Pixels {}
+    }
 }
 
 /// One annotation; `type` selects the tool.

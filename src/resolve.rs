@@ -281,7 +281,7 @@ impl Resolution {
     #[must_use]
     pub fn to_spec(&self) -> Spec {
         Spec {
-            coords: Coords::Pixels,
+            coords: Coords::Pixels {},
             dpr: Some(self.dpr),
             spotlight_dim: Some(self.spotlight_dim),
             annotations: self.items.iter().map(Resolved::to_annotation).collect(),
@@ -391,8 +391,8 @@ impl CoordMap {
     ) -> Result<Self, Error> {
         let (image_w, image_h) = (f64::from(width), f64::from(height));
         let (x, y) = match coords {
-            Coords::Pixels => ((1.0, 1.0), (1.0, 1.0)),
-            Coords::Normalized => ((image_w, 1000.0), (image_h, 1000.0)),
+            Coords::Pixels {} => ((1.0, 1.0), (1.0, 1.0)),
+            Coords::Normalized {} => ((image_w, 1000.0), (image_h, 1000.0)),
             Coords::Scaled {
                 width: scaled_w,
                 height: scaled_h,

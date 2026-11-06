@@ -538,6 +538,30 @@ fn unknown_field_rejected() {
 }
 
 #[test]
+fn coords_reject_unknown_keys() {
+    // Every coordinate space takes only its own keys, as the schema's `additionalProperties:
+    // false` says, so a misplaced size is an error rather than silently ignored.
+    for (coords, key) in [
+        (r#"{"space": "pixels", "width": 801}"#, "width"),
+        (r#"{"space": "normalized", "bogus": 1}"#, "bogus"),
+        (
+            r#"{"space": "scaled", "width": 10, "height": 10, "bogus": 1}"#,
+            "bogus",
+        ),
+    ] {
+        let json = format!(r#"{{"coords": {coords}, "annotations": []}}"#);
+        let (path, message) = spec_error(Spec::from_json(&json));
+        assert_eq!(path, "spec", "{coords}");
+        assert!(message.contains(key), "{coords}: {message}");
+    }
+    // Without extra keys, each parses.
+    for space in ["pixels", "normalized"] {
+        let json = format!(r#"{{"coords": {{"space": "{space}"}}, "annotations": []}}"#);
+        resolve_json(&json, 100, 100);
+    }
+}
+
+#[test]
 fn parse_errors_carry_location() {
     let cases = [
         ("{", "spec"),
