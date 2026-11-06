@@ -17,7 +17,6 @@ struct Cli {
 }
 
 #[derive(Subcommand)]
-#[expect(dead_code, reason = "grid reads its arguments once implemented")]
 enum Cmd {
     /// Draw the annotations of a JSON spec on a PNG and print the resolved spec.
     Render {
@@ -40,7 +39,8 @@ enum Cmd {
         /// Where to write the grid PNG.
         #[arg(short, long)]
         out: PathBuf,
-        /// Grid spacing in pixels.
+        /// Grid spacing in pixels, at least 1; by default the smallest of 50, 100, 200, 250,
+        /// 500 and 1000 that gives at most 20 intervals along the longer side.
         #[arg(long)]
         step: Option<u32>,
     },
@@ -66,7 +66,7 @@ fn run(cmd: &Cmd) -> Result<(), Error> {
             out,
             dpr,
         } => render(input, spec, out, *dpr),
-        Cmd::Grid { .. } => Err(Error::Unsupported("grid".to_owned())),
+        Cmd::Grid { input, out, step } => grid(input, out, *step),
         Cmd::Schema => print_json(&schemars::schema_for!(Spec)),
     }
 }
@@ -78,6 +78,13 @@ fn render(input: &Path, spec: &Path, out: &Path, dpr: Option<f64>) -> Result<(),
     let (png, report) = markshot::render::render(src, &spec, dpr)?;
     fs::write(out, png).map_err(file_error(out))?;
     print_json(&report)
+}
+
+/// Draws the grid on the input and writes the PNG.
+fn grid(input: &Path, out: &Path, step: Option<u32>) -> Result<(), Error> {
+    let src = decode_png(&fs::read(input).map_err(file_error(input))?)?;
+    let png = markshot::grid::grid(src, step)?;
+    fs::write(out, png).map_err(file_error(out))
 }
 
 /// The spec text from `path`, or from stdin when `path` is `-`.

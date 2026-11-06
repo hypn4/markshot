@@ -4,6 +4,7 @@ pub mod canvas;
 pub mod color;
 pub mod error;
 pub mod geom;
+pub mod grid;
 pub mod image_io;
 pub mod math;
 pub mod render;
