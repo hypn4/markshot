@@ -318,3 +318,52 @@ fn switching_fill_in_the_report_takes_the_new_fills_opacity() {
     report(&render(&input, &out, &resolved, &[]));
     assert_eq!(pixel(&read_png(&out), 200, 60), [0, 0, 0, 0xFF]);
 }
+
+/// A minimal ICC profile whose `desc` tag (ICC v2 `textDescriptionType`) reads `description`.
+fn icc_profile(description: &str) -> Vec<u8> {
+    let mut tag = b"desc\0\0\0\0".to_vec();
+    tag.extend(u32::try_from(description.len() + 1).unwrap().to_be_bytes());
+    tag.extend(description.as_bytes());
+    tag.push(0);
+    tag.extend([0u8; 79]); // empty Unicode and ScriptCode descriptions
+    let mut icc = vec![0u8; 128];
+    icc.extend(1u32.to_be_bytes());
+    icc.extend(b"desc");
+    icc.extend(144u32.to_be_bytes());
+    icc.extend(u32::try_from(tag.len()).unwrap().to_be_bytes());
+    icc.extend(tag);
+    let size = u32::try_from(icc.len()).unwrap();
+    icc[..4].copy_from_slice(&size.to_be_bytes());
+    icc
+}
+
+#[test]
+fn other_colour_profiles_warn() {
+    // Spec §5.9: a profile other than sRGB or Display P3 (here a display's own, as macOS tags
+    // some captures) is treated as sRGB, with a warning; the profile is kept.
+    let dir = work_dir("other_colour_profiles_warn");
+    let src = common::fixture(600, 400);
+    let spec = json!({"annotations": [{"type": "line", "from": [40, 60], "to": [560, 340]}]});
+    for (description, warned) in [
+        ("Color LCD", true),
+        ("sRGB IEC61966-2.1", false),
+        ("Display P3", false),
+    ] {
+        let icc = icc_profile(description);
+        let input = dir.join("input.png");
+        let png = encode_png(src.width, src.height, &src.rgba, src.dpi, Some(&icc)).unwrap();
+        fs::write(&input, png).unwrap();
+        let out = dir.join("out.png");
+        let report = report(&render(&input, &out, &spec, &[]));
+        let want = if warned {
+            json!([{
+                "id": "image",
+                "message": "the image's colour profile is not sRGB or Display P3; treated as sRGB"
+            }])
+        } else {
+            json!([])
+        };
+        assert_eq!(report["warnings"], want, "{description}");
+        assert_eq!(read_png(&out).icc, Some(icc), "{description}");
+    }
+}

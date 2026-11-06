@@ -164,7 +164,7 @@ Unknown fields are errors. `markshot schema` documents every field.
 
 ## Warnings
 
-Warnings don't stop the render. Each one names an annotation `id` (or `coords`). Read them before showing the result to the user.
+Warnings don't stop the render. Each one names an annotation `id` (or `coords` or `image`). Read them before showing the result to the user.
 
 | Message | Meaning and fix |
 |---|---|
@@ -173,3 +173,4 @@ Warnings don't stop the render. Each one names an annotation `id` (or `coords`).
 | `zero length: ...; skipped` | `from` and `to` are the same pixel. |
 | `zero width or height after rounding to pixels; skipped` | A rect with no area. |
 | `the scaled size ... does not have the aspect ratio ...` (id `coords`) | `coords.width`/`height` isn't the size you actually viewed. Correct it. |
+| `the image's colour profile is not sRGB or Display P3; treated as sRGB` (id `image`) | The PNG is tagged with another colour profile, such as a display's own. Colours are drawn with their sRGB values, so they may look slightly off; nothing to fix unless exact colours matter. |

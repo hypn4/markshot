@@ -4,7 +4,7 @@ use serde::Serialize;
 
 use crate::canvas::Canvas;
 use crate::error::Error;
-use crate::image_io::{SourceImage, dpr_from_dpi};
+use crate::image_io::{ColorSpace, SourceImage, dpr_from_dpi};
 use crate::resolve::{Resolved, Warning, resolve};
 use crate::spec::Spec;
 use crate::tools;
@@ -25,7 +25,8 @@ pub struct Report {
 
 /// Draws `spec` on `src` and encodes the result as PNG, keeping the source's DPI and ICC
 /// profile. The order is the reference app's: ① every blur, ② the spotlight curtain, ③ everything else
-/// in spec order, spotlight borders included.
+/// in spec order, spotlight borders included. A profile other than sRGB or Display P3 is
+/// treated as sRGB, with a warning (spec §5.9).
 ///
 /// # Errors
 /// [`Error::Spec`] when the spec does not resolve, [`Error::Png`] when encoding fails.
@@ -39,6 +40,14 @@ pub fn render(
 ) -> Result<(Vec<u8>, Report), Error> {
     let (width, height) = (src.width, src.height);
     let resolution = resolve(spec, width, height, dpr_from_dpi(src.dpi), dpr_override)?;
+    let mut warnings = Vec::new();
+    if src.color_space == ColorSpace::Other {
+        warnings.push(Warning {
+            id: "image".to_owned(),
+            message: "the image's colour profile is not sRGB or Display P3; treated as sRGB"
+                .to_owned(),
+        });
+    }
     let mut canvas = Canvas::new(src, resolution.dpr);
     let items = &resolution.items;
     for item in items {
@@ -66,12 +75,14 @@ pub fn render(
             Resolved::Counter(k) => tools::counter::draw(&mut canvas, k),
         }
     }
+    let resolved = resolution.to_spec();
+    warnings.extend(resolution.warnings);
     let report = Report {
         width,
         height,
         dpr: resolution.dpr,
-        spec: resolution.to_spec(),
-        warnings: resolution.warnings,
+        spec: resolved,
+        warnings,
     };
     Ok((canvas.into_png()?, report))
 }

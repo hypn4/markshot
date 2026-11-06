@@ -258,7 +258,7 @@ fn shape_spec(s: &ResolvedShape) -> ShapeSpec {
 /// Something the agent should know that did not stop the render.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct Warning {
-    /// The annotation's id, or `coords` for the coordinate space.
+    /// The annotation's id, `coords` for the coordinate space, or `image` for the input image.
     pub id: String,
     pub message: String,
 }
