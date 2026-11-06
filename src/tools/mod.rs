@@ -5,6 +5,7 @@
 
 pub mod arrow;
 pub mod blur;
+pub mod counter;
 pub mod highlight;
 pub mod line;
 pub mod shape;

@@ -376,3 +376,80 @@ fn golden_spotlight_overlap() {
         ]}"#,
     );
 }
+
+#[test]
+fn golden_counter_circle() {
+    // Numbered 1, 2, 3, 0 and 4: size 0, the default size, size 3 on the grey band, size 4
+    // across the grey and dark bands, and size 7 in blue.
+    check(
+        "counter-circle",
+        r##"{"annotations": [
+            {"type": "counter", "style": "circle", "size": 0, "center": [50, 50]},
+            {"type": "counter", "style": "circle", "center": [140, 66]},
+            {"type": "counter", "style": "circle", "size": 3, "center": [80, 200]},
+            {"type": "counter", "style": "circle", "size": 4, "number": 0, "center": [210, 310]},
+            {"type": "counter", "style": "circle", "size": 7, "color": "#2E7CF6",
+             "center": [440, 210]}
+        ]}"##,
+    );
+}
+
+/// Six `style` counters (`bubble` or `pin`) placed by the point their tail marks: the default
+/// 135° (down-left), right at size 0, down, up across the grey and dark bands, down-right on the
+/// dark band, and 160° (left, a little down) at size 5 in blue.
+fn tails(style: &str) -> String {
+    format!(
+        r##"{{"annotations": [
+            {{"type": "counter", "style": "{style}", "at": [70, 110]}},
+            {{"type": "counter", "style": "{style}", "size": 0, "angle": 0, "at": [260, 60]}},
+            {{"type": "counter", "style": "{style}", "angle": 90, "at": [400, 120]}},
+            {{"type": "counter", "style": "{style}", "angle": 270, "at": [100, 180]}},
+            {{"type": "counter", "style": "{style}", "angle": 45, "at": [300, 330]}},
+            {{"type": "counter", "style": "{style}", "size": 5, "color": "#2E7CF6", "angle": 160,
+             "at": [350, 347]}}
+        ]}}"##
+    )
+}
+
+#[test]
+fn golden_counter_bubble() {
+    check("counter-bubble", &tails("bubble"));
+}
+
+#[test]
+fn golden_counter_pin() {
+    check("counter-pin", &tails("pin"));
+}
+
+#[test]
+fn golden_counter_12() {
+    // Two and three digits are 10% smaller than one: 12, 99 at size 0, 100 at size 4, and 10 in
+    // a size-7 circle.
+    check(
+        "counter-12",
+        r#"{"annotations": [
+            {"type": "counter", "number": 12, "at": [70, 110]},
+            {"type": "counter", "size": 0, "number": 99, "at": [260, 60]},
+            {"type": "counter", "size": 4, "number": 100, "at": [130, 330]},
+            {"type": "counter", "style": "circle", "size": 7, "number": 10, "center": [440, 220]}
+        ]}"#,
+    );
+}
+
+#[test]
+fn golden_counter_yellow() {
+    // Light fills take black Regular numbers, dark ones white Medium: yellow, white on the grey
+    // band, orange (luminance 0.642) and green (0.559) either side of the 0.6 threshold, and a
+    // size-4 yellow pin on the dark band.
+    check(
+        "counter-yellow",
+        r##"{"annotations": [
+            {"type": "counter", "color": "#FFDC2C", "at": [70, 110]},
+            {"type": "counter", "color": "#FFFFFF", "at": [230, 230]},
+            {"type": "counter", "color": "#FF9500", "at": [370, 110]},
+            {"type": "counter", "color": "#34C759", "at": [500, 110]},
+            {"type": "counter", "color": "#FFDC2C", "style": "pin", "size": 4, "number": 12,
+             "at": [400, 360]}
+        ]}"##,
+    );
+}

@@ -28,8 +28,7 @@ pub struct Report {
 /// in spec order, spotlight borders included.
 ///
 /// # Errors
-/// [`Error::Spec`] when the spec does not resolve, [`Error::Unsupported`] naming an
-/// annotation type that cannot be drawn yet, [`Error::Png`] when encoding fails.
+/// [`Error::Spec`] when the spec does not resolve, [`Error::Png`] when encoding fails.
 ///
 /// # Panics
 /// When `src` is empty or `src.rgba` is not `width × height × 4` bytes.
@@ -64,7 +63,7 @@ pub fn render(
             Resolved::Oval(s) => tools::shape::draw(&mut canvas, s, ShapeKind::Oval),
             Resolved::Highlight(h) => tools::highlight::draw(&mut canvas, h),
             Resolved::Spotlight(s) => tools::spotlight::draw_border(&mut canvas, s),
-            Resolved::Counter(_) => return Err(unsupported("counter")),
+            Resolved::Counter(k) => tools::counter::draw(&mut canvas, k),
         }
     }
     let report = Report {
@@ -75,10 +74,6 @@ pub fn render(
         warnings: resolution.warnings,
     };
     Ok((canvas.into_png()?, report))
-}
-
-fn unsupported(kind: &str) -> Error {
-    Error::Unsupported(kind.to_owned())
 }
 
 #[cfg(test)]
@@ -117,15 +112,6 @@ mod tests {
     fn render_annotations(annotations: &[&str]) -> Result<(Vec<u8>, Report), Error> {
         let json = format!(r#"{{"annotations": [{}]}}"#, annotations.join(", "));
         render(white(100, 100), &Spec::from_json(&json).unwrap(), None)
-    }
-
-    #[test]
-    fn tools_not_implemented_yet_are_unsupported() {
-        let counter = r#"{"type": "counter", "center": [80, 60]}"#;
-        match render_annotations(&[counter]).map(|_| ()) {
-            Err(Error::Unsupported(kind)) => assert_eq!(kind, "counter"),
-            other => panic!("expected unsupported counter, got {other:?}"),
-        }
     }
 
     #[test]

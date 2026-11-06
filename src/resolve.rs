@@ -11,12 +11,13 @@ use serde::Serialize;
 
 use crate::color::{Rgb, parse_hex};
 use crate::error::Error;
-use crate::math::{cos, sin};
+use crate::geom::V2;
 use crate::rng::seed_from_id;
 use crate::spec::{
     Annotation, ArrowSpec, ArrowStyle, BlurMode, BlurSpec, Cap, Coords, CounterSpec, CounterStyle,
     Fill, HighlightSpec, LineSpec, Point, Rect, ShapeSpec, Spec, SpotShape, SpotlightSpec,
 };
+use crate::tools::counter;
 
 const DEFAULT_COLOR: &str = "#FF0C01";
 const DEFAULT_HIGHLIGHT_COLOR: &str = "#FFF68D";
@@ -40,12 +41,6 @@ const ASPECT_TOLERANCE: f64 = 0.01;
 const DPR_RANGE: std::ops::RangeInclusive<f64> = 0.5..=4.0;
 /// Pixel coordinates may be at most this many times the longer image side from the origin.
 const COORD_LIMIT_SCALE: f64 = 16.0;
-/// Counter diameters in points by size (Counter.md §6 `DIAM`).
-const COUNTER_DIAMETERS_PT: [f64; 10] = [
-    22.0, 28.0, 36.0, 48.0, 64.0, 84.0, 112.0, 150.0, 200.0, 266.0,
-];
-/// A counter placed by `at` has its center this many radii from it (Counter.md §6).
-const COUNTER_TAIL_OFFSET: f64 = 1.65;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ResolvedArrow {
@@ -181,7 +176,7 @@ impl Resolved {
             },
             Self::Highlight(h) => Ok(bounds(&h.points)),
             Self::Counter(c) => {
-                let r = counter_radius(c.size, dpr);
+                let r = counter::radius(c.size, dpr);
                 let [x, y] = c.center;
                 Ok([x - r, y - r, x + r, y + r])
             }
@@ -330,6 +325,7 @@ pub fn resolve(
             index,
             coords: &coords,
             dpr,
+            height: f64::from(height),
         };
         let item = resolver.annotation(annotation, id, &mut max_number)?;
         let warning = |message| Warning {
@@ -471,6 +467,8 @@ struct Resolver<'a> {
     index: usize,
     coords: &'a CoordMap,
     dpr: f64,
+    /// The image height, to turn pixels y-up.
+    height: f64,
 }
 
 impl Resolver<'_> {
@@ -583,16 +581,15 @@ impl Resolver<'_> {
         let center = match (c.at, c.center) {
             (None, Some(center)) => self.point("center", center)?,
             (Some(at), None) => {
-                // Like a click in the reference app: the badge sits opposite its tail, 1.65 radii away.
-                let offset = match style {
-                    CounterStyle::Circle => 0.0,
-                    CounterStyle::Bubble | CounterStyle::Pin => {
-                        COUNTER_TAIL_OFFSET * counter_radius(size, self.dpr)
-                    }
-                };
+                // Like a click in the reference app: the badge sits opposite its tail.
                 let [x, y] = self.point("at", at)?;
-                let radians = angle.to_radians();
-                self.whole_pixels("at", [x - offset * cos(radians), y - offset * sin(radians)])?
+                let at_up = V2 {
+                    x,
+                    y: self.height - y,
+                };
+                let r = counter::radius(size, self.dpr);
+                let center = counter::center_from_at(at_up, angle, r, style);
+                self.whole_pixels("at", [center.x, self.height - center.y])?
             }
             (Some(_), Some(_)) => return Err(self.whole_error("give `at` or `center`, not both")),
             (None, None) => {
@@ -694,11 +691,6 @@ impl Resolver<'_> {
 fn round_pixel(v: f64) -> f64 {
     let rounded = v.round();
     if rounded == 0.0 { 0.0 } else { rounded }
-}
-
-/// A counter's radius in image pixels.
-fn counter_radius(size: u8, dpr: f64) -> f64 {
-    COUNTER_DIAMETERS_PT[usize::from(size)] / 2.0 * dpr
 }
 
 /// The bounds `[x0, y0, x1, y1]` of `points`.
