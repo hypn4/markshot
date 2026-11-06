@@ -221,3 +221,79 @@ fn golden_arrow_sketch_curved() {
         ]}"##,
     );
 }
+
+/// Six `kind`s (`rect` or `oval`) with fill `fill`, all seed 7: wide at the default size,
+/// size 0, tall at size 7 in blue, a 30 px square (stroke capped at a tenth of its side; a
+/// sketch is drawn plain there), across the grey and dark bands at size 4, and on the dark
+/// band at `fill_alpha` 0.7 (ignored by `outline` and `sketch`).
+fn shapes(kind: &str, fill: &str) -> String {
+    format!(
+        r##"{{"annotations": [
+            {{"type": "{kind}", "fill": "{fill}", "seed": 7, "rect": [30, 25, 260, 90]}},
+            {{"type": "{kind}", "fill": "{fill}", "seed": 7, "size": 0, "rect": [330, 30, 90, 60]}},
+            {{"type": "{kind}", "fill": "{fill}", "seed": 7, "size": 7, "color": "#2E7CF6",
+             "rect": [460, 30, 110, 250]}},
+            {{"type": "{kind}", "fill": "{fill}", "seed": 7, "rect": [40, 160, 30, 30]}},
+            {{"type": "{kind}", "fill": "{fill}", "seed": 7, "size": 4,
+             "rect": [110, 150, 300, 220]}},
+            {{"type": "{kind}", "fill": "{fill}", "seed": 7, "fill_alpha": 0.7,
+             "rect": [440, 300, 140, 80]}}
+        ]}}"##
+    )
+}
+
+#[test]
+fn golden_rect_outline() {
+    check("rect-outline", &shapes("rect", "outline"));
+}
+
+#[test]
+fn golden_rect_semi() {
+    check("rect-semi", &shapes("rect", "semi"));
+}
+
+#[test]
+fn golden_rect_solid() {
+    check("rect-solid", &shapes("rect", "solid"));
+}
+
+#[test]
+fn golden_rect_size5() {
+    // 16 px strokes with 32 px corners, and on a 40 px side an 8 px stroke.
+    check(
+        "rect-size5",
+        r##"{"annotations": [
+            {"type": "rect", "fill": "outline", "size": 5, "rect": [40, 30, 330, 340]},
+            {"type": "rect", "fill": "outline", "size": 5, "rect": [420, 60, 140, 40]},
+            {"type": "rect", "fill": "outline", "size": 5, "color": "#2E7CF6",
+             "rect": [420, 160, 140, 200]}
+        ]}"##,
+    );
+}
+
+#[test]
+fn golden_rect_sketch() {
+    check("rect-sketch", &shapes("rect", "sketch"));
+}
+
+#[test]
+fn golden_oval_outline() {
+    check("oval-outline", &shapes("oval", "outline"));
+}
+
+#[test]
+fn golden_oval_semi() {
+    check("oval-semi", &shapes("oval", "semi"));
+}
+
+#[test]
+fn golden_oval_solid() {
+    check("oval-solid", &shapes("oval", "solid"));
+}
+
+#[test]
+fn golden_oval_sketch() {
+    // The size-7 oval's 22 px stroke is a fifth of its shorter side: a closed ring; the
+    // others spiral.
+    check("oval-sketch", &shapes("oval", "sketch"));
+}

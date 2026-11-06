@@ -8,6 +8,7 @@ use crate::image_io::{SourceImage, dpr_from_dpi};
 use crate::resolve::{Resolved, Warning, resolve};
 use crate::spec::Spec;
 use crate::tools;
+use crate::tools::shape::ShapeKind;
 
 /// What `render` prints for the agent.
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -50,8 +51,8 @@ pub fn render(
             Resolved::Blur(_) => {} // Drawn first.
             Resolved::Line(l) => tools::line::draw(&mut canvas, l),
             Resolved::Arrow(a) => tools::arrow::draw(&mut canvas, a),
-            Resolved::Rect(_) => return Err(unsupported("rect")),
-            Resolved::Oval(_) => return Err(unsupported("oval")),
+            Resolved::Rect(s) => tools::shape::draw(&mut canvas, s, ShapeKind::Rect),
+            Resolved::Oval(s) => tools::shape::draw(&mut canvas, s, ShapeKind::Oval),
             Resolved::Highlight(h) => tools::highlight::draw(&mut canvas, h),
             Resolved::Spotlight(_) => return Err(unsupported("spotlight")),
             Resolved::Counter(_) => return Err(unsupported("counter")),
@@ -109,14 +110,10 @@ mod tests {
     #[test]
     fn tools_not_implemented_yet_are_unsupported() {
         let arrow = r#"{"type": "arrow", "from": [10, 10], "to": [60, 40]}"#;
-        let rect = r#"{"type": "rect", "rect": [10, 50, 30, 20]}"#;
-        let oval = r#"{"type": "oval", "rect": [50, 50, 30, 20]}"#;
         let counter = r#"{"type": "counter", "center": [80, 60]}"#;
         let blur = r#"{"type": "blur", "rect": [10, 75, 20, 10]}"#;
         let spotlight = r#"{"type": "spotlight", "rect": [60, 5, 30, 30]}"#;
         for (annotations, want) in [
-            (vec![rect], "rect"),
-            (vec![oval], "oval"),
             (vec![counter], "counter"),
             // Blurs are drawn first and the spotlight curtain next, before everything else.
             (vec![arrow, blur], "blur"),
@@ -157,5 +154,29 @@ mod tests {
         };
         assert_eq!((r, a), (255, 255));
         assert!((13..255).contains(&g) && (2..255).contains(&b), "{g} {b}");
+    }
+
+    #[test]
+    fn zero_size_rect_skipped() {
+        // Review Focus 2: a rect or oval without width or height is left out with a warning,
+        // drawing nothing, while the rest of the spec is drawn.
+        let (png, report) = render_annotations(&[
+            r#"{"type": "rect", "rect": [10, 10, 0, 50]}"#,
+            r#"{"type": "oval", "rect": [10, 80, 50, 0]}"#,
+            r#"{"type": "rect", "fill": "solid", "rect": [70, 10, 20, 20]}"#,
+        ])
+        .unwrap();
+        let messages: Vec<&str> = report.warnings.iter().map(|w| w.message.as_str()).collect();
+        assert_eq!(
+            messages, ["zero width or height after rounding to pixels; skipped"; 2],
+            "{report:?}"
+        );
+        assert_eq!(report.spec.annotations.len(), 1);
+        let rgba = decode_png(&png).unwrap().rgba;
+        let at = |x: usize, y: usize| &rgba[(y * 100 + x) * 4..][..4];
+        for (x, y) in [(10, 10), (10, 35), (9, 59), (35, 80), (59, 79)] {
+            assert_eq!(at(x, y), [255; 4], "({x}, {y})");
+        }
+        assert_eq!(at(80, 20), [255, 12, 1, 255]);
     }
 }

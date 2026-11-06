@@ -1,11 +1,13 @@
 //! the reference app's shared freehand stroke engine (`FreehandHelper`, Highlighter.md §6): the point
 //! filters behind the highlighter, sketch arrows and hand-drawn rectangles and ovals. Each
-//! function ports one routine of the reference app; the section numbers are Highlighter.md's.
+//! function ports one routine of the reference app; the section numbers are Highlighter.md's unless
+//! RectOval.md's are named.
 
 mod flatten;
 mod handles;
 mod outline;
 mod resample;
+mod simplify;
 mod smooth;
 mod widths;
 
@@ -13,8 +15,9 @@ pub use flatten::flatten;
 pub use handles::handles;
 pub use outline::outline;
 pub use resample::resample;
+pub use simplify::simplify;
 pub use smooth::smooth;
-pub use widths::{assign_widths, ema_weight, norm_weight};
+pub use widths::{assign_widths, blur_weight, ema_weight, norm_weight};
 
 use crate::geom::{PathData, Seg, V2};
 use crate::math::atan2;

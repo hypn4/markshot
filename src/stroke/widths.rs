@@ -1,4 +1,4 @@
-//! §6.7–6.8 weight filters and stroke widths.
+//! §6.7–6.8 weight filters and stroke widths, and RectOval.md §3.6's weight blur.
 
 use super::{Pt, clamp01, extremes};
 
@@ -31,6 +31,29 @@ pub fn norm_weight(pts: &mut [Pt], lo: f64, hi: f64, mix: f64) {
     }
     for p in pts {
         p.weight = (1.0 - mix) * p.weight + mix * (lo + (hi - lo) * (p.weight - min) / (max - min));
+    }
+}
+
+/// RectOval.md §3.6 (`a helper`): a circular box blur of the weights. Each becomes the
+/// mean of the `2·half + 1` weights centred on it, the window wrapping around the ends, with
+/// `half = ⌊min(n − 1, span)/2⌋`.
+pub fn blur_weight(pts: &mut [Pt], span: usize) {
+    let n = pts.len();
+    if n == 0 {
+        return;
+    }
+    let half = (n - 1).min(span) / 2;
+    let window = 2 * half + 1;
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "the window is at most span + 1 points"
+    )]
+    let count = window as f64;
+    let weights: Vec<f64> = pts.iter().map(|p| p.weight).collect();
+    for (i, p) in pts.iter_mut().enumerate() {
+        // the reference app: summed afresh for each point, from the window's first weight on.
+        let sum = (0..window).fold(0.0, |sum, k| sum + weights[(i + n - half + k) % n]);
+        p.weight = sum / count;
     }
 }
 
@@ -104,6 +127,25 @@ mod tests {
         let mut p = weighted(&[0.4, 0.4, 0.4]);
         norm_weight(&mut p, 0.0, 1.0, 0.3);
         assert_eq!(weights(&p), [0.5, 0.5, 0.5]);
+    }
+
+    #[test]
+    fn blur_weight_averages_a_window_that_wraps_around() {
+        // span 2: three weights each, the ends' windows reaching around to the other end.
+        let mut p = weighted(&[3.0, 0.0, 0.0, 0.0, 0.0, 0.0, 6.0]);
+        blur_weight(&mut p, 2);
+        assert_eq!(weights(&p), [3.0, 1.0, 0.0, 0.0, 0.0, 2.0, 3.0]);
+    }
+
+    #[test]
+    fn blur_weight_window_stays_shorter_than_the_stroke() {
+        // span 41 over 4 points: half = ⌊min(3, 41)/2⌋ = 1, three weights each.
+        let mut p = weighted(&[4.0, 0.0, 0.0, 0.0]);
+        blur_weight(&mut p, 41);
+        assert_close(&weights(&p), &[4.0 / 3.0, 4.0 / 3.0, 0.0, 4.0 / 3.0]);
+        let mut one = weighted(&[5.0]);
+        blur_weight(&mut one, 41);
+        assert_eq!(weights(&one), [5.0]);
     }
 
     #[test]

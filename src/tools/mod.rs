@@ -6,3 +6,4 @@
 pub mod arrow;
 pub mod highlight;
 pub mod line;
+pub mod shape;
