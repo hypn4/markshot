@@ -29,7 +29,7 @@ enum Cmd {
         /// Where to write the annotated PNG.
         #[arg(short, long)]
         out: PathBuf,
-        /// Device pixel ratio; overrides the spec's `dpr` and the PNG's DPI.
+        /// Device pixel ratio, 0.5 to 4; overrides the spec's `dpr` and the PNG's DPI.
         #[arg(long)]
         dpr: Option<f64>,
     },

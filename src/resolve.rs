@@ -36,6 +36,10 @@ const SEMI_FILL_ALPHA: f64 = 0.4;
 const SOLID_FILL_ALPHA: f64 = 1.0;
 /// Scaled coordinates whose aspect ratio is off the image's by more than this get a warning.
 const ASPECT_TOLERANCE: f64 = 0.01;
+/// The dpr `--dpr` or the spec may give; outside it, sizes and stroke sampling run away.
+const DPR_RANGE: std::ops::RangeInclusive<f64> = 0.5..=4.0;
+/// Pixel coordinates may be at most this many times the longer image side from the origin.
+const COORD_LIMIT_SCALE: f64 = 16.0;
 /// Counter diameters in points by size (Counter.md §6 `DIAM`).
 const COUNTER_DIAMETERS_PT: [f64; 10] = [
     22.0, 28.0, 36.0, 48.0, 64.0, 84.0, 112.0, 150.0, 200.0, 266.0,
@@ -292,7 +296,8 @@ impl Resolution {
 }
 
 /// Resolves `spec` for a `width` × `height` image whose DPI gives `image_dpr`. The dpr used
-/// is `dpr_override` (`--dpr`), else the spec's `dpr`, else `image_dpr`.
+/// is `dpr_override` (`--dpr`), else the spec's `dpr`, else `image_dpr`; the first two must be
+/// 0.5 to 4. Each coordinate must map to at most 16× the longer image side in pixels.
 ///
 /// # Errors
 /// [`Error::Spec`] naming the offending value, e.g. `annotations[2].size`, `dpr` or `--dpr`.
@@ -303,8 +308,10 @@ pub fn resolve(
     image_dpr: f64,
     dpr_override: Option<f64>,
 ) -> Result<Resolution, Error> {
-    let spec_dpr = spec.dpr.map(|dpr| positive("dpr", dpr)).transpose()?;
-    let dpr_override = dpr_override.map(|dpr| positive("--dpr", dpr)).transpose()?;
+    let spec_dpr = spec.dpr.map(|dpr| dpr_in_range("dpr", dpr)).transpose()?;
+    let dpr_override = dpr_override
+        .map(|dpr| dpr_in_range("--dpr", dpr))
+        .transpose()?;
     let dpr = dpr_override.or(spec_dpr).unwrap_or(image_dpr);
     let spotlight_dim = spec.spotlight_dim.unwrap_or(DEFAULT_SPOTLIGHT_DIM);
     if !(0.0..=1.0).contains(&spotlight_dim) {
@@ -348,6 +355,18 @@ pub fn resolve(
     })
 }
 
+/// `value` if it is a dpr within [`DPR_RANGE`].
+fn dpr_in_range(path: &str, value: f64) -> Result<f64, Error> {
+    if DPR_RANGE.contains(&value) {
+        Ok(value)
+    } else {
+        Err(Error::Spec {
+            path: path.to_owned(),
+            message: "out of range: dpr must be between 0.5 and 4".to_owned(),
+        })
+    }
+}
+
 fn positive(path: &str, value: f64) -> Result<f64, Error> {
     if value.is_finite() && value > 0.0 {
         Ok(value)
@@ -363,6 +382,9 @@ fn positive(path: &str, value: f64) -> Result<f64, Error> {
 struct CoordMap {
     x: (f64, f64),
     y: (f64, f64),
+    /// The largest magnitude a pixel coordinate may have: [`COORD_LIMIT_SCALE`] × the longer
+    /// image side. It keeps far-off points from making stroke flattening run unbounded.
+    limit: f64,
 }
 
 impl CoordMap {
@@ -394,7 +416,11 @@ impl CoordMap {
                 ((image_w, scaled_w), (image_h, scaled_h))
             }
         };
-        Ok(Self { x, y })
+        Ok(Self {
+            x,
+            y,
+            limit: COORD_LIMIT_SCALE * image_w.max(image_h),
+        })
     }
 
     fn map(&self, [x, y]: Point) -> Point {
@@ -639,13 +665,18 @@ impl Resolver<'_> {
         self.whole_pixels(field, self.coords.map(point))
     }
 
-    /// `point` in pixels rounded half away from zero.
+    /// `point` in pixels rounded half away from zero, each coordinate within the image's
+    /// coordinate limit.
     fn whole_pixels(&self, field: &str, [x, y]: Point) -> Result<Point, Error> {
         let rounded = [round_pixel(x), round_pixel(y)];
-        if rounded.iter().all(|v| v.is_finite()) {
+        // Written so NaN fails too.
+        if rounded.iter().all(|v| v.abs() <= self.coords.limit) {
             Ok(rounded)
         } else {
-            Err(self.error(field, "out of range"))
+            Err(self.error(
+                field,
+                "out of range: coordinates must be within 16× the image size",
+            ))
         }
     }
 

@@ -357,6 +357,81 @@ fn dpr_precedence() {
 }
 
 #[test]
+fn dpr_out_of_range_rejected() {
+    let spec = |dpr: f64| parse(&format!(r#"{{"dpr": {dpr}, "annotations": []}}"#));
+    let without_dpr = parse(r#"{"annotations": []}"#);
+    let (path, message) = spec_error(resolve(&without_dpr, 10, 10, 1.0, Some(0.1)));
+    assert_eq!(path, "--dpr");
+    assert_eq!(message, "out of range: dpr must be between 0.5 and 4");
+    let (path, _) = spec_error(resolve(&spec(10.0), 10, 10, 1.0, None));
+    assert_eq!(path, "dpr");
+    for dpr in [0.5, 4.0] {
+        assert_eq!(resolve(&spec(dpr), 10, 10, 1.0, None).unwrap().dpr, dpr);
+        assert_eq!(
+            resolve(&without_dpr, 10, 10, 1.0, Some(dpr)).unwrap().dpr,
+            dpr
+        );
+    }
+}
+
+#[test]
+fn far_coordinates_rejected() {
+    let line = |to: &str| {
+        format!(r#"{{"annotations": [{{"type": "line", "from": [50, 50], "to": {to}}}]}}"#)
+    };
+    let (path, message) = spec_error(resolve(&parse(&line("[1e9, 50]")), 100, 100, 1.0, None));
+    assert_eq!(path, "annotations[0].to");
+    assert_eq!(
+        message,
+        "out of range: coordinates must be within 16× the image size"
+    );
+    // 16× the image size is the limit, and that far is only partly outside.
+    let r = resolve_json(&line("[1600, 50]"), 100, 100);
+    assert_eq!(ids(&r), ["line-1"]);
+    assert_eq!(warned_ids(&r), ["line-1"]);
+    assert_eq!(
+        spec_error(resolve(&parse(&line("[-1601, 50]")), 100, 100, 1.0, None)).0,
+        "annotations[0].to"
+    );
+    // A rect's far corner is bounded too.
+    assert_eq!(
+        spec_error(resolve(
+            &parse(r#"{"annotations": [{"type": "blur", "rect": [10, 10, 1e9, 10]}]}"#),
+            100,
+            100,
+            1.0,
+            None
+        ))
+        .0,
+        "annotations[0].rect"
+    );
+}
+
+#[test]
+fn coordinates_are_bounded_after_mapping() {
+    let cases = [
+        // Normalized: [1e6, 0] is 1e5 pixels across a 100-pixel image.
+        r#"{"coords": {"space": "normalized"},
+            "annotations": [{"type": "highlight", "points": [[0, 0], [1e6, 0]]}]}"#,
+        // Scaled 1×1 → 100×100: [17, 0] is 1700 pixels.
+        r#"{"coords": {"space": "scaled", "width": 1, "height": 1},
+            "annotations": [{"type": "highlight", "points": [[0, 0], [17, 0]]}]}"#,
+    ];
+    for json in cases {
+        let (path, _) = spec_error(resolve(&parse(json), 100, 100, 1.0, None));
+        assert_eq!(path, "annotations[0].points[1]", "{json}");
+    }
+    // Scaled 1×1 → 100×100: [16, 0] is 1600 pixels, the limit.
+    let r = resolve_json(
+        r#"{"coords": {"space": "scaled", "width": 1, "height": 1},
+            "annotations": [{"type": "highlight", "points": [[0, 0], [16, 0]]}]}"#,
+        100,
+        100,
+    );
+    assert_eq!(ids(&r), ["highlight-1"]);
+}
+
+#[test]
 fn errors_carry_location() {
     let cases = [
         (

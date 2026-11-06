@@ -20,7 +20,7 @@ pub struct Spec {
     /// The coordinate space of every point and rectangle.
     #[serde(default)]
     pub coords: Coords,
-    /// Device pixel ratio: sizes are in points, drawn at `dpr` pixels per point.
+    /// Device pixel ratio, 0.5 to 4: sizes are in points, drawn at `dpr` pixels per point.
     /// Default: from the PNG's DPI (144 → 2), else 1. The `--dpr` option overrides it.
     pub dpr: Option<f64>,
     /// Opacity, 0 to 1, of the black curtain that spotlights cut holes in. Default 0.214.
@@ -30,6 +30,7 @@ pub struct Spec {
 }
 
 /// The coordinate space of the spec. The origin is the top-left corner; y grows downward.
+/// Every coordinate must lie within 16× the longer image side, in pixels, of the origin.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "space", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Coords {
