@@ -49,7 +49,21 @@ enum Cmd {
 }
 
 fn main() -> ExitCode {
-    match run(&Cli::parse().cmd) {
+    let cli = match Cli::try_parse() {
+        Ok(cli) => cli,
+        // Spec §5.1 exits 1 on any input error, usage errors included (clap's own code is 2);
+        // `--help` and `--version` print to stdout and exit 0.
+        Err(e) => {
+            // Nothing useful is left to do if printing fails.
+            let _ = e.print();
+            return if e.use_stderr() {
+                ExitCode::FAILURE
+            } else {
+                ExitCode::SUCCESS
+            };
+        }
+    };
+    match run(&cli.cmd) {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
             eprintln!("error: {e}");
