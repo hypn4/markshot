@@ -213,7 +213,9 @@ impl Canvas {
         (left, f64::from(self.height) - top - height, width, height)
     }
 
-    /// the reference app's `getPixel` (Blur.md §5): [`Canvas::source_pixel`], black outside the image.
+    /// the reference app's `getPixel` (Blur.md §3.1): [`Canvas::source_pixel`], black outside the image.
+    /// The bytes are in the source colour space; the reference app converts them to sRGB, this keeps them
+    /// (spec §5.9).
     #[must_use]
     pub fn sample(&self, x: f64, y: f64) -> [u8; 3] {
         self.source_pixel(x, y).unwrap_or([0, 0, 0])

@@ -1,16 +1,23 @@
-//! Golden images: each tool's renders on the 600×400 fixture (dpr 2), compared byte for byte
-//! with `tests/golden/<name>.png`. Regenerate with `UPDATE_GOLDEN=1 cargo test --test golden`
-//! and look at the images before committing them.
+//! Golden images: each tool's renders on the 600×400 fixture (dpr 2), blurs on its
+//! [`common::screen`] version, compared byte for byte with `tests/golden/<name>.png`.
+//! Regenerate with `UPDATE_GOLDEN=1 cargo test --test golden` and look at the images before
+//! committing them.
 
 mod common;
 
+use markshot::image_io::SourceImage;
 use markshot::render::render;
 use markshot::spec::Spec;
 
 /// Renders `spec` on the fixture, which must draw every annotation, and checks the golden.
 fn check(name: &str, spec: &str) {
+    check_on(name, common::fixture(600, 400), spec);
+}
+
+/// [`check`] on `src`.
+fn check_on(name: &str, src: SourceImage, spec: &str) {
     let spec = Spec::from_json(spec).expect("spec parses");
-    let (png, report) = render(common::fixture(600, 400), &spec, None).expect("renders");
+    let (png, report) = render(src, &spec, None).expect("renders");
     assert!(report.warnings.is_empty(), "{:?}", report.warnings);
     common::assert_golden(name, &png);
 }
@@ -296,4 +303,34 @@ fn golden_oval_sketch() {
     // The size-7 oval's 22 px stroke is a fifth of its shorter side: a closed ring; the
     // others spiral.
     check("oval-sketch", &shapes("oval", "sketch"));
+}
+
+#[test]
+fn golden_blur_pixelate() {
+    // Seed 3: a large rect (blocks keep their own colour), one at size 5 and a strip at
+    // size 0 (both small for their blocks, which then take neighbours' colours).
+    check_on(
+        "blur-pixelate",
+        common::screen(600, 400),
+        r#"{"annotations": [
+            {"type": "blur", "seed": 3, "rect": [20, 40, 270, 200]},
+            {"type": "blur", "seed": 3, "size": 5, "rect": [330, 60, 240, 130]},
+            {"type": "blur", "seed": 3, "size": 0, "rect": [40, 290, 520, 60]}
+        ]}"#,
+    );
+}
+
+#[test]
+fn golden_blur_erase() {
+    // Words erased: along rows inside one bar, along columns across two bars (whose edge
+    // stays), and along rows across three bars and two bands, as ramps.
+    check_on(
+        "blur-erase",
+        common::screen(600, 400),
+        r#"{"annotations": [
+            {"type": "blur", "mode": "erase", "rect": [171, 50, 50, 20]},
+            {"type": "blur", "mode": "erase", "rect": [139, 92, 34, 20]},
+            {"type": "blur", "mode": "erase", "rect": [43, 110, 145, 50]}
+        ]}"#,
+    );
 }

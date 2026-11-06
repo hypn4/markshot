@@ -42,8 +42,10 @@ pub fn render(
     let resolution = resolve(spec, width, height, dpr_from_dpi(src.dpi), dpr_override)?;
     let mut canvas = Canvas::new(src, resolution.dpr);
     let items = &resolution.items;
-    if items.iter().any(|item| matches!(item, Resolved::Blur(_))) {
-        return Err(unsupported("blur"));
+    for item in items {
+        if let Resolved::Blur(b) = item {
+            tools::blur::draw(&mut canvas, b);
+        }
     }
     draw_spotlight_curtain(&mut canvas, items, resolution.spotlight_dim)?;
     for item in items {
@@ -101,6 +103,21 @@ mod tests {
         }
     }
 
+    /// A `width` × `height` image at 144 dpi whose pixel `(x, y)` is `color(x, y)`.
+    fn image(width: u32, height: u32, color: impl Fn(u32, u32) -> [u8; 3]) -> SourceImage {
+        let rgba = (0..height)
+            .flat_map(|y| (0..width).map(move |x| (x, y)))
+            .flat_map(|(x, y)| {
+                let [r, g, b] = color(x, y);
+                [r, g, b, 255]
+            })
+            .collect();
+        SourceImage {
+            rgba,
+            ..white(width, height)
+        }
+    }
+
     /// Renders `annotations` (JSON objects) on a white 100×100 image.
     fn render_annotations(annotations: &[&str]) -> Result<(Vec<u8>, Report), Error> {
         let json = format!(r#"{{"annotations": [{}]}}"#, annotations.join(", "));
@@ -111,20 +128,62 @@ mod tests {
     fn tools_not_implemented_yet_are_unsupported() {
         let arrow = r#"{"type": "arrow", "from": [10, 10], "to": [60, 40]}"#;
         let counter = r#"{"type": "counter", "center": [80, 60]}"#;
-        let blur = r#"{"type": "blur", "rect": [10, 75, 20, 10]}"#;
         let spotlight = r#"{"type": "spotlight", "rect": [60, 5, 30, 30]}"#;
         for (annotations, want) in [
             (vec![counter], "counter"),
-            // Blurs are drawn first and the spotlight curtain next, before everything else.
-            (vec![arrow, blur], "blur"),
+            // The spotlight curtain is drawn before everything but blurs.
             (vec![arrow, spotlight], "spotlight"),
-            (vec![spotlight, blur], "blur"),
         ] {
             match render_annotations(&annotations).map(|_| ()) {
                 Err(Error::Unsupported(kind)) => assert_eq!(kind, want),
                 other => panic!("{annotations:?}: expected unsupported {want}, got {other:?}"),
             }
         }
+    }
+
+    #[test]
+    fn blur_rect_clamped_to_image() {
+        // Review Focus 1: only the 20 × 20 inside the image is erased, between that part's own
+        // border pixels. R is 200 in column 99 and G 255 in row 80, so each row ramps R from
+        // 0 to 200 in steps of 10 at its own G; past the image it would ramp to black.
+        let color = |x: u32, y: u32| [u8::from(x == 99) * 200, u8::from(y == 80) * 255, 0];
+        let spec = r#"{"annotations": [
+            {"type": "blur", "mode": "erase", "rect": [80, 80, 50, 50]}
+        ]}"#;
+        let src = image(100, 100, color);
+        let (png, report) = render(src, &Spec::from_json(spec).unwrap(), None).unwrap();
+        assert_eq!(
+            report.warnings,
+            [Warning {
+                id: "blur-1".to_owned(),
+                message: "partly outside the 100×100 image; drawn clipped".to_owned(),
+            }]
+        );
+        let rgba = decode_png(&png).unwrap().rgba;
+        for (i, &[r, g, b, a]) in rgba.as_chunks::<4>().0.iter().enumerate() {
+            let i = u32::try_from(i).unwrap();
+            let (x, y) = (i % 100, i / 100);
+            let want = if x >= 80 && y >= 80 {
+                [u8::try_from(10 * (x - 80) + 5).unwrap(), color(x, y)[1], 0]
+            } else {
+                color(x, y)
+            };
+            assert_eq!([r, g, b, a], [want[0], want[1], want[2], 255], "({x}, {y})");
+        }
+    }
+
+    #[test]
+    fn blur_samples_original_not_annotations() {
+        // Blurs are drawn first, from the original image, so a line listed before a blur
+        // still shows on top of it.
+        let line = r#"{"type": "line", "from": [10, 50], "to": [90, 50]}"#;
+        let blur = r#"{"type": "blur", "rect": [20, 30, 60, 40]}"#;
+        let (before, _) = render_annotations(&[line, blur]).unwrap();
+        let (after, _) = render_annotations(&[blur, line]).unwrap();
+        assert!(before == after, "the order of a line and a blur matters");
+        let rgba = decode_png(&before).unwrap().rgba;
+        let center = (50 * 100 + 50) * 4;
+        assert_eq!(rgba[center..center + 4], [255, 12, 1, 255]);
     }
 
     #[test]
