@@ -334,3 +334,45 @@ fn golden_blur_erase() {
         ]}"#,
     );
 }
+
+/// Five `shape` spotlights (`rect` or `oval`) at the default dim: wide across the white and
+/// grey bands at the default size, borderless (size 0), tall at size 7 in blue (its border
+/// capped at a tenth of the 100 px side), a 30 px square (rect corners capped at a third of
+/// it), and across the grey and dark bands at size 4.
+fn spotlights(shape: &str) -> String {
+    format!(
+        r##"{{"annotations": [
+            {{"type": "spotlight", "shape": "{shape}", "rect": [30, 25, 260, 150]}},
+            {{"type": "spotlight", "shape": "{shape}", "size": 0, "rect": [330, 30, 90, 60]}},
+            {{"type": "spotlight", "shape": "{shape}", "size": 7, "color": "#2E7CF6",
+             "rect": [460, 30, 100, 330]}},
+            {{"type": "spotlight", "shape": "{shape}", "rect": [40, 220, 30, 30]}},
+            {{"type": "spotlight", "shape": "{shape}", "size": 4, "rect": [110, 210, 300, 160]}}
+        ]}}"##
+    )
+}
+
+#[test]
+fn golden_spotlight_rect() {
+    check("spotlight-rect", &spotlights("rect"));
+}
+
+#[test]
+fn golden_spotlight_oval() {
+    check("spotlight-oval", &spotlights("oval"));
+}
+
+#[test]
+fn golden_spotlight_overlap() {
+    // The holes merge into one undimmed region under the crossing borders: two rects, an oval
+    // over the second, and a borderless oval over the first.
+    check(
+        "spotlight-overlap",
+        r#"{"annotations": [
+            {"type": "spotlight", "rect": [40, 40, 280, 180]},
+            {"type": "spotlight", "rect": [220, 150, 300, 200]},
+            {"type": "spotlight", "shape": "oval", "rect": [420, 40, 150, 150]},
+            {"type": "spotlight", "shape": "oval", "size": 0, "rect": [20, 180, 160, 150]}
+        ]}"#,
+    );
+}

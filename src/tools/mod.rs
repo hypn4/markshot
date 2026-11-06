@@ -8,3 +8,4 @@ pub mod blur;
 pub mod highlight;
 pub mod line;
 pub mod shape;
+pub mod spotlight;

@@ -25,7 +25,7 @@ pub struct Report {
 
 /// Draws `spec` on `src` and encodes the result as PNG, keeping the source's DPI and ICC
 /// profile. The order is the reference app's: ① every blur, ② the spotlight curtain, ③ everything else
-/// in spec order.
+/// in spec order, spotlight borders included.
 ///
 /// # Errors
 /// [`Error::Spec`] when the spec does not resolve, [`Error::Unsupported`] naming an
@@ -47,7 +47,14 @@ pub fn render(
             tools::blur::draw(&mut canvas, b);
         }
     }
-    draw_spotlight_curtain(&mut canvas, items, resolution.spotlight_dim)?;
+    let spots: Vec<_> = items
+        .iter()
+        .filter_map(|item| match item {
+            Resolved::Spotlight(s) => Some(s),
+            _ => None,
+        })
+        .collect();
+    tools::spotlight::draw_curtain(&mut canvas, &spots, resolution.spotlight_dim);
     for item in items {
         match item {
             Resolved::Blur(_) => {} // Drawn first.
@@ -56,7 +63,7 @@ pub fn render(
             Resolved::Rect(s) => tools::shape::draw(&mut canvas, s, ShapeKind::Rect),
             Resolved::Oval(s) => tools::shape::draw(&mut canvas, s, ShapeKind::Oval),
             Resolved::Highlight(h) => tools::highlight::draw(&mut canvas, h),
-            Resolved::Spotlight(_) => return Err(unsupported("spotlight")),
+            Resolved::Spotlight(s) => tools::spotlight::draw_border(&mut canvas, s),
             Resolved::Counter(_) => return Err(unsupported("counter")),
         }
     }
@@ -68,18 +75,6 @@ pub fn render(
         warnings: resolution.warnings,
     };
     Ok((canvas.into_png()?, report))
-}
-
-/// Stage ②: black at `dim` over the whole image, with a hole for each spotlight. Without
-/// spotlights there is no curtain; spotlights themselves cannot be drawn yet.
-fn draw_spotlight_curtain(_c: &mut Canvas, items: &[Resolved], _dim: f64) -> Result<(), Error> {
-    if items
-        .iter()
-        .any(|item| matches!(item, Resolved::Spotlight(_)))
-    {
-        return Err(unsupported("spotlight"));
-    }
-    Ok(())
 }
 
 fn unsupported(kind: &str) -> Error {
@@ -126,18 +121,10 @@ mod tests {
 
     #[test]
     fn tools_not_implemented_yet_are_unsupported() {
-        let arrow = r#"{"type": "arrow", "from": [10, 10], "to": [60, 40]}"#;
         let counter = r#"{"type": "counter", "center": [80, 60]}"#;
-        let spotlight = r#"{"type": "spotlight", "rect": [60, 5, 30, 30]}"#;
-        for (annotations, want) in [
-            (vec![counter], "counter"),
-            // The spotlight curtain is drawn before everything but blurs.
-            (vec![arrow, spotlight], "spotlight"),
-        ] {
-            match render_annotations(&annotations).map(|_| ()) {
-                Err(Error::Unsupported(kind)) => assert_eq!(kind, want),
-                other => panic!("{annotations:?}: expected unsupported {want}, got {other:?}"),
-            }
+        match render_annotations(&[counter]).map(|_| ()) {
+            Err(Error::Unsupported(kind)) => assert_eq!(kind, "counter"),
+            other => panic!("expected unsupported counter, got {other:?}"),
         }
     }
 
@@ -237,5 +224,84 @@ mod tests {
             assert_eq!(at(x, y), [255; 4], "({x}, {y})");
         }
         assert_eq!(at(80, 20), [255, 12, 1, 255]);
+    }
+
+    #[test]
+    fn dim_applies_over_blur_not_over_line() {
+        // ① blurs, ② the curtain, ③ the rest: outside the hole, the curtain at the spec's dim
+        // (0.5) halves the erased area (±1), while a line listed before the spotlight is still
+        // drawn over the curtain in its own color.
+        let color = |x: u32, y: u32| [x, y, 45].map(|v| u8::try_from(2 * v).unwrap());
+        let line = r#"{"type": "line", "from": [10, 90], "to": [90, 90]}"#;
+        let blur = r#"{"type": "blur", "mode": "erase", "rect": [10, 10, 40, 40]}"#;
+        let spotlight = r#"{"type": "spotlight", "rect": [60, 10, 30, 30]}"#;
+        let draw = |annotations: &[&str]| {
+            let json = format!(
+                r#"{{"spotlight_dim": 0.5, "annotations": [{}]}}"#,
+                annotations.join(", ")
+            );
+            let src = image(100, 100, color);
+            let (png, _) = render(src, &Spec::from_json(&json).unwrap(), None).unwrap();
+            decode_png(&png).unwrap().rgba
+        };
+        let plain = draw(&[line, blur]);
+        let dimmed = draw(&[line, spotlight, blur]);
+        let at = |rgba: &[u8], x: usize, y: usize| -> [u8; 4] {
+            rgba[(y * 100 + x) * 4..][..4].try_into().unwrap()
+        };
+        for (x, y) in [(20, 20), (30, 30), (40, 45)] {
+            let (before, after) = (at(&plain, x, y), at(&dimmed, x, y));
+            assert!(
+                before[..3]
+                    .iter()
+                    .zip(&after[..3])
+                    .all(|(&b, &a)| a.abs_diff(b / 2) <= 1),
+                "({x}, {y}): {before:?} → {after:?}"
+            );
+        }
+        assert_eq!(at(&dimmed, 50, 90), [255, 12, 1, 255]);
+        assert_eq!(at(&dimmed, 50, 90), at(&plain, 50, 90));
+    }
+
+    #[test]
+    fn spotlight_border_is_drawn_in_spec_order() {
+        // The border is drawn with the other annotations, after the curtain: over a line
+        // listed before the spotlight, under one listed after. The 6 px border of the left
+        // edge, x = 30, crosses the line at (30, 50).
+        let line = r##"{"type": "line", "color": "#0000FF", "from": [10, 50], "to": [90, 50]}"##;
+        let spotlight = r#"{"type": "spotlight", "rect": [30, 20, 40, 60]}"#;
+        for (annotations, want) in [
+            ([line, spotlight], [255, 12, 1, 255]),
+            ([spotlight, line], [0, 0, 255, 255]),
+        ] {
+            let (png, _) = render_annotations(&annotations).unwrap();
+            let rgba = decode_png(&png).unwrap().rgba;
+            let crossing = (50 * 100 + 30) * 4;
+            assert_eq!(rgba[crossing..crossing + 4], want, "{annotations:?}");
+        }
+    }
+
+    #[test]
+    fn spotlight_partly_outside_is_drawn_clipped() {
+        // Review Focus 1: the hole is cut where it is inside the image, with a warning.
+        let spotlight = r#"{"type": "spotlight", "size": 0, "rect": [60, 60, 80, 80]}"#;
+        let (png, report) = render_annotations(&[spotlight]).unwrap();
+        assert_eq!(
+            report.warnings,
+            [Warning {
+                id: "spotlight-1".to_owned(),
+                message: "partly outside the 100×100 image; drawn clipped".to_owned(),
+            }]
+        );
+        let rgba = decode_png(&png).unwrap().rgba;
+        let at = |x: usize, y: usize| &rgba[(y * 100 + x) * 4..][..4];
+        assert_eq!(at(80, 80), [255; 4]);
+        assert_eq!(at(99, 99), [255; 4]);
+        // Outside, black at 0.214 leaves round(255·(1 − 0.214)) = 200, ±1.
+        let dimmed = at(30, 30);
+        assert!(
+            dimmed[..3].iter().all(|&v| v.abs_diff(200) <= 1) && dimmed[3] == 255,
+            "{dimmed:?}"
+        );
     }
 }

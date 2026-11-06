@@ -50,7 +50,7 @@ pub fn draw(c: &mut Canvas, s: &ResolvedShape, kind: ShapeKind) {
     let (_, _, w, h) = rect;
     let dpr = c.dpr;
     let wpt = WIDTHS[usize::from(s.size)];
-    let stroke = stroke_px(w, h, s.size, dpr);
+    let stroke = stroke_px(w, h, wpt, dpr);
     let handdrawn = s.fill == Fill::Sketch;
     let rnd = rnd100(s.seed);
     let ink = Ink {
@@ -101,15 +101,12 @@ fn plain_path(
     }
 }
 
-/// RectOval.md §3: the stroke width in px of a `w × h` shape: the size's width in points, at
-/// most a tenth of the shorter side, times dpr.
-///
-/// # Panics
-/// When `size` is 10 or more.
+/// RectOval.md §3: the stroke width in px of a `w × h` shape whose size is `wpt` points wide:
+/// `wpt`, at most a tenth of the shorter side, times dpr.
 #[must_use]
-pub fn stroke_px(w: f64, h: f64, size: u8, dpr: f64) -> f64 {
+pub fn stroke_px(w: f64, h: f64, wpt: f64, dpr: f64) -> f64 {
     // the reference app quirk: a tenth of the shorter side in px caps a width in points.
-    (w.abs().min(h.abs()) / 10.0).min(WIDTHS[usize::from(size)]) * dpr
+    (w.abs().min(h.abs()) / 10.0).min(wpt) * dpr
 }
 
 #[cfg(test)]
@@ -198,9 +195,9 @@ mod tests {
 
     #[test]
     fn stroke_px_caps_small_shapes() {
-        assert_eq!(stroke_px(200., 100., 2, 2.0), 6.0);
-        assert_eq!(stroke_px(20., 100., 2, 2.0), 4.0);
-        assert_eq!(stroke_px(100., 20., 0, 2.0), 2.0);
+        assert_eq!(stroke_px(200., 100., 3.0, 2.0), 6.0);
+        assert_eq!(stroke_px(20., 100., 3.0, 2.0), 4.0);
+        assert_eq!(stroke_px(100., 20., 1.0, 2.0), 2.0);
     }
 
     #[test]
