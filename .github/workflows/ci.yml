@@ -17,5 +17,5 @@ jobs:
       # Installs the channel and components pinned in rust-toolchain.toml.
       - run: rustup toolchain install
       - run: cargo fmt --check
-      - run: cargo clippy --all-targets -- -D warnings
-      - run: cargo test
+      - run: cargo clippy --locked --all-targets -- -D warnings
+      - run: cargo test --locked
