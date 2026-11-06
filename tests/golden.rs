@@ -63,3 +63,45 @@ fn golden_line_caps() {
         ]}"#,
     );
 }
+
+#[test]
+fn golden_highlight_light() {
+    check(
+        "highlight-light",
+        r#"{"annotations": [{"type": "highlight", "from": [60, 66], "to": [540, 66]}]}"#,
+    );
+}
+
+#[test]
+fn golden_highlight_mid() {
+    check(
+        "highlight-mid",
+        r#"{"annotations": [{"type": "highlight", "from": [60, 200], "to": [540, 200]}]}"#,
+    );
+}
+
+#[test]
+fn golden_highlight_dark() {
+    check(
+        "highlight-dark",
+        r#"{"annotations": [{"type": "highlight", "from": [60, 333], "to": [540, 333]}]}"#,
+    );
+}
+
+#[test]
+fn golden_highlight_polyline() {
+    check(
+        "highlight-polyline",
+        r##"{"annotations": [
+            {"type": "highlight", "cap": 0,
+             "points": [[40, 50], [120, 85], [200, 45], [280, 90]]},
+            {"type": "highlight", "cap": 1, "size": 1, "color": "#ADF6FF",
+             "points": [[330, 40], [400, 60], [470, 95], [560, 100]]},
+            {"type": "highlight", "cap": 2, "points": [[80, 165], [80, 235]]},
+            {"type": "highlight",
+             "points": [[150, 200], [250, 206], [350, 197], [450, 210], [560, 204]]},
+            {"type": "highlight", "points": [[100, 330]]},
+            {"type": "highlight", "points": [[250, 300], [350, 360], [450, 300], [550, 360]]}
+        ]}"##,
+    );
+}

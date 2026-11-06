@@ -3,4 +3,5 @@
 //!
 //! [`Canvas`]: crate::canvas::Canvas
 
+pub mod highlight;
 pub mod line;

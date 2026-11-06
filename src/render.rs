@@ -52,7 +52,7 @@ pub fn render(
             Resolved::Arrow(_) => return Err(unsupported("arrow")),
             Resolved::Rect(_) => return Err(unsupported("rect")),
             Resolved::Oval(_) => return Err(unsupported("oval")),
-            Resolved::Highlight(_) => return Err(unsupported("highlight")),
+            Resolved::Highlight(h) => tools::highlight::draw(&mut canvas, h),
             Resolved::Spotlight(_) => return Err(unsupported("spotlight")),
             Resolved::Counter(_) => return Err(unsupported("counter")),
         }
@@ -111,7 +111,6 @@ mod tests {
         let arrow = r#"{"type": "arrow", "from": [10, 10], "to": [60, 40]}"#;
         let rect = r#"{"type": "rect", "rect": [10, 50, 30, 20]}"#;
         let oval = r#"{"type": "oval", "rect": [50, 50, 30, 20]}"#;
-        let highlight = r#"{"type": "highlight", "from": [40, 80], "to": [90, 80]}"#;
         let counter = r#"{"type": "counter", "center": [80, 60]}"#;
         let blur = r#"{"type": "blur", "rect": [10, 75, 20, 10]}"#;
         let spotlight = r#"{"type": "spotlight", "rect": [60, 5, 30, 30]}"#;
@@ -119,7 +118,6 @@ mod tests {
             (vec![arrow], "arrow"),
             (vec![rect], "rect"),
             (vec![oval], "oval"),
-            (vec![highlight], "highlight"),
             (vec![counter], "counter"),
             // Blurs are drawn first and the spotlight curtain next, before everything else.
             (vec![arrow, blur], "blur"),

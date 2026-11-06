@@ -213,16 +213,22 @@ impl Canvas {
         (left, f64::from(self.height) - top - height, width, height)
     }
 
-    /// the reference app's `getPixel` (Blur.md §5): the original pixel at column `floor(x)`, row
-    /// `H − ceil(y)` (rows top-down); black outside the image.
+    /// the reference app's `getPixel` (Blur.md §5): [`Canvas::source_pixel`], black outside the image.
     #[must_use]
     pub fn sample(&self, x: f64, y: f64) -> [u8; 3] {
+        self.source_pixel(x, y).unwrap_or([0, 0, 0])
+    }
+
+    /// The original pixel at column `floor(x)`, row `H − ceil(y)` (rows top-down), or `None`
+    /// outside the image.
+    #[must_use]
+    pub fn source_pixel(&self, x: f64, y: f64) -> Option<[u8; 3]> {
         let col = x.floor();
         let row = f64::from(self.height) - y.ceil();
         if !(0.0..f64::from(self.width)).contains(&col)
             || !(0.0..f64::from(self.height)).contains(&row)
         {
-            return [0, 0, 0];
+            return None;
         }
         #[expect(
             clippy::cast_possible_truncation,
@@ -230,7 +236,7 @@ impl Canvas {
             reason = "col and row are whole numbers inside the image"
         )]
         let i = (row as usize * self.width as usize + col as usize) * 4;
-        [self.src.rgba[i], self.src.rgba[i + 1], self.src.rgba[i + 2]]
+        Some([self.src.rgba[i], self.src.rgba[i + 1], self.src.rgba[i + 2]])
     }
 
     /// Overwrites the main surface with a `w × h` straight-alpha RGBA bitmap (rows top-down)
@@ -396,6 +402,21 @@ mod tests {
             (f64::NAN, 1.0),
         ] {
             assert_eq!(c.sample(x, y), [0, 0, 0], "({x}, {y})");
+        }
+    }
+
+    #[test]
+    fn source_pixel_is_none_outside_the_image() {
+        let c = Canvas::new(image(1, 1, &[RED], ColorSpace::Srgb), 1.0);
+        assert_eq!(c.source_pixel(0.5, 1.0), Some([255, 0, 0]));
+        for (x, y) in [
+            (-0.5, 1.0),
+            (1.0, 1.0),
+            (0.0, 0.0),
+            (0.0, 2.0),
+            (f64::NAN, 1.0),
+        ] {
+            assert_eq!(c.source_pixel(x, y), None, "({x}, {y})");
         }
     }
 
