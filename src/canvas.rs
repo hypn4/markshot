@@ -3,7 +3,7 @@
 
 use tiny_skia::{
     BlendMode, Color, ColorU8, FillRule, IntSize, LineCap, LineJoin, Paint, Path, PathBuilder,
-    Pixmap, PixmapPaint, Stroke, StrokeDash, Transform,
+    PathStroker, Pixmap, PixmapPaint, Stroke, StrokeDash, Transform,
 };
 
 use crate::color::Rgb;
@@ -56,27 +56,41 @@ impl Surface {
     }
 
     /// Strokes `p`; an empty or degenerate path, or a width that is not positive, draws nothing.
+    ///
+    /// The outline is always computed and filled. tiny-skia's own `stroke_path` draws strokes up
+    /// to 1 px wide with its hairline rasterizer instead, whose coverage differs from
+    /// CoreGraphics' and which draws nothing on pixmaps 2 px tall.
     pub fn stroke(&mut self, p: &PathData, ink: Ink, s: &StrokeStyle) {
-        // tiny-skia would draw a hairline for width 0.
         if s.width.is_nan() || s.width <= 0.0 {
             return;
         }
-        let Some(path) = to_skia_path(p) else {
+        let Some(mut path) = to_skia_path(p) else {
             return;
         };
+        let resolution = PathStroker::compute_resolution_scale(&self.transform);
+        let dash = s
+            .dash
+            .as_ref()
+            .and_then(|d| StrokeDash::new(d.iter().copied().map(to_f32).collect(), 0.0));
+        if let Some(dash) = dash {
+            let Some(dashed) = path.dash(&dash, resolution) else {
+                return;
+            };
+            path = dashed;
+        }
         let stroke = Stroke {
             width: to_f32(s.width),
             miter_limit: MITER_LIMIT,
             line_cap: s.cap,
             line_join: s.join,
-            dash: s
-                .dash
-                .as_ref()
-                .and_then(|d| StrokeDash::new(d.iter().copied().map(to_f32).collect(), 0.0)),
+            dash: None,
+        };
+        let Some(outline) = path.stroke(&stroke, resolution) else {
+            return;
         };
         let paint = self.paint(ink);
         self.pixmap
-            .stroke_path(&path, &paint, &stroke, self.transform, None);
+            .fill_path(&outline, &paint, FillRule::Winding, self.transform, None);
     }
 
     fn paint(&self, ink: Ink) -> Paint<'static> {
@@ -463,6 +477,23 @@ mod tests {
         c.main().stroke(&line, ink("#FF0000", 1.0), &style);
         let dashed = [RED, CLEAR, RED, CLEAR];
         assert_eq!(pixels(&c), [[CLEAR; 4], dashed, dashed].concat());
+    }
+
+    #[test]
+    fn one_pixel_stroke_paints_on_a_two_pixel_canvas() {
+        // tiny-skia's hairline rasterizer, which it uses for strokes up to 1 px wide, draws
+        // nothing on a pixmap 2 px tall; a geometric stroke covers exactly the bottom row.
+        let v = |x, y| V2 { x, y };
+        let line = PathData(vec![Seg::Move(v(0.0, 0.5)), Seg::Line(v(2.0, 0.5))]);
+        let mut c = blank(2, 2);
+        let style = StrokeStyle {
+            width: 1.0,
+            cap: LineCap::Butt,
+            join: LineJoin::Miter,
+            dash: None,
+        };
+        c.main().stroke(&line, ink("#FF0000", 1.0), &style);
+        assert_eq!(pixels(&c), [CLEAR, CLEAR, RED, RED]);
     }
 
     #[test]

@@ -1,9 +1,11 @@
-use std::io::Write as _;
-use std::path::PathBuf;
+use std::fs;
+use std::io::{Read as _, Write as _};
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
 use markshot::error::Error;
+use markshot::image_io::decode_png;
 use markshot::spec::Spec;
 use serde::Serialize;
 
@@ -15,10 +17,7 @@ struct Cli {
 }
 
 #[derive(Subcommand)]
-#[expect(
-    dead_code,
-    reason = "render and grid read their arguments once implemented"
-)]
+#[expect(dead_code, reason = "grid reads its arguments once implemented")]
 enum Cmd {
     /// Draw the annotations of a JSON spec on a PNG and print the resolved spec.
     Render {
@@ -61,9 +60,44 @@ fn main() -> ExitCode {
 
 fn run(cmd: &Cmd) -> Result<(), Error> {
     match cmd {
-        Cmd::Render { .. } => Err(Error::Unsupported("render".to_owned())),
+        Cmd::Render {
+            input,
+            spec,
+            out,
+            dpr,
+        } => render(input, spec, out, *dpr),
         Cmd::Grid { .. } => Err(Error::Unsupported("grid".to_owned())),
         Cmd::Schema => print_json(&schemars::schema_for!(Spec)),
+    }
+}
+
+/// Draws the spec on the input, writes the PNG, then prints the report.
+fn render(input: &Path, spec: &Path, out: &Path, dpr: Option<f64>) -> Result<(), Error> {
+    let src = decode_png(&fs::read(input).map_err(file_error(input))?)?;
+    let spec = Spec::from_json(&read_spec(spec)?)?;
+    let (png, report) = markshot::render::render(src, &spec, dpr)?;
+    fs::write(out, png).map_err(file_error(out))?;
+    print_json(&report)
+}
+
+/// The spec text from `path`, or from stdin when `path` is `-`.
+fn read_spec(path: &Path) -> Result<String, Error> {
+    if path == Path::new("-") {
+        let mut text = String::new();
+        std::io::stdin().read_to_string(&mut text)?;
+        Ok(text)
+    } else {
+        fs::read_to_string(path).map_err(file_error(path))
+    }
+}
+
+/// Turns an I/O error on `path` into one whose message starts with the path.
+fn file_error(path: &Path) -> impl FnOnce(std::io::Error) -> Error {
+    move |e| {
+        Error::Io(std::io::Error::new(
+            e.kind(),
+            format!("{}: {e}", path.display()),
+        ))
     }
 }
 
