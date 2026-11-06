@@ -145,7 +145,7 @@ These coordinates were read off a 400×300 preview of the 800×600 screenshot. E
 | `color` (`#RRGGBB`) | all but blur | `#FF0C01`; highlight `#FFF68D` |
 | `size` (0–7) | all | 2 |
 | `id` | all | `<type>-<n>`, e.g. `arrow-1` |
-| `seed` | arrow, rect, oval, blur | derived from `id` |
+| `seed` (0 to 2^53 − 1) | arrow, rect, oval, blur | derived from `id` |
 | `style` | arrow / counter | `shaped` / `bubble` |
 | `variant` (0–3) | arrow | 0 |
 | `fill` | rect, oval | `sketch` |

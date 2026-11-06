@@ -180,6 +180,36 @@ fn default_ids_and_seeds() {
 }
 
 #[test]
+fn seeds_are_limited_to_53_bits() {
+    // A seed must survive JSON tools that read numbers as doubles: at most 2^53 − 1.
+    for (kind, geometry) in [
+        ("arrow", r#""from": [0, 0], "to": [50, 50]"#),
+        ("rect", r#""rect": [0, 0, 50, 50]"#),
+        ("oval", r#""rect": [0, 0, 50, 50]"#),
+        ("blur", r#""rect": [0, 0, 50, 50]"#),
+    ] {
+        let json = |seed: u64| {
+            format!(r#"{{"annotations": [{{"type": "{kind}", {geometry}, "seed": {seed}}}]}}"#)
+        };
+        assert_eq!(
+            resolve_json(&json(9_007_199_254_740_991), 100, 100)
+                .items
+                .len(),
+            1
+        );
+        let (path, message) = spec_error(resolve(
+            &parse(&json(9_007_199_254_740_992)),
+            100,
+            100,
+            1.0,
+            None,
+        ));
+        assert_eq!(path, "annotations[0].seed", "{kind}");
+        assert!(message.starts_with("out of range"), "{kind}: {message}");
+    }
+}
+
+#[test]
 fn generated_ids_use_the_type_name() {
     let r = resolve_json(EVERY_TYPE, 100, 100);
     assert_eq!(

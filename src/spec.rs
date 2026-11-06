@@ -117,7 +117,7 @@ pub struct ArrowSpec {
     pub color: Option<String>,
     /// Thickness step, 0 to 7. Default 2.
     pub size: Option<u8>,
-    /// Seed of the hand-drawn randomness of `sketch`. Default: derived from `id`.
+    /// Seed of the hand-drawn randomness of `sketch`, 0 to 2^53 − 1. Default: derived from `id`.
     pub seed: Option<u64>,
     /// Tail `[x, y]`.
     #[schemars(required)]
@@ -157,7 +157,7 @@ pub struct ShapeSpec {
     pub color: Option<String>,
     /// Border thickness step, 0 to 7. Default 2.
     pub size: Option<u8>,
-    /// Seed of the hand-drawn randomness of `sketch`. Default: derived from `id`.
+    /// Seed of the hand-drawn randomness of `sketch`, 0 to 2^53 − 1. Default: derived from `id`.
     pub seed: Option<u64>,
     /// `[x, y, width, height]`.
     #[schemars(required)]
@@ -190,7 +190,7 @@ pub struct BlurSpec {
     pub id: Option<String>,
     /// Pixelation block size step, 0 to 7. Default 2.
     pub size: Option<u8>,
-    /// Seed of the pixelation blocks. Default: derived from `id`.
+    /// Seed of the pixelation blocks, 0 to 2^53 − 1. Default: derived from `id`.
     pub seed: Option<u64>,
     /// `[x, y, width, height]`.
     #[schemars(required)]

@@ -3,6 +3,10 @@
 const FNV_OFFSET_BASIS: u64 = 0xcbf2_9ce4_8422_2325;
 const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
 
+/// The largest seed, 2^53 − 1: JSON tools that read numbers as doubles (JavaScript, jq) keep
+/// integers up to it exact, so a seed in a resolved spec survives being edited with them.
+pub const MAX_SEED: u64 = (1 << 53) - 1;
+
 /// the reference app's xorshift-multiply generator; the multiplied value is the next state.
 #[derive(Clone, Debug)]
 pub struct Rng(u64);
@@ -37,12 +41,14 @@ pub fn rnd100(seed: u64) -> [f64; 100] {
     std::array::from_fn(|_| rng.next_unit())
 }
 
-/// The default seed for an annotation: 64-bit FNV-1a of its id's UTF-8 bytes.
+/// The default seed for an annotation: the low 53 bits (at most [`MAX_SEED`]) of the 64-bit
+/// FNV-1a hash of its id's UTF-8 bytes.
 #[must_use]
 pub fn seed_from_id(id: &str) -> u64 {
-    id.bytes().fold(FNV_OFFSET_BASIS, |h, b| {
+    let hash = id.bytes().fold(FNV_OFFSET_BASIS, |h, b| {
         (h ^ u64::from(b)).wrapping_mul(FNV_PRIME)
-    })
+    });
+    hash & MAX_SEED
 }
 
 #[cfg(test)]
@@ -82,7 +88,26 @@ mod tests {
 
     #[test]
     fn fnv() {
-        assert_eq!(seed_from_id("arrow-1"), 0x1adf_0676_39bf_aaa0);
-        assert_eq!(seed_from_id(""), 0xcbf2_9ce4_8422_2325);
+        // The low 53 bits of FNV-1a 64: 0x1adf_0676_39bf_aaa0 for "arrow-1", the offset basis
+        // 0xcbf2_9ce4_8422_2325 for "".
+        assert_eq!(seed_from_id("arrow-1"), 0x1f_0676_39bf_aaa0);
+        assert_eq!(seed_from_id(""), 0x12_9ce4_8422_2325);
+    }
+
+    #[test]
+    fn default_seeds_fit_in_a_double() {
+        // JSON tools that read numbers as doubles keep integers up to 2^53 exact.
+        for id in ["arrow-1", "rect-1", "oval-1", "blur-1", "redaction", ""] {
+            let seed = seed_from_id(id);
+            assert!(seed <= MAX_SEED, "{id}: {seed}");
+            #[expect(
+                clippy::cast_precision_loss,
+                clippy::cast_possible_truncation,
+                clippy::cast_sign_loss,
+                reason = "checking that the round trip through f64 is exact"
+            )]
+            let back = seed as f64 as u64;
+            assert_eq!(back, seed, "{id}");
+        }
     }
 }

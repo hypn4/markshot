@@ -12,7 +12,7 @@ use serde::Serialize;
 use crate::color::{Rgb, parse_hex};
 use crate::error::Error;
 use crate::geom::V2;
-use crate::rng::seed_from_id;
+use crate::rng::{MAX_SEED, seed_from_id};
 use crate::spec::{
     Annotation, ArrowSpec, ArrowStyle, BlurMode, BlurSpec, Cap, Coords, CounterSpec, CounterStyle,
     Fill, HighlightSpec, LineSpec, Point, Rect, ShapeSpec, Spec, SpotShape, SpotlightSpec,
@@ -498,7 +498,7 @@ impl Resolver<'_> {
         Ok(ResolvedArrow {
             color: self.color(a.color.as_deref(), DEFAULT_COLOR)?,
             size: self.size(a.size)?,
-            seed: a.seed.unwrap_or_else(|| seed_from_id(&id)),
+            seed: self.seed(a.seed, &id)?,
             from: self.required_point("from", a.from)?,
             to: self.required_point("to", a.to)?,
             style: a.style.unwrap_or_default(),
@@ -517,7 +517,7 @@ impl Resolver<'_> {
         Ok(ResolvedShape {
             color: self.color(s.color.as_deref(), DEFAULT_COLOR)?,
             size: self.size(s.size)?,
-            seed: s.seed.unwrap_or_else(|| seed_from_id(&id)),
+            seed: self.seed(s.seed, &id)?,
             rect: self.rect(s.rect)?,
             fill: s.fill.unwrap_or_default(),
             fill_alpha: s.fill_alpha,
@@ -528,7 +528,7 @@ impl Resolver<'_> {
     fn blur(&self, b: &BlurSpec, id: String) -> Result<ResolvedBlur, Error> {
         Ok(ResolvedBlur {
             size: self.size(b.size)?,
-            seed: b.seed.unwrap_or_else(|| seed_from_id(&id)),
+            seed: self.seed(b.seed, &id)?,
             rect: self.rect(b.rect)?,
             mode: b.mode.unwrap_or_default(),
             id,
@@ -650,6 +650,18 @@ impl Resolver<'_> {
         match value.unwrap_or(default) {
             value if value <= max => Ok(value),
             value => Err(self.error(field, format!("must be 0 to {max}, got {value}"))),
+        }
+    }
+
+    /// The spec's `seed`, at most [`MAX_SEED`], else the one derived from `id`.
+    fn seed(&self, seed: Option<u64>, id: &str) -> Result<u64, Error> {
+        match seed {
+            None => Ok(seed_from_id(id)),
+            Some(seed) if seed <= MAX_SEED => Ok(seed),
+            Some(seed) => Err(self.error(
+                "seed",
+                format!("out of range: must be 0 to 2^53 − 1 ({MAX_SEED}), got {seed}"),
+            )),
         }
     }
 
