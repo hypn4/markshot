@@ -3,8 +3,9 @@
 //! width around the shape whose outline is filled in the color (§3.4–3.6).
 //!
 //! `fill` is the reference app's fill code: `sketch` (−1) hand-drawn, `outline` (0) the border alone,
-//! `semi` and `solid` (40, 100) the border over the color at `fill_alpha`. Zoom is 1 and the
-//! shape is never hovered or selected, so the hover blue and the knobs are left out.
+//! `semi` and `solid` (40, 100) the border over the color at `fill_alpha`, by default 0.4 and 1.
+//! Zoom is 1 and the shape is never hovered or selected, so the hover blue and the knobs are
+//! left out.
 
 mod handdrawn;
 mod rounded_rect;
@@ -32,6 +33,10 @@ const JITTER: f64 = 1.3;
 /// Hand-drawn needs a shorter side over this many px; smaller shapes are drawn plain.
 const MIN_HANDDRAWN_SIDE: f64 = 40.0;
 
+/// The opacity of the `semi` and `solid` fills when the spec gives no `fill_alpha`.
+const SEMI_FILL_ALPHA: f64 = 0.4;
+const SOLID_FILL_ALPHA: f64 = 1.0;
+
 /// Which outline a [`ResolvedShape`] gets.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ShapeKind {
@@ -40,8 +45,8 @@ pub enum ShapeKind {
 }
 
 /// Draws `s` on the main surface (RectOval.md §4). A `sketch` over 40 px on its shorter side
-/// is hand-drawn; anything else is the plain outline, filled at `fill_alpha` for `semi` and
-/// `solid`, then stroked with round joins.
+/// is hand-drawn; anything else is the plain outline, filled at `fill_alpha` (by default 0.4
+/// for `semi` and 1 for `solid`), then stroked with round joins.
 ///
 /// # Panics
 /// When `s.size` is 10 or more; resolved sizes are 0 to 7.
@@ -69,11 +74,13 @@ pub fn draw(c: &mut Canvas, s: &ResolvedShape, kind: ShapeKind) {
     // the reference app: a small rect keeps the hand-drawn jitter.
     let jitter = if handdrawn { JITTER } else { 0.0 };
     let path = plain_path(kind, rect, jitter, 2.0 * wpt, dpr, &rnd);
-    if matches!(s.fill, Fill::Semi | Fill::Solid) {
-        let background = Ink {
-            alpha: s.fill_alpha,
-            ..ink
-        };
+    let fill_alpha = match s.fill {
+        Fill::Sketch | Fill::Outline => None,
+        Fill::Semi => Some(s.fill_alpha.unwrap_or(SEMI_FILL_ALPHA)),
+        Fill::Solid => Some(s.fill_alpha.unwrap_or(SOLID_FILL_ALPHA)),
+    };
+    if let Some(alpha) = fill_alpha {
+        let background = Ink { alpha, ..ink };
         c.main().fill(&path, background, FillRule::Winding);
     }
     let style = StrokeStyle {
@@ -118,7 +125,7 @@ mod tests {
     const RED: [u8; 4] = [255, 12, 1, 255];
     const WHITE: [u8; 4] = [255; 4];
 
-    /// A size-2 `#FF0C01` shape with seed 7 and the resolver's default `fill_alpha`.
+    /// A size-2 `#FF0C01` shape with seed 7 and no `fill_alpha`.
     fn shape(fill: Fill, rect: [f64; 4]) -> ResolvedShape {
         ResolvedShape {
             id: "rect-1".to_owned(),
@@ -127,11 +134,7 @@ mod tests {
             seed: 7,
             rect,
             fill,
-            fill_alpha: match fill {
-                Fill::Semi => 0.4,
-                Fill::Solid => 1.0,
-                Fill::Sketch | Fill::Outline => 0.3,
-            },
+            fill_alpha: None,
         }
     }
 
@@ -270,7 +273,7 @@ mod tests {
     fn fill_alpha_sets_the_background_opacity() {
         // Solid at 0.5: (255, 133.5, 128).
         let mut s = shape(Fill::Solid, [20.0, 20.0, 160.0, 60.0]);
-        s.fill_alpha = 0.5;
+        s.fill_alpha = Some(0.5);
         let got = pixel(&png(&s, ShapeKind::Rect, 200, 100), 200, 100, 50);
         assert!(
             got.iter()

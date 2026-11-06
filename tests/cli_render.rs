@@ -295,3 +295,26 @@ fn line_off_image_is_clipped() {
     // The line leaves the image through the bottom edge near x = 495.
     assert_eq!(pixel(&image, 495, 399), RED);
 }
+
+#[test]
+fn switching_fill_in_the_report_takes_the_new_fills_opacity() {
+    // An agent frames something with an outline, then switches the stdout spec's `fill` to
+    // `solid` to redact it: the box must come out opaque, not at an alpha left over from the
+    // outline.
+    let dir = work_dir("switching_fill_in_the_report_takes_the_new_fills_opacity");
+    let input = write_fixture(&dir);
+    let out = dir.join("out.png");
+    let spec = json!({"annotations": [
+        {"type": "rect", "fill": "outline", "color": "#000000", "rect": [100, 20, 200, 80]}
+    ]});
+    let mut resolved = report(&render(&input, &out, &spec, &[]))["spec"].clone();
+    let rect = &mut resolved["annotations"][0];
+    assert_eq!(
+        rect.get("fill_alpha"),
+        None,
+        "a default fill_alpha is left out"
+    );
+    rect["fill"] = json!("solid");
+    report(&render(&input, &out, &resolved, &[]));
+    assert_eq!(pixel(&read_png(&out), 200, 60), [0, 0, 0, 0xFF]);
+}

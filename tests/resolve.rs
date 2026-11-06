@@ -295,7 +295,9 @@ fn defaults() {
 }
 
 #[test]
-fn fill_alpha_defaults_follow_the_fill() {
+fn fill_alpha_is_kept_only_when_given() {
+    // The fill's default opacity is left to the drawing, so that a resolved spec whose `fill`
+    // is changed takes the new fill's default.
     let r = resolve_json(
         r#"{"annotations": [
             {"type": "rect", "rect": [0, 0, 10, 10], "fill": "semi"},
@@ -306,7 +308,7 @@ fn fill_alpha_defaults_follow_the_fill() {
         100,
         100,
     );
-    let alphas: Vec<f64> = r
+    let alphas: Vec<Option<f64>> = r
         .items
         .iter()
         .map(|item| match item {
@@ -314,7 +316,15 @@ fn fill_alpha_defaults_follow_the_fill() {
             other => panic!("{other:?}"),
         })
         .collect();
-    assert_eq!(alphas, [0.4, 1.0, 0.3, 0.7]);
+    assert_eq!(alphas, [None, None, None, Some(0.7)]);
+    let spec = serde_json::to_value(r.to_spec()).expect("spec serializes");
+    let given: Vec<Option<&serde_json::Value>> = spec["annotations"]
+        .as_array()
+        .expect("annotations array")
+        .iter()
+        .map(|annotation| annotation.get("fill_alpha"))
+        .collect();
+    assert_eq!(given, [None, None, None, Some(&json!(0.7))]);
 }
 
 #[test]
@@ -660,32 +670,15 @@ fn to_spec_spells_out_every_field() {
             keys
         })
         .collect();
+    // A default `fill_alpha` is left out (see `fill_alpha_is_kept_only_when_given`).
     assert_eq!(
         keys,
         [
             vec![
                 "color", "from", "id", "seed", "size", "style", "to", "type", "variant"
             ],
-            vec![
-                "color",
-                "fill",
-                "fill_alpha",
-                "id",
-                "rect",
-                "seed",
-                "size",
-                "type"
-            ],
-            vec![
-                "color",
-                "fill",
-                "fill_alpha",
-                "id",
-                "rect",
-                "seed",
-                "size",
-                "type"
-            ],
+            vec!["color", "fill", "id", "rect", "seed", "size", "type"],
+            vec!["color", "fill", "id", "rect", "seed", "size", "type"],
             vec!["id", "mode", "rect", "seed", "size", "type"],
             vec!["cap", "color", "id", "points", "size", "type"],
             vec!["color", "id", "rect", "shape", "size", "type"],

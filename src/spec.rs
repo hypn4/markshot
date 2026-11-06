@@ -158,6 +158,7 @@ pub struct ShapeSpec {
     /// Default `sketch`.
     pub fill: Option<Fill>,
     /// Opacity of the `semi` and `solid` fill, 0.1 to 1. Default 0.4 for `semi`, 1 for `solid`.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub fill_alpha: Option<f64>,
 }
 

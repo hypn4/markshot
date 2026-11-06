@@ -17,8 +17,8 @@ pub struct Report {
     pub height: u32,
     /// The dpr used.
     pub dpr: f64,
-    /// The resolved spec: every annotation drawn, with every field filled in. Rendering it
-    /// again draws the same image.
+    /// The resolved spec ([`crate::resolve::Resolution::to_spec`]): every annotation drawn,
+    /// its fields filled in. Rendering it again draws the same image.
     pub spec: Spec,
     pub warnings: Vec<Warning>,
 }

@@ -18,7 +18,7 @@ markshot schema        # JSON schema of the spec, with every field documented
 1. Look at the screenshot and work out where each annotation goes. To get its pixel size, render an empty spec: `echo '{"annotations": []}' | markshot render in.png --spec - -o /tmp/x.png` prints `width` and `height`.
 2. If you are unsure of positions, run `markshot grid in.png -o grid.png` and look at `grid.png`. Its labels are image pixel coordinates.
 3. Write the spec, run `render`, then look at the output PNG.
-4. To fix something, take the `spec` object from the stdout JSON, change only the values that are off, and render it again **from the original input**, not from the previous output. That `spec` is fully resolved: ids, seeds, numbers, the dpr and pixel coordinates are filled in, so everything you don't change stays exactly the same.
+4. To fix something, take the `spec` object from the stdout JSON, change only the values that are off, and render it again **from the original input**, not from the previous output. That `spec` is fully resolved: ids, seeds, numbers, the dpr and pixel coordinates are filled in, so everything you don't change stays exactly the same. `fill_alpha` is there only if you set it, so switching a rect's `fill` (say `outline` to `solid`, to redact what it frames) gives it the new fill's default opacity.
 
 `render` prints `{"width", "height", "dpr", "spec", "warnings"}` to stdout. If the spec is invalid it exits with code 1, writes nothing, and prints `error: <path>: <message>` to stderr, for example `error: annotations[0].size: must be 0 to 7, got 9`.
 

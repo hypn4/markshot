@@ -31,10 +31,6 @@ const DEFAULT_HIGHLIGHT_CAP: u8 = 3;
 const DEFAULT_SPOTLIGHT_DIM: f64 = 0.214;
 /// the reference app's default tail direction, −3π/4 with y up, in screen degrees.
 const DEFAULT_COUNTER_ANGLE: f64 = 135.0;
-/// The `fill_alpha` of fills that ignore it: the reference app's `backgroundAlpha` default.
-const INERT_FILL_ALPHA: f64 = 0.3;
-const SEMI_FILL_ALPHA: f64 = 0.4;
-const SOLID_FILL_ALPHA: f64 = 1.0;
 /// Scaled coordinates whose aspect ratio is off the image's by more than this get a warning.
 const ASPECT_TOLERANCE: f64 = 0.01;
 /// The dpr `--dpr` or the spec may give; outside it, sizes and stroke sampling run away.
@@ -66,8 +62,9 @@ pub struct ResolvedShape {
     /// Width and height are positive.
     pub rect: Rect,
     pub fill: Fill,
-    /// Only `semi` and `solid` fills use it.
-    pub fill_alpha: f64,
+    /// The spec's `fill_alpha`, 0.1 to 1. `None` leaves the fill its default; only `semi` and
+    /// `solid` fills use it.
+    pub fill_alpha: Option<f64>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -254,7 +251,7 @@ fn shape_spec(s: &ResolvedShape) -> ShapeSpec {
         seed: Some(s.seed),
         rect: Some(s.rect),
         fill: Some(s.fill),
-        fill_alpha: Some(s.fill_alpha),
+        fill_alpha: s.fill_alpha,
     }
 }
 
@@ -279,6 +276,8 @@ impl Resolution {
     /// The resolved spec: pixel coordinates, the dpr used, and every field spelled out, so
     /// that feeding it back draws the same image. Only the alternatives not taken stay unset:
     /// counters give `center`, highlights give `points`, and straight arrows have no `via`.
+    /// A `fill_alpha` the spec left out stays out too, so that changing `fill` gives the new
+    /// fill its own default opacity.
     #[must_use]
     pub fn to_spec(&self) -> Spec {
         Spec {
@@ -509,25 +508,18 @@ impl Resolver<'_> {
     }
 
     fn shape(&self, s: &ShapeSpec, id: String) -> Result<ResolvedShape, Error> {
-        let fill = s.fill.unwrap_or_default();
-        let fill_alpha = match s.fill_alpha {
-            Some(alpha) if (0.1..=1.0).contains(&alpha) => alpha,
-            Some(alpha) => {
-                return Err(self.error("fill_alpha", format!("must be 0.1 to 1, got {alpha}")));
-            }
-            None => match fill {
-                Fill::Semi => SEMI_FILL_ALPHA,
-                Fill::Solid => SOLID_FILL_ALPHA,
-                Fill::Sketch | Fill::Outline => INERT_FILL_ALPHA,
-            },
-        };
+        if let Some(alpha) = s.fill_alpha
+            && !(0.1..=1.0).contains(&alpha)
+        {
+            return Err(self.error("fill_alpha", format!("must be 0.1 to 1, got {alpha}")));
+        }
         Ok(ResolvedShape {
             color: self.color(s.color.as_deref(), DEFAULT_COLOR)?,
             size: self.size(s.size)?,
             seed: s.seed.unwrap_or_else(|| seed_from_id(&id)),
             rect: self.rect(s.rect)?,
-            fill,
-            fill_alpha,
+            fill: s.fill.unwrap_or_default(),
+            fill_alpha: s.fill_alpha,
             id,
         })
     }
