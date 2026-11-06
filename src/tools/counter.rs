@@ -31,7 +31,7 @@ pub const TAIL_SVG: [&str; 2] = [
 
 /// A counter placed by the point its tail marks is centered this many radii back from it
 /// (Counter.md §2).
-const TAIL_OFFSET: f64 = 1.65;
+pub const TAIL_OFFSET: f64 = 1.65;
 
 /// the reference app's quarter turn in `pathFromSVG` (`a helper`), truncated.
 #[expect(

@@ -291,7 +291,8 @@ impl Resolution {
 
 /// Resolves `spec` for a `width` × `height` image whose DPI gives `image_dpr`. The dpr used
 /// is `dpr_override` (`--dpr`), else the spec's `dpr`, else `image_dpr`; the first two must be
-/// 0.5 to 4. Each coordinate must map to at most 16× the longer image side in pixels.
+/// 0.5 to 4. Each coordinate must map to at most 16× the longer image side in pixels; a
+/// counter's `center` may lie as far past that as its `at` can put it.
 ///
 /// # Errors
 /// [`Error::Spec`] naming the offending value, e.g. `annotations[2].size`, `dpr` or `--dpr`.
@@ -570,18 +571,25 @@ impl Resolver<'_> {
         let size = self.size(c.size)?;
         let style = c.style.unwrap_or_default();
         let angle = c.angle.unwrap_or(DEFAULT_COUNTER_ANGLE);
+        let r = counter::radius(size, self.dpr);
         let center = match (c.at, c.center) {
-            (None, Some(center)) => self.point("center", center)?,
+            // `at` can put the center 1.65 radii past the coordinate limit (and half a pixel
+            // more by rounding), and a resolved spec gives that center back.
+            (None, Some(center)) => self.whole_pixels(
+                "center",
+                self.coords.map(center),
+                self.coords.limit + counter::TAIL_OFFSET * r + 0.5,
+            )?,
             (Some(at), None) => {
-                // Like a click in the reference app: the badge sits opposite its tail.
+                // Like a click in the reference app: the badge sits opposite its tail. Only `at` is
+                // bounded.
                 let [x, y] = self.point("at", at)?;
                 let at_up = V2 {
                     x,
                     y: self.height - y,
                 };
-                let r = counter::radius(size, self.dpr);
                 let center = counter::center_from_at(at_up, angle, r, style);
-                self.whole_pixels("at", [center.x, self.height - center.y])?
+                [round_pixel(center.x), round_pixel(self.height - center.y)]
             }
             (Some(_), Some(_)) => return Err(self.whole_error("give `at` or `center`, not both")),
             (None, None) => {
@@ -651,15 +659,14 @@ impl Resolver<'_> {
     }
 
     fn point(&self, field: &str, point: Point) -> Result<Point, Error> {
-        self.whole_pixels(field, self.coords.map(point))
+        self.whole_pixels(field, self.coords.map(point), self.coords.limit)
     }
 
-    /// `point` in pixels rounded half away from zero, each coordinate within the image's
-    /// coordinate limit.
-    fn whole_pixels(&self, field: &str, [x, y]: Point) -> Result<Point, Error> {
+    /// `point` in pixels rounded half away from zero, each coordinate at most `limit` from 0.
+    fn whole_pixels(&self, field: &str, [x, y]: Point, limit: f64) -> Result<Point, Error> {
         let rounded = [round_pixel(x), round_pixel(y)];
         // Written so NaN fails too.
-        if rounded.iter().all(|v| v.abs() <= self.coords.limit) {
+        if rounded.iter().all(|v| v.abs() <= limit) {
             Ok(rounded)
         } else {
             Err(self.error(
@@ -707,15 +714,24 @@ enum Visibility {
 }
 
 /// How much of `item` shows on a `width` × `height` image. Its extent touching the image
-/// edge counts as inside.
+/// edge counts as inside, as strokes reach past it, except for a blur, which covers only its
+/// rect and so draws nothing there.
 fn visibility(item: &Resolved, dpr: f64, width: u32, height: u32) -> Visibility {
     let (w, h) = (f64::from(width), f64::from(height));
-    match item.extent(dpr) {
-        Err(reason) => Visibility::Hidden(reason.to_owned()),
-        Ok([x0, y0, x1, y1]) if x1 < 0.0 || y1 < 0.0 || x0 > w || y0 > h => {
-            Visibility::Hidden(format!("entirely outside the {width}×{height} image"))
-        }
-        Ok([x0, y0, x1, y1]) if x0 < 0.0 || y0 < 0.0 || x1 > w || y1 > h => Visibility::Clipped,
-        Ok(_) => Visibility::Full,
+    let [x0, y0, x1, y1] = match item.extent(dpr) {
+        Ok(extent) => extent,
+        Err(reason) => return Visibility::Hidden(reason.to_owned()),
+    };
+    let outside = if matches!(item, Resolved::Blur(_)) {
+        x1 <= 0.0 || y1 <= 0.0 || x0 >= w || y0 >= h
+    } else {
+        x1 < 0.0 || y1 < 0.0 || x0 > w || y0 > h
+    };
+    if outside {
+        Visibility::Hidden(format!("entirely outside the {width}×{height} image"))
+    } else if x0 < 0.0 || y0 < 0.0 || x1 > w || y1 > h {
+        Visibility::Clipped
+    } else {
+        Visibility::Full
     }
 }

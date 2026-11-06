@@ -352,6 +352,48 @@ fn counter_at_places_the_center_like_a_reference_click() {
 }
 
 #[test]
+fn counter_bounds_check_its_at_not_its_center() {
+    // A default counter at the corner of a tiny image: its center lands 1.65 radii up and to
+    // the right of `at`, beyond 16× the image size, but only the `at` given is bounded. The
+    // badge then sits above the image and is skipped.
+    for (dpr, size) in [(1, 1), (2, 2)] {
+        let json =
+            format!(r#"{{"dpr": {dpr}, "annotations": [{{"type": "counter", "at": [0, 0]}}]}}"#);
+        let r = resolve(&parse(&json), size, size, 1.0, None).expect("spec resolves");
+        assert!(r.items.is_empty(), "{:?}", r.items);
+        assert_eq!(
+            r.warnings
+                .iter()
+                .map(|w| (w.id.as_str(), w.message.as_str()))
+                .collect::<Vec<_>>(),
+            [(
+                "counter-1",
+                format!("entirely outside the {size}×{size} image; skipped").as_str()
+            )]
+        );
+    }
+    let (path, _) = spec_error(resolve(
+        &parse(r#"{"annotations": [{"type": "counter", "at": [17, 0]}]}"#),
+        1,
+        1,
+        1.0,
+        None,
+    ));
+    assert_eq!(path, "annotations[0].at");
+    // A center past the bound that `at` put on the image (R 18; the tail points left, so the
+    // center is 29.7 right of `at`, at x = 18) still resolves when the resolved spec gives it,
+    // so that feeding the spec back draws the same.
+    let spec = parse(r#"{"annotations": [{"type": "counter", "at": [-12, 0], "angle": 180}]}"#);
+    let first = resolve(&spec, 1, 1, 1.0, None).expect("spec resolves");
+    let Resolved::Counter(counter) = &first.items[0] else {
+        panic!("{:?}", first.items)
+    };
+    assert_eq!(counter.center, [18.0, 0.0]);
+    let second = resolve(&first.to_spec(), 1, 1, 1.0, None).expect("resolved spec resolves");
+    assert_eq!(second.to_spec(), first.to_spec());
+}
+
+#[test]
 fn dpr_precedence() {
     let with_dpr = parse(r#"{"dpr": 2, "annotations": []}"#);
     let without_dpr = parse(r#"{"annotations": []}"#);
@@ -592,6 +634,35 @@ fn fully_outside_is_skipped_with_warning() {
     );
     assert_eq!(ids(&r), ["line-2"]);
     assert_eq!(warned_ids(&r), ["rect-1", "line-1", "counter-1"]);
+}
+
+#[test]
+fn blur_only_touching_the_image_is_skipped() {
+    // A blur covers only its rect, so one that touches the image's edge from outside draws
+    // nothing and is skipped. A rect there is still drawn: its border straddles the edge.
+    let r = resolve_json(
+        r#"{"annotations": [
+            {"type": "blur", "rect": [100, 10, 20, 20]},
+            {"type": "blur", "rect": [10, -20, 20, 20]},
+            {"type": "rect", "rect": [100, 10, 20, 20]}
+        ]}"#,
+        100,
+        100,
+    );
+    assert_eq!(ids(&r), ["rect-1"]);
+    let warnings: Vec<(&str, &str)> = r
+        .warnings
+        .iter()
+        .map(|w| (w.id.as_str(), w.message.as_str()))
+        .collect();
+    assert_eq!(
+        warnings,
+        [
+            ("blur-1", "entirely outside the 100×100 image; skipped"),
+            ("blur-2", "entirely outside the 100×100 image; skipped"),
+            ("rect-1", "partly outside the 100×100 image; drawn clipped"),
+        ]
+    );
 }
 
 #[test]
