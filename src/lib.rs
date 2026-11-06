@@ -10,5 +10,6 @@ pub mod render;
 pub mod resolve;
 pub mod rng;
 pub mod spec;
+pub mod stroke;
 pub mod svg_path;
 pub mod tools;
