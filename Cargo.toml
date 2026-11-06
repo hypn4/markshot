@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2024"
 rust-version = "1.99"
 description = "Render reference-style screenshot annotations for AI coding agents"
+readme = "README.md"
+keywords = ["screenshot", "annotation", "reference", "cli", "ai-agents"]
 publish = false
 
 [lib]

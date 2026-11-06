@@ -1,0 +1,58 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+env:
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GH_REPO: ${{ github.repository }}
+
+jobs:
+  # One job creates the release so the four builds don't race to create it.
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - run: >
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 ||
+          gh release create "$GITHUB_REF_NAME" --verify-tag --title "$GITHUB_REF_NAME" --generate-notes
+
+  build:
+    name: ${{ matrix.target }}
+    needs: release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            target: aarch64-apple-darwin
+          - os: macos-15-intel
+            target: x86_64-apple-darwin
+          - os: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+          - os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      # Installs the channel pinned in rust-toolchain.toml. Only the host's std is installed,
+      # so `--target` also fails the build if a runner's architecture isn't the expected one.
+      - run: rustup toolchain install
+      - run: cargo build --release --locked --target ${{ matrix.target }}
+      - name: Package
+        env:
+          NAME: markshot-${{ matrix.target }}
+        run: |
+          mkdir "$NAME"
+          cp "target/${{ matrix.target }}/release/markshot" README.md assets/fonts/OFL.txt "$NAME/"
+          mkdir -p "$NAME/skills/annotating-screenshots"
+          cp skills/annotating-screenshots/SKILL.md "$NAME/skills/annotating-screenshots/"
+          tar -czf "$NAME.tar.gz" "$NAME"
+          shasum -a 256 "$NAME.tar.gz" > "$NAME.tar.gz.sha256"
+      - run: >
+          gh release upload "$GITHUB_REF_NAME" --clobber
+          markshot-${{ matrix.target }}.tar.gz
+          markshot-${{ matrix.target }}.tar.gz.sha256
