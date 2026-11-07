@@ -9,6 +9,9 @@ use crate::error::Error;
 
 const METERS_PER_INCH: f64 = 0.0254;
 
+/// The most pixels a PNG may have, 2^27 (16384 * 8192): 512 MiB as RGBA8.
+pub const MAX_PIXELS: u64 = 1 << 27;
+
 /// How the source image's ICC profile identifies its color space.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ColorSpace {
@@ -34,10 +37,18 @@ pub struct SourceImage {
 /// For animated PNGs only the default image is read.
 ///
 /// # Errors
-/// [`Error::Png`] when the bytes are not a valid PNG.
+/// [`Error::Png`] when the bytes are not a valid PNG or the image has more than [`MAX_PIXELS`]
+/// pixels.
 pub fn decode_png(bytes: &[u8]) -> Result<SourceImage, Error> {
     let mut decoder = png::Decoder::new(Cursor::new(bytes));
     decoder.set_transformations(Transformations::EXPAND | Transformations::STRIP_16);
+    let header = decoder.read_header_info()?;
+    if u64::from(header.width) * u64::from(header.height) > MAX_PIXELS {
+        return Err(Error::Png(format!(
+            "image is {}×{}, over the {MAX_PIXELS}-pixel limit",
+            header.width, header.height
+        )));
+    }
     let mut reader = decoder.read_info()?;
     // The png crate panics expanding a palette with a partial entry, which the PNG spec forbids.
     let info = reader.info();
@@ -489,6 +500,27 @@ mod tests {
             &[0],
         );
         assert!(matches!(decode_png(&bytes), Err(Error::Png(_))));
+    }
+
+    #[test]
+    fn image_over_the_pixel_limit_is_rejected_from_its_header() {
+        // 16384 * 8193 = 2^27 + 16384 pixels, one row over the limit. Only the header and IEND
+        // are written: the size alone is refused, before any image data is looked for.
+        let mut bytes = Vec::new();
+        let mut info = png::Info::with_size(16_384, 8193);
+        info.color_type = png::ColorType::Grayscale;
+        info.bit_depth = png::BitDepth::One;
+        png::Encoder::with_info(&mut bytes, info)
+            .unwrap()
+            .write_header()
+            .unwrap();
+        let Err(Error::Png(message)) = decode_png(&bytes) else {
+            panic!("decoded an image over the pixel limit");
+        };
+        assert_eq!(
+            message,
+            "image is 16384×8193, over the 134217728-pixel limit"
+        );
     }
 
     /// A minimal ICC profile whose tag table holds a single `desc` tag with the given data.
