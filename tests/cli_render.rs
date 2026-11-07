@@ -435,3 +435,33 @@ fn crop_writes_only_that_part_and_round_trips() {
         "the PNGs differ"
     );
 }
+
+#[test]
+fn auto_angle_avoids_busy_pixels_and_round_trips() {
+    // On a white image with a black-and-white checkerboard where the default 135° would put
+    // the badge (up-right of `at`), "auto" picks another side; the report gives the number it
+    // picked, and feeding the report's spec back draws the same bytes.
+    let dir = work_dir("auto_angle_avoids_busy_pixels_and_round_trips");
+    let (w, h) = (400_u32, 300_u32);
+    let rgba: Vec<u8> = (0..h)
+        .flat_map(|y| (0..w).map(move |x| (x, y)))
+        .flat_map(|(x, y)| {
+            let busy = x > 200 && y < 150 && (x / 4 + y / 4) % 2 == 0;
+            let v = if busy { 0 } else { 255 };
+            [v, v, v, 255]
+        })
+        .collect();
+    let input = dir.join("input.png");
+    fs::write(&input, encode_png(w, h, &rgba, Some(144.0), None).unwrap()).unwrap();
+    let out = dir.join("out.png");
+    let spec = json!({"annotations": [{"type": "counter", "at": [200, 150], "angle": "auto"}]});
+    let first = report(&render(&input, &out, &spec, &[]));
+    let angle = first["spec"]["annotations"][0]["angle"].as_f64().unwrap();
+    assert!(!(90.0..=180.0).contains(&angle), "{angle}");
+    let again = dir.join("again.png");
+    report(&render(&input, &again, &first["spec"], &[]));
+    assert!(
+        fs::read(&again).unwrap() == fs::read(&out).unwrap(),
+        "the PNGs differ"
+    );
+}

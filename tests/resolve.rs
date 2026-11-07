@@ -918,3 +918,66 @@ fn an_annotation_outside_the_crop_warns() {
         }]
     );
 }
+
+/// The `angle` and `center` the first annotation, a counter, resolves to.
+fn counter_placement(json: &str, width: u32, height: u32) -> (f64, [f64; 2]) {
+    let r = resolve_json(json, width, height);
+    let Resolved::Counter(counter) = &r.items[0] else {
+        panic!("{:?}", r.items[0]);
+    };
+    (counter.angle, counter.center)
+}
+
+#[test]
+fn auto_angle_keeps_the_default_where_it_fits() {
+    // Nothing nearby on a blank 400×300 image: the default 135° (badge up-right of `at`).
+    let (angle, _) = counter_placement(
+        r#"{"annotations": [{"type": "counter", "at": [200, 150], "angle": "auto"}]}"#,
+        400,
+        300,
+    );
+    assert_eq!(angle, 135.0);
+}
+
+#[test]
+fn auto_angle_keeps_the_badge_off_other_annotations_and_inside_the_image() {
+    // A box right of `at` and above it covers where 135° and its neighbours would put the
+    // badge (up-right): the badge goes elsewhere and its circle (radius 18 at size 2, dpr 1)
+    // stays clear of the box. Near the bottom-left corner, it stays inside the image.
+    let json = r#"{"annotations": [
+        {"type": "counter", "at": [200, 150], "angle": "auto"},
+        {"type": "rect", "rect": [200, 40, 160, 112], "fill": "outline"}
+    ]}"#;
+    let (angle, [x, y]) = counter_placement(json, 400, 300);
+    assert_ne!(angle, 135.0);
+    let near_x = x.clamp(200.0, 360.0);
+    let near_y = y.clamp(40.0, 152.0);
+    let (dx, dy) = (x - near_x, y - near_y);
+    assert!(dx * dx + dy * dy >= 18.0 * 18.0, "{angle}: ({x}, {y})");
+    let (angle, [x, y]) = counter_placement(
+        r#"{"annotations": [{"type": "counter", "at": [5, 295], "angle": "auto"}]}"#,
+        400,
+        300,
+    );
+    assert!(x >= 18.0 && y <= 282.0, "{angle}: ({x}, {y})");
+}
+
+#[test]
+fn auto_angle_resolves_to_a_number_and_needs_a_tail() {
+    let r = resolve_json(
+        r#"{"annotations": [{"type": "counter", "at": [200, 150], "angle": "auto"}]}"#,
+        400,
+        300,
+    );
+    let spec = serde_json::to_value(r.to_spec()).expect("spec serializes");
+    assert_eq!(spec["annotations"][0]["angle"], json!(135.0));
+    for counter in [
+        r#"{"type": "counter", "center": [200, 150], "angle": "auto"}"#,
+        r#"{"type": "counter", "at": [200, 150], "style": "circle", "angle": "auto"}"#,
+    ] {
+        let json = format!(r#"{{"annotations": [{counter}]}}"#);
+        let (path, message) = spec_error(resolve(&parse(&json), 400, 300, 1.0, None));
+        assert_eq!(path, "annotations[0].angle", "{counter}");
+        assert!(message.contains("`at`"), "{counter}: {message}");
+    }
+}

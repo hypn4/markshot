@@ -176,6 +176,92 @@ pub fn center_from_at(at: V2, angle_deg_screen: f64, r: f64, style: CounterStyle
     at - V2::dir(-angle_deg_screen.to_radians()) * offset
 }
 
+/// The tail directions `"angle": "auto"` tries, in screen degrees, in the order that breaks
+/// ties: the default 135 first, then alternately either side of it in 15° steps.
+pub const AUTO_ANGLES: [f64; 24] = [
+    135.0, 120.0, 150.0, 105.0, 165.0, 90.0, 180.0, 75.0, 195.0, 60.0, 210.0, 45.0, 225.0, 30.0,
+    240.0, 15.0, 255.0, 0.0, 270.0, 345.0, 285.0, 330.0, 300.0, 315.0,
+];
+
+/// The image a counter is placed on: its size, and its straight-alpha RGBA8 pixels when known.
+pub struct Pixels<'a> {
+    pub width: u32,
+    pub height: u32,
+    pub rgba: Option<&'a [u8]>,
+}
+
+/// How badly a badge of radius `r` sits when its tail marks `at` (y-down px) along `angle`:
+/// over a 9 × 9 grid of samples across the disc 1.1 r around its center, 1000 × the share
+/// outside the image, plus 100 × the share inside any of `obstacles` (`[x0, y0, x1, y1]`,
+/// y-down px), plus 10 × the mean absolute deviation of the samples' Rec. 601 luma (0 to 1)
+/// from their mean, which is high over text and edges. 0 is a free, flat, in-image spot.
+#[must_use]
+pub fn placement_cost(
+    at: [f64; 2],
+    angle: f64,
+    r: f64,
+    image: &Pixels<'_>,
+    obstacles: &[[f64; 4]],
+) -> f64 {
+    let (width, height) = (f64::from(image.width), f64::from(image.height));
+    let up = center_from_at(
+        V2 {
+            x: at[0],
+            y: height - at[1],
+        },
+        angle,
+        r,
+        CounterStyle::Bubble,
+    );
+    let center = [up.x, height - up.y];
+    let reach = 1.1 * r;
+    let (mut samples, mut outside, mut covered) = (0.0, 0.0, 0.0);
+    let mut lumas = Vec::with_capacity(81);
+    for column in 0..9_u8 {
+        for row in 0..9_u8 {
+            let offset = [column, row].map(|k| (f64::from(k) - 4.0) / 4.0 * reach);
+            if offset[0] * offset[0] + offset[1] * offset[1] > reach * reach {
+                continue;
+            }
+            samples += 1.0;
+            let sample = [center[0] + offset[0], center[1] + offset[1]];
+            if !(0.0..width).contains(&sample[0]) || !(0.0..height).contains(&sample[1]) {
+                outside += 1.0;
+                continue;
+            }
+            if obstacles.iter().any(|&[left, top, right, bottom]| {
+                (left..=right).contains(&sample[0]) && (top..=bottom).contains(&sample[1])
+            }) {
+                covered += 1.0;
+            }
+            if let Some(rgba) = image.rgba {
+                lumas.push(luma(rgba, image.width, sample));
+            }
+        }
+    }
+    let busy = if lumas.is_empty() {
+        0.0
+    } else {
+        let n = f64::from(u32::try_from(lumas.len()).unwrap_or(u32::MAX));
+        let mean = lumas.iter().sum::<f64>() / n;
+        lumas.iter().map(|l| (l - mean).abs()).sum::<f64>() / n
+    };
+    1000.0 * outside / samples + 100.0 * covered / samples + 10.0 * busy
+}
+
+/// The Rec. 601 luma, 0 to 1, of the pixel containing `[x, y]` (y-down px, inside the image)
+/// of the `width`-wide `rgba`.
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "x and y are non-negative and inside the image"
+)]
+fn luma(rgba: &[u8], width: u32, [x, y]: [f64; 2]) -> f64 {
+    let start = (y as usize * width as usize + x as usize) * 4;
+    let [red, green, blue] = [rgba[start], rgba[start + 1], rgba[start + 2]].map(f64::from);
+    (0.299 * red + 0.587 * green + 0.114 * blue) / 255.0
+}
+
 /// The label's weight, size in px and ink for a counter filled `fill` showing `count` on a
 /// diameter of `d` points: white Medium on fills of luminance up to 0.6 and black Regular on
 /// lighter ones, `0.55 * d * dpr` px for one digit and 10% less for more.
@@ -504,6 +590,7 @@ mod tests {
                 size: 2,
                 center: [45.0, 50.0],
                 angle: 135.0,
+                auto_at: None,
                 style: CounterStyle::Circle,
                 number: 8,
             };
