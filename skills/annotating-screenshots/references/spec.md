@@ -40,7 +40,7 @@ A PNG without DPI gets dpr 1 and a warning, because many tools save Retina captu
 | `size` (0–7) | all | 2 |
 | `id` | all | `<type>-<n>`, e.g. `arrow-1` |
 | `seed` (0 to 2^53 − 1) | arrow, rect, oval, blur | derived from `id` |
-| `style` | arrow / counter | `shaped` / `bubble` |
+| `style` | arrow / counter / text | `shaped` / `bubble` / `label` |
 | `variant` (0–3) | arrow | 0 |
 | `fill` | rect, oval | `sketch` |
 | `fill_alpha` (0.1–1) | rect, oval | 0.4 for `semi`, 1 for `solid` |

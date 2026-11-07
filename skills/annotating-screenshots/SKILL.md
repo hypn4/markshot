@@ -1,6 +1,6 @@
 ---
 name: annotating-screenshots
-description: Use when the user wants a screenshot or other PNG annotated (arrows pointing at UI elements, boxes or ovals around them, private data blurred, erased or redacted, text highlighted, one area spotlighted, numbered step badges, or lines), or wants a previous annotation adjusted. Draws the annotations deterministically with the markshot CLI.
+description: Use when the user wants a screenshot or other PNG annotated (arrows pointing at UI elements, boxes or ovals around them, private data blurred, erased or redacted, text highlighted, one area spotlighted, numbered step badges, short text labels, or lines), or wants a previous annotation adjusted. Draws the annotations deterministically with the markshot CLI.
 compatibility: Requires the markshot CLI 0.1.0 or later (macOS, Linux or Windows) on PATH, a POSIX-style shell for the examples, and the ability to view PNG images.
 metadata:
   cli: markshot
@@ -50,6 +50,7 @@ Copy this checklist and tick it off:
 | frame something and dim the rest | `rect`, `oval` | `"spotlight": true` on the frame, not a second spotlight |
 | number the steps | `counter` | `at` (where the tail points), `angle` (`"auto"` finds a free side); `style`; `number` |
 | draw a line or divider | `line` | `from`, `to`; `dash`; `start_cap`, `end_cap` |
+| add a few words of explanation | `text` | `at` (top-left), `text`; `style`: `label`, `plain` (Latin, Greek and Cyrillic only) |
 | show only part of the screenshot | top-level `crop` | `[x, y, width, height]`, in the same coordinates ([references/spec.md](references/spec.md)) |
 
 Every tool's fields, behaviour and a working example: [references/tools.md](references/tools.md).

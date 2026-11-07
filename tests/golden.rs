@@ -469,3 +469,23 @@ fn golden_counter_yellow() {
         ]}"##,
     );
 }
+
+#[test]
+fn golden_text() {
+    // Labels on the white, grey and dark bands: the default red label, a yellow one (black
+    // text on a light plate), two lines at size 4 in blue, size 0, and plain text with a halo
+    // in the default red and in white.
+    check(
+        "text",
+        r##"{"annotations": [
+            {"type": "text", "at": [30, 30], "text": "Select Allow"},
+            {"type": "text", "at": [330, 30], "text": "Then Save", "color": "#FFDC2C"},
+            {"type": "text", "at": [30, 150], "text": "Two lines,\nsize 4", "size": 4,
+             "color": "#2E7CF6"},
+            {"type": "text", "at": [380, 160], "text": "size 0", "size": 0},
+            {"type": "text", "at": [30, 300], "text": "Plain red", "style": "plain"},
+            {"type": "text", "at": [330, 300], "text": "Plain white", "style": "plain",
+             "color": "#FFFFFF"}
+        ]}"##,
+    );
+}

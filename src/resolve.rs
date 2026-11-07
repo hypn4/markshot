@@ -16,9 +16,10 @@ use crate::rng::{MAX_SEED, seed_from_id};
 use crate::spec::{
     Angle, AngleKeyword, Annotation, ArrowSpec, ArrowStyle, BlurMode, BlurSpec, Cap, Coords,
     CounterSpec, CounterStyle, Fill, HighlightSpec, LineSpec, Point, Rect, ShapeSpec, Spec,
-    SpotShape, SpotlightSpec,
+    SpotShape, SpotlightSpec, TextSpec, TextStyle,
 };
-use crate::tools::counter;
+use crate::text::{Weight, unsupported_char};
+use crate::tools::{counter, label};
 
 const DEFAULT_COLOR: &str = "#FF0C01";
 const DEFAULT_HIGHLIGHT_COLOR: &str = "#FFF68D";
@@ -129,6 +130,18 @@ pub struct ResolvedLine {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+pub struct ResolvedText {
+    pub id: String,
+    pub color: Rgb,
+    pub size: u8,
+    /// The top-left corner of the text's box.
+    pub at: Point,
+    /// Not empty; only characters the embedded Inter has, and `\n`.
+    pub text: String,
+    pub style: TextStyle,
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub enum Resolved {
     Arrow(ResolvedArrow),
     Rect(ResolvedShape),
@@ -138,6 +151,7 @@ pub enum Resolved {
     Spotlight(ResolvedSpotlight),
     Counter(ResolvedCounter),
     Line(ResolvedLine),
+    Text(ResolvedText),
 }
 
 impl Resolved {
@@ -151,6 +165,7 @@ impl Resolved {
             Self::Spotlight(s) => &s.id,
             Self::Counter(c) => &c.id,
             Self::Line(l) => &l.id,
+            Self::Text(t) => &t.id,
         }
     }
 
@@ -183,6 +198,11 @@ impl Resolved {
                 let r = counter::radius(c.size, dpr);
                 let [x, y] = c.center;
                 Ok([x - r, y - r, x + r, y + r])
+            }
+            Self::Text(t) => {
+                let l = label::layout(&t.text, t.size, t.style, dpr);
+                let [x, y] = t.at;
+                Ok([x, y, x + l.width, y + l.height])
             }
         }
     }
@@ -245,6 +265,14 @@ impl Resolved {
                 dash: Some(l.dash),
                 start_cap: Some(l.start_cap),
                 end_cap: Some(l.end_cap),
+            }),
+            Self::Text(t) => Annotation::Text(TextSpec {
+                id: Some(t.id.clone()),
+                color: Some(t.color.to_hex()),
+                size: Some(t.size),
+                at: Some(t.at),
+                text: Some(t.text.clone()),
+                style: Some(t.style),
             }),
         }
     }
@@ -654,6 +682,7 @@ impl Resolver<'_> {
                 Resolved::Counter(self.counter(c, id, number)?)
             }
             Annotation::Line(l) => Resolved::Line(self.line(l, id)?),
+            Annotation::Text(t) => Resolved::Text(self.text(t, id)?),
         })
     }
 
@@ -782,6 +811,34 @@ impl Resolver<'_> {
             style,
             number,
             auto_at,
+            id,
+        })
+    }
+
+    fn text(&self, t: &TextSpec, id: String) -> Result<ResolvedText, Error> {
+        let text = t
+            .text
+            .clone()
+            .ok_or_else(|| self.error("text", "missing; expected the text to draw"))?;
+        if text.is_empty() {
+            return Err(self.error("text", "must not be empty"));
+        }
+        if let Some(ch) = unsupported_char(&text, Weight::Medium) {
+            return Err(self.error(
+                "text",
+                format!(
+                    "{ch:?} (U+{:04X}) can't be drawn: the embedded Inter covers Latin, Greek \
+                     and Cyrillic, and `\\n` is the only control character",
+                    u32::from(ch)
+                ),
+            ));
+        }
+        Ok(ResolvedText {
+            color: self.color(t.color.as_deref(), DEFAULT_COLOR)?,
+            size: self.size(t.size)?,
+            at: self.required_point("at", t.at)?,
+            text,
+            style: t.style.unwrap_or_default(),
             id,
         })
     }

@@ -62,6 +62,7 @@ fn schema_lists_every_annotation_type() {
         "oval",
         "rect",
         "spotlight",
+        "text",
     ];
     assert_eq!(names, BTreeSet::from(want.map(String::from)));
 }

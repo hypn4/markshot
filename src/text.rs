@@ -96,6 +96,15 @@ pub fn ink_span(ch: char, w: Weight, px: f64) -> (f64, f64) {
         })
 }
 
+/// The first character of `s` that weight `w` has no glyph for, or that is a control
+/// character other than `\n`.
+#[must_use]
+pub fn unsupported_char(s: &str, w: Weight) -> Option<char> {
+    let face = face(w);
+    s.chars()
+        .find(|&ch| ch != '\n' && (ch.is_control() || face.glyph_index(ch).is_none()))
+}
+
 /// The glyphs of `s`; characters the font lacks get its `.notdef` box.
 fn glyphs<'a>(face: &'a Face<'_>, s: &'a str) -> impl Iterator<Item = GlyphId> + 'a {
     s.chars().map(|ch| glyph(face, ch))

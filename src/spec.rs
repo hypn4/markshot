@@ -80,6 +80,8 @@ pub enum Annotation {
     Counter(CounterSpec),
     /// A straight line.
     Line(LineSpec),
+    /// A short text label whose box has its top-left corner at `at`.
+    Text(TextSpec),
 }
 
 impl Annotation {
@@ -94,6 +96,7 @@ impl Annotation {
             Self::Spotlight(_) => "spotlight",
             Self::Counter(_) => "counter",
             Self::Line(_) => "line",
+            Self::Text(_) => "text",
         }
     }
 
@@ -107,6 +110,7 @@ impl Annotation {
             Self::Spotlight(s) => s.id.as_deref(),
             Self::Counter(c) => c.id.as_deref(),
             Self::Line(l) => l.id.as_deref(),
+            Self::Text(t) => t.id.as_deref(),
         }
     }
 }
@@ -317,6 +321,36 @@ pub enum CounterStyle {
     Bubble,
     /// A pointed tail.
     Pin,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct TextSpec {
+    /// Unique name. Default `text-<n>`.
+    pub id: Option<String>,
+    /// `#RRGGBB`: the label's plate, or the plain text. Default `#FF0C01`.
+    pub color: Option<String>,
+    /// Text size step, 0 to 7: 10, 12, 14, 16, 20, 24, 32 or 40 points. Default 2.
+    pub size: Option<u8>,
+    /// The top-left corner `[x, y]` of the text's box.
+    #[schemars(required)]
+    pub at: Option<Point>,
+    /// The text; `\n` starts a new line. Latin, Greek and Cyrillic characters only (the
+    /// embedded Inter has no others).
+    #[schemars(required)]
+    pub text: Option<String>,
+    /// Default `label`.
+    pub style: Option<TextStyle>,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum TextStyle {
+    /// White or black text on a rounded plate in the color.
+    #[default]
+    Label,
+    /// Text in the color with a contrasting halo.
+    Plain,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
