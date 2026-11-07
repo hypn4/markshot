@@ -1,0 +1,4 @@
+{"annotations": [
+  {"type": "text", "at": [100, 100], "text": "Select Allow"},
+  {"type": "text", "at": [100, 200], "text": "Then press Save", "style": "plain", "color": "#2E7CF6"}
+]}
