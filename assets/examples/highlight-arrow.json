@@ -1,0 +1,5 @@
+{"dpr": 2, "crop": [560, 1030, 1100, 470], "annotations": [
+  {"type": "highlight", "from": [652, 1098], "to": [1030, 1098], "size": 1},
+  {"type": "arrow", "from": [1330, 1330], "to": [990, 1424], "via": [1190, 1335], "color": "#2E7CF6"},
+  {"type": "text", "at": [1345, 1300], "text": "Invite people here", "color": "#2E7CF6"}
+]}

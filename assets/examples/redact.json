@@ -1,0 +1,10 @@
+{"dpr": 2, "crop": [900, 330, 1000, 1260], "annotations": [
+  {"type": "blur", "rect": [1472, 872, 262, 50]},
+  {"type": "blur", "rect": [1088, 914, 134, 54]},
+  {"type": "rect", "rect": [962, 400, 438, 232], "fill": "outline", "spotlight": true, "color": "#FF4500"},
+  {"type": "counter", "at": [962, 516], "angle": "auto", "color": "#FF4500"},
+  {"type": "rect", "rect": [966, 840, 864, 204], "fill": "outline", "spotlight": true, "color": "#FF4500"},
+  {"type": "counter", "at": [966, 942], "angle": "auto", "color": "#FF4500"},
+  {"type": "oval", "rect": [1098, 1416, 604, 152], "seed": 7, "spotlight": true, "color": "#FF4500"},
+  {"type": "counter", "at": [1098, 1492], "angle": "auto", "color": "#FF4500"}
+]}

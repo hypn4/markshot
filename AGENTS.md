@@ -30,6 +30,7 @@ cargo test --locked
 | `src/canvas.rs`, `src/text.rs`, `src/color.rs`, `src/image_io.rs` | Y-up canvas, embedded Inter text, colour helpers, PNG in and out |
 | `src/math.rs`, `src/rng.rs` | Platform-independent float functions and the seeded generator |
 | `tests/` | CLI, resolver, golden-image, determinism and skill-example tests |
+| `assets/examples/` | The README's example images and the specs that drew them (`tests/readme_examples.rs` keeps the specs valid) |
 | `skills/annotating-screenshots/` | The Agent Skill shipped to users; `evals/` holds its scenarios |
 | `.github/workflows/` | `ci.yml` (lint once, test on five native platforms), `release.yml` (`v*` tags) |
 

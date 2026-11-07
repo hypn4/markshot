@@ -23,6 +23,17 @@ markshot render screenshot.png --spec spec.json -o annotated.png
 - `markshot grid screenshot.png -o grid.png` overlays a labeled pixel grid, for reading coordinates. `--region X,Y,W,H` draws just that part at full size, still labeled in whole-image pixels, for a close look at a large screenshot or a rendered result.
 - `markshot schema` prints the JSON schema of the spec, with every field documented.
 
+## What does it look like?
+
+Each image below is one `markshot render` of a real admin-console screenshot, cropped by the spec itself to the part that matters. Click a spec to see every value.
+
+| What the spec does | Result |
+|---|---|
+| **Numbered steps.** Outline boxes with `"spotlight": true` dim everything else, and each badge uses `"angle": "auto"` to find a free side. `crop` keeps only this part of the page. ([spec](assets/examples/steps.json)) | <img src="assets/examples/steps.png" alt="Settings page with three boxed, numbered steps and the rest dimmed" width="480"> |
+| **Hand-drawn ovals and a label.** `sketch` ovals circle two toggles, a box frames a button group, and a `text` label says what to do. ([spec](assets/examples/ovals.json)) | <img src="assets/examples/ovals.png" alt="Security settings panel with a boxed button group, two hand-drawn ovals, numbered badges and a label" width="480"> |
+| **Redact before sharing.** `blur` pixelates the project ID while boxes and an oval number the steps. ([spec](assets/examples/redact.json)) | <img src="assets/examples/redact.png" alt="Billing dialog with the project ID pixelated and three numbered steps" width="360"> |
+| **Highlight and point.** A `highlight` marks a setting, and a curved `arrow` with a `text` label points at a button. ([spec](assets/examples/highlight-arrow.json)) | <img src="assets/examples/highlight-arrow.png" alt="A highlighted checkbox label and a blue curved arrow labeled Invite people here pointing at Add users" width="480"> |
+
 ## Why use it instead of drawing on the image another way?
 
 Because an agent can't drag a mouse, but it can write JSON, look at the result and fix one value:
