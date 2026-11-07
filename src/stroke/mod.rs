@@ -75,7 +75,7 @@ impl Pt {
 /// `cum_len` (continuing the first point's), and `weight` = 1 − speed normalized over the
 /// stroke, so slow ⇒ heavy. The first weight is then pinned to 0.7 and the last copies its
 /// neighbour's. Two points only get weight 1; one is left alone. If all points coincide the
-/// weights are NaN ([`outline`] reads them as 0.5).
+/// weights are NaN ([`outline()`] reads them as 0.5).
 pub fn metrics(pts: &mut [Pt]) {
     let n = pts.len();
     if n <= 1 {

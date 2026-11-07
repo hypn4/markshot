@@ -1,0 +1,4 @@
+# Check out text with LF on every OS: tests read SKILL.md and JSON fixtures byte for byte.
+* text=auto eol=lf
+*.png binary
+*.ttf binary

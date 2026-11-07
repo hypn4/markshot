@@ -73,10 +73,10 @@ const CAPS: [&[(f64, f64)]; 7] = [
 /// The outline polygon of a stroke whose points carry widths (see
 /// [`assign_widths`](super::assign_widths)). Each point is offset by half its width to both
 /// sides, along the normal of its neighbours' chord; a turn sharper than cos −0.3 adds six
-/// points fanned around its outer side; each side is thinned by [`resample`] with spacing
+/// points fanned around its outer side; each side is thinned by [`resample()`] with spacing
 /// `w`. The polygon runs along the right side, around the end cap, back along the left side
 /// and around the start cap (`cap` 0–6, others round), each cap facing away from its end's
-/// inner handle; [`handles`] then make it a smooth closed curve for
+/// inner handle; [`handles()`] then make it a smooth closed curve for
 /// [`bezier_path`](super::bezier_path). NaN weights count as 0.5. One point passes through.
 #[must_use]
 pub fn outline(pts: &[Pt], cap: u8, w: f64) -> Vec<Pt> {

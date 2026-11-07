@@ -190,7 +190,7 @@ pub fn label_style(fill: Rgb, count: u32, d: f64, dpr: f64) -> (Weight, f64, Rgb
 }
 
 /// Draws `k` on the main surface: its body filled in its color, then its number in the
-/// [`label_style`], laid out by [`label`].
+/// [`label_style`], laid out by `label`.
 ///
 /// # Panics
 /// When `k.size` is 10 or more; resolved sizes are 0 to 7.

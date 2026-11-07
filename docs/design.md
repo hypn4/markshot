@@ -17,7 +17,7 @@ Goals:
 - Annotations that suit screenshots: thicknesses in points scaled to the screenshot's pixel density, hand-drawn styles, a highlighter that adapts to the background, badges whose digits stay legible.
 - A PNG and a spec in; a PNG and the resolved spec out.
 - Deterministic output: the same input, spec and binary give the same PNG bytes on every supported platform.
-- One self-contained binary for macOS and Linux on arm64 and x86_64, with no runtime, network or system-font dependencies.
+- One self-contained native binary for macOS (Apple silicon), Linux (arm64, x86_64) and Windows (arm64, x86_64), with no runtime, network or system-font dependencies. Windows builds link the MSVC C runtime statically (`.cargo/config.toml`).
 
 Non-goals:
 
@@ -126,7 +126,7 @@ Blur and highlight read the input image's pixels, never another annotation's.
 - Randomness (hand-drawn jitter, mosaic partitions) comes from a xorshift-multiply generator seeded per annotation, so it never changes between runs.
 - tiny-skia is built without its default features, so it has no SIMD paths, and with `no-std-float`, so its float functions come from the `libm` crate; the renderer's own trigonometry and powers use `libm` as well. With the platform's libm, curves clipped at the image edge differed by a pixel between macOS and Linux.
 - The PNG encoder's settings are fixed, and the output carries only the pixels, the input's pHYs and its iCCP.
-- The golden images and the determinism probe hash were recorded on macOS; CI runs the whole test suite on macOS and Linux, arm64 and x86_64, so every platform must draw the same bytes. `scripts/check-determinism.sh` runs the suite on linux/arm64 and linux/amd64 in Docker.
+- The golden images and the determinism probe hash were recorded on macOS; CI runs the whole test suite natively on every release platform (no emulation), so every platform must draw the same bytes. The release workflow repeats the suite with the shipped release profile on each platform before packaging.
 
 ## Colour handling
 
@@ -144,7 +144,7 @@ Blur and highlight read the input image's pixels, never another annotation's.
 
 ## Testing
 
-`cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` (pedantic lints on) and `cargo test` run in CI on all four platforms.
+`cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` (pedantic lints on) and `cargo doc` with warnings denied run once in CI; `cargo test` runs on all five release platforms.
 
 - `tests/golden.rs`: every tool and mode rendered on a synthetic 600×400 fixture at dpr 2 (white, `#808080` and `#1E1E1E` bands) and compared byte for byte with `tests/golden/`. Regenerate with `UPDATE_GOLDEN=1 cargo test --test golden` only for an intended change, after looking at the images.
 - `tests/determinism.rs`: a probe scene of the tiny-skia paths the renderer uses must hash to a recorded SHA-256.

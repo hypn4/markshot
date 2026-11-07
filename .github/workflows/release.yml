@@ -4,54 +4,117 @@ on:
   push:
     tags: ["v*"]
 
-permissions:
-  contents: write
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 env:
-  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  GH_REPO: ${{ github.repository }}
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
 
 jobs:
-  # One job creates the release so the four builds don't race to create it.
-  release:
-    runs-on: ubuntu-24.04
-    steps:
-      - run: >
-          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 ||
-          gh release create "$GITHUB_REF_NAME" --verify-tag --title "$GITHUB_REF_NAME" --generate-notes
-
+  # Each platform builds natively and tests the release profile it ships. Build jobs only read
+  # the repository and hand the binary over as an artifact; no build cache is used, so a release
+  # never depends on cache contents.
   build:
-    name: ${{ matrix.target }}
-    needs: release
+    name: build (${{ matrix.target }})
+    permissions:
+      contents: read
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         include:
-          - os: macos-14
-            target: aarch64-apple-darwin
-          - os: macos-15-intel
-            target: x86_64-apple-darwin
-          - os: ubuntu-24.04
-            target: x86_64-unknown-linux-gnu
-          - os: ubuntu-24.04-arm
-            target: aarch64-unknown-linux-gnu
+          - { os: macos-15, target: aarch64-apple-darwin, exe: "" }
+          - { os: ubuntu-24.04, target: x86_64-unknown-linux-gnu, exe: "" }
+          - { os: ubuntu-24.04-arm, target: aarch64-unknown-linux-gnu, exe: "" }
+          - { os: windows-2025, target: x86_64-pc-windows-msvc, exe: .exe }
+          - { os: windows-11-arm, target: aarch64-pc-windows-msvc, exe: .exe }
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
-      # Installs the channel pinned in rust-toolchain.toml. Only the host's std is installed,
-      # so `--target` also fails the build if a runner's architecture isn't the expected one.
-      - run: rustup toolchain install
-      - run: cargo build --release --locked --target ${{ matrix.target }}
-      - name: Package
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30 # v2.0.1
+        with:
+          target: ${{ matrix.target }}
+          cache: false
+      - name: Test the release profile
+        run: cargo test --release --locked --target "$TARGET"
+        shell: bash
         env:
-          NAME: markshot-${{ matrix.target }}
+          TARGET: ${{ matrix.target }}
+      - name: Build
+        run: cargo build --release --locked --target "$TARGET"
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: markshot-${{ matrix.target }}
+          path: target/${{ matrix.target }}/release/markshot${{ matrix.exe }}
+          if-no-files-found: error
+          retention-days: 1
+
+  # One job names every platform's binary, attests them and publishes the release in one step,
+  # so a release only appears once all platforms have built.
+  release:
+    name: release
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write # create the GitHub Release and upload its assets
+      id-token: write # sign the build provenance attestation (OIDC)
+      attestations: write # store the attestation
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: markshot-*
+          path: build
+      - name: Collect binaries
+        # Assets are the bare executables, `markshot-<target>` (`.exe` on Windows). The embedded
+        # Inter fonts carry their own copyright and OFL notice.
         run: |
-          mkdir "$NAME"
-          cp "target/${{ matrix.target }}/release/markshot" README.md assets/fonts/OFL.txt "$NAME/"
-          cp -R skills "$NAME/"
-          tar -czf "$NAME.tar.gz" "$NAME"
-          shasum -a 256 "$NAME.tar.gz" > "$NAME.tar.gz.sha256"
-      - run: >
-          gh release upload "$GITHUB_REF_NAME" --clobber
-          markshot-${{ matrix.target }}.tar.gz
-          markshot-${{ matrix.target }}.tar.gz.sha256
+          mkdir dist
+          for dir in build/markshot-*; do
+            name=$(basename "$dir")
+            case "$name" in
+              *windows*) cp "$dir/markshot.exe" "dist/$name.exe" ;;
+              *) cp "$dir/markshot" "dist/$name" ;;
+            esac
+          done
+          (cd dist && sha256sum -- * > SHA256SUMS)
+          cat dist/SHA256SUMS
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/markshot-*
+      # git-cliff's built-in `github` template: GitHub-style "What's Changed", no cliff.toml.
+      - name: Generate release notes
+        id: git-cliff
+        uses: orhun/git-cliff-action@a9a95522b26fe6403f7bb24031f21fb573d0f5ff # v4.9.1
+        with:
+          version: v2.14.2
+          config: github
+          args: --current --strip all --github-repo ${{ github.repository }}
+        env:
+          OUTPUT: RELEASE_NOTES.md
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          NOTES: ${{ steps.git-cliff.outputs.changelog }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release edit "$GITHUB_REF_NAME" --notes-file "$NOTES"
+            gh release upload "$GITHUB_REF_NAME" --clobber dist/*
+          else
+            gh release create "$GITHUB_REF_NAME" --verify-tag --title "$GITHUB_REF_NAME" \
+              --notes-file "$NOTES" dist/*
+          fi
