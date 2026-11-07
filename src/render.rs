@@ -26,7 +26,8 @@ pub struct Report {
 /// Draws `spec` on `src` and encodes the result as PNG, keeping the source's DPI and ICC
 /// profile. The order is fixed: ① every blur, ② the spotlight curtain, ③ everything else in
 /// spec order, spotlight borders included. A profile other than sRGB or Display P3 is treated
-/// as sRGB, with a warning.
+/// as sRGB, with a warning. A PNG without DPI also gets a warning when neither `dpr_override`
+/// nor the spec gives the dpr, since its default of 1 is wrong for a high-density capture.
 ///
 /// # Errors
 /// [`Error::Spec`] when the spec does not resolve, [`Error::Png`] when encoding fails.
@@ -41,6 +42,14 @@ pub fn render(
     let (width, height) = (src.width, src.height);
     let resolution = resolve(spec, width, height, dpr_from_dpi(src.dpi), dpr_override)?;
     let mut warnings = Vec::new();
+    if src.dpi.is_none() && dpr_override.is_none() && spec.dpr.is_none() {
+        warnings.push(Warning {
+            id: "image".to_owned(),
+            message: "the PNG has no DPI, so dpr is 1; set \"dpr\" (2 for a Retina or other \
+                      HiDPI capture) to confirm it"
+                .to_owned(),
+        });
+    }
     if src.color_space == ColorSpace::Other {
         warnings.push(Warning {
             id: "image".to_owned(),

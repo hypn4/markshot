@@ -11,6 +11,7 @@ Warnings don't stop the render. Each names an annotation `id`, or `coords` or `i
 | `zero length: ...; skipped` | `from` and `to` are the same pixel. |
 | `zero width or height after rounding to pixels; skipped` | A rect with no area. |
 | `the scaled size ... does not have the aspect ratio ...` (id `coords`) | `coords.width`/`height` isn't the size you actually viewed; correct it. |
+| `the PNG has no DPI, so dpr is 1; ...` (id `image`) | Decide the pixel density and set the top-level `"dpr"` ([spec.md](spec.md#size-and-dpr) says how). The stdout spec keeps it, so the warning doesn't come back. |
 | `the image's colour profile is not sRGB or Display P3; treated as sRGB` (id `image`) | The PNG carries another colour profile, such as a display's own. Colours may look slightly off; nothing to fix unless exact colours matter. |
 
 Skipped annotations are left out of the stdout `spec`; add them back with corrected values.

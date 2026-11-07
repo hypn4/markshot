@@ -61,7 +61,7 @@ Thicknesses, badge diameters and arrow scales are in points, and one point is `d
 3. the PNG's pHYs DPI as `clamp(round(dpi / 72), 1, 3)`: 144 dpi, the macOS Retina capture default, gives 2;
 4. 1.
 
-The report and the resolved spec record the dpr used, so feeding the spec back keeps it.
+The report and the resolved spec record the dpr used, so feeding the spec back keeps it. When the dpr falls back to 1 because the PNG has no pHYs, the report warns (id `image`): a Retina capture saved without DPI would otherwise get annotations half their intended size. Any `dpr` in the spec, such as the resolved spec's, or `--dpr` answers the warning.
 
 ## Defaults
 

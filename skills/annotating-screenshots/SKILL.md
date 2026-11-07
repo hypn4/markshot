@@ -24,7 +24,7 @@ If `markshot` is not on PATH, ask the user where it is installed; don't draw the
 Copy this checklist and tick it off:
 
 ```
-- [ ] 1. Image size: echo '{"annotations": []}' | markshot render in.png --spec - -o /tmp/size.png   (prints width, height, dpr)
+- [ ] 1. Image size: echo '{"annotations": []}' | markshot render in.png --spec - -o /tmp/size.png   (prints width, height, dpr; a "no DPI" warning means you set "dpr", see references/spec.md)
 - [ ] 2. Locate each target. Unsure? markshot grid in.png -o grid.png, then read the labels.
 - [ ] 3. Write the spec (Pick a tool, below) and render it from the ORIGINAL input.
 - [ ] 4. View out.png at every target (crop or zoom if needed) and read every warning.

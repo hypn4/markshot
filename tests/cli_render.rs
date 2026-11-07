@@ -205,6 +205,37 @@ fn dpr_option_overrides_the_png_dpi() {
 }
 
 #[test]
+fn missing_dpi_warns_until_dpr_is_given() {
+    // Without a pHYs chunk dpr falls back to 1, which draws everything half as wide as intended
+    // on a Retina capture saved without DPI, so the report asks for an explicit dpr. A `dpr`
+    // in the spec (as in every resolved spec) or `--dpr` answers it.
+    let dir = work_dir("missing_dpi_warns_until_dpr_is_given");
+    let src = common::fixture(600, 400);
+    let input = dir.join("input.png");
+    fs::write(
+        &input,
+        encode_png(src.width, src.height, &src.rgba, None, None).unwrap(),
+    )
+    .unwrap();
+    let out = dir.join("out.png");
+    let line = json!({"type": "line", "from": [40, 60], "to": [560, 340]});
+    let warned = json!([{
+        "id": "image",
+        "message": "the PNG has no DPI, so dpr is 1; set \"dpr\" (2 for a Retina or other \
+                    HiDPI capture) to confirm it"
+    }]);
+    let cases: [(Value, &[&str], &Value); 3] = [
+        (json!({"annotations": [line]}), &[], &warned),
+        (json!({"dpr": 1, "annotations": [line]}), &[], &json!([])),
+        (json!({"annotations": [line]}), &["--dpr", "2"], &json!([])),
+    ];
+    for (spec, extra, want) in cases {
+        let report = report(&render(&input, &out, &spec, extra));
+        assert_eq!(&report["warnings"], want, "{spec} {extra:?}");
+    }
+}
+
+#[test]
 fn grayscale_and_palette_inputs_render() {
     let dir = work_dir("grayscale_and_palette_inputs_render");
     let spec = json!({"annotations": [{"type": "line", "from": [5, 20], "to": [55, 20]}]});
