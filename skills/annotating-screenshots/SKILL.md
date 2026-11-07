@@ -1,10 +1,10 @@
 ---
 name: annotating-screenshots
 description: Use when the user wants a screenshot or other PNG annotated (arrows pointing at UI elements, boxes or ovals around them, private data blurred, erased or redacted, text highlighted, one area spotlighted, numbered step badges, short text labels, or lines), or wants a previous annotation adjusted. Draws the annotations deterministically with the markshot CLI.
-compatibility: Requires the markshot CLI 0.3.0 or later (macOS, Linux or Windows) on PATH, a POSIX-style shell for the examples, and the ability to view PNG images.
+compatibility: Requires the markshot CLI 0.4.0 or later (macOS, Linux or Windows) on PATH, a POSIX-style shell for the examples, and the ability to view PNG images.
 metadata:
   cli: markshot
-  version: "1.4"
+  version: "1.5"
 ---
 
 # Annotating screenshots
@@ -17,7 +17,7 @@ markshot grid   <in.png> -o <grid.png> [--step N] [--region X,Y,W,H]
 markshot schema        # every spec field, its range and default
 ```
 
-If `markshot` is not on PATH, ask the user where it is installed, or offer to install it (https://github.com/hypn4/markshot#how-do-i-install-it); don't draw the annotations some other way. `markshot --version` must print 0.3.0 or later.
+If `markshot` is not on PATH, ask the user where it is installed, or offer to install it (https://github.com/hypn4/markshot#how-do-i-install-it); don't draw the annotations some other way. `markshot --version` must print 0.4.0 or later.
 
 ## Workflow
 
@@ -43,7 +43,7 @@ Copy this checklist and tick it off:
 | The user wants to… | `type` | Key fields |
 |---|---|---|
 | point at something | `arrow` | `from`, `to`; `via` to curve; `style` |
-| frame or circle something | `rect`, `oval` | `rect`, or for an oval `around` (the target's box; markshot sizes the oval); `fill`: `sketch`, `outline`, `semi`, `solid` |
+| frame or circle something | `rect`, `oval` | `rect`, or for an oval `around` (the target's box; markshot sizes the oval and, with `size` left out, its line); `fill`: `sketch`, `outline`, `semi`, `solid` |
 | hide private data | `blur` | `rect`; `mode`: `pixelate`, `erase` (an opaque box: `rect` with `"fill": "solid"`) |
 | mark text like a highlighter | `highlight` | `from`/`to`, or `points` |
 | focus on one area, dim the rest | `spotlight` | `rect`; `shape`; top-level `spotlight_dim` |
@@ -63,6 +63,7 @@ When the user asks for a change to an earlier render, the edit is exactly what t
 
 - Render from the original input, never from the previous `out.png`, or the old annotations stay underneath.
 - Annotations skipped with a warning are not in the stdout spec; add them back with corrected values.
+- An oval fitted with `around` comes back as a fixed `rect`, `size` and `seed`. To refit after an oval-fit warning, use the original `around` spec with `size` omitted. If editing the stdout spec, replace `rect` with the ORIGINAL target's `around`, then remove `size`; the fitted `rect` is not the target box. Restore the original seed choice too: leave `seed` out if the original omitted it, but keep a seed the original specified. Removing only `size` from a resolved `rect` does not run fitting again.
 - A counter comes back as its badge's `center`. Before changing its `size` or `angle`, replace `center` with the tail tip `at`, computed from the stdout values, or the tip moves off its target:
   `at = center + 1.65 * R * (cos θ, sin θ)` with θ = `angle` in degrees (0 right, 90 down), R = D[`size`] / 2 * `dpr`, D = [22, 28, 36, 48, 64, 84, 112, 150]. For `"style": "circle"`, `at` = `center`.
 - `fill_alpha` is listed only if you set it, so switching a rect's `fill` gives the new fill's default opacity.

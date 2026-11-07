@@ -30,13 +30,13 @@ Each example is a complete spec for an 800×600 screenshot. `markshot schema` li
 
 `fill`: `sketch` (default, a hand-drawn border; use it when the user asks for a hand-drawn look), `outline` (a clean border; use it for a plain "box"), `semi` (a border plus a fill at `fill_alpha`, default 0.4) and `solid` (an opaque box: use it with `"color": "#000000"` to redact). Shapes whose shorter side is 40 px or less get a plain border even with `sketch`. An oval is a squircle that touches the middle of each side of `rect`, fuller than a true ellipse.
 
-To circle something, give the oval `around`: the target's box `[x, y, width, height]`, instead of `rect`. markshot then sizes the oval itself, so that its line, hand-drawn wobble included, clears the box and crosses as little nearby text and as few borders as it can; the stdout spec gives the `rect` it chose. Use `around` whenever the oval circles a target, and above all in dense lists, where a description line sits right under a toggle: there the thinner `size` 1 line leaves the most room. In such a list the oval it picks can be long and run past a panel's edge; that is the room it found between the lines of text, so keep it rather than resizing the oval by hand, which brings the line back onto the text. Leave `seed` out: markshot then also picks the hand-drawn wobble that fits best, and the stdout spec records it. Aim a badge at the oval's end, the left or right edge of the `rect` in the stdout spec, not at the target inside it. Give `rect` only to place an oval exactly, for example when editing an earlier render's stdout spec.
+To circle something, give the oval `around`: the target's box `[x, y, width, height]`, instead of `rect`. markshot then sizes the oval itself, so that its line, hand-drawn wobble included, clears the box and crosses as little nearby text and as few borders as it can; the stdout spec gives the `rect` it chose. Use `around` whenever the oval circles a target, and above all in dense lists, where a description line sits right under a toggle. In such a list the oval it picks can be long and run past a panel's edge; that is the room it found between the lines of text, so keep it rather than resizing the oval by hand, which brings the line back onto the text. Leave `size` and `seed` out: markshot then also picks the thickest line and the hand-drawn wobble that fit, and the stdout spec records them. If no oval fits, the render warns; then frame the target with a `rect` instead. Aim a badge at the oval's end, the left or right edge of the `rect` in the stdout spec, not at the target inside it. Give `rect` only to place an oval exactly, for example when editing an earlier render's stdout spec.
 
 ```json
 {"annotations": [
   {"type": "rect", "rect": [80, 60, 260, 120]},
   {"type": "oval", "rect": [420, 60, 260, 120], "fill": "outline"},
-  {"type": "oval", "around": [440, 330, 200, 40], "size": 1},
+  {"type": "oval", "around": [440, 330, 200, 40]},
   {"type": "rect", "rect": [80, 300, 260, 120], "fill": "semi", "color": "#2E7CF6"}
 ]}
 ```

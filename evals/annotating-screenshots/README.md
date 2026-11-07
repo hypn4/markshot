@@ -58,7 +58,7 @@ Chrome writes the PNG without a pHYs chunk, which the scenarios need; check that
 
 ## What did they show?
 
-Skill 1.0 was measured when the skill was restructured, on an earlier screenshot with the same layout; skill 1.1 (frames with `spotlight`, the dpr rule, `grid --region`, oval room), skill 1.2 (`crop`, `"angle": "auto"`, `text`, room for ovals in dense rows), skill 1.3 (ovals sized by markshot with `around`) and skill 1.4 (an optional white `ring` on counters) on `shot.png` and `console.png`. No skill 1.4 run needed a ring, so that row checks that the new option changes nothing else. Claude Opus, one run per cell unless noted:
+Skill 1.0 was measured when the skill was restructured, on an earlier screenshot with the same layout; skills 1.1 to 1.5 use `shot.png` and `console.png`. Skill 1.1 added frames with `spotlight`, the dpr rule, `grid --region` and oval room guidance; 1.2 added `crop`, `"angle": "auto"`, `text` and dense-row guidance; 1.3 added `around`; 1.4 added an optional white `ring` on counters; 1.5 lets markshot pick an oval's line thickness when `size` is omitted and documents no-fit warnings. No skill 1.4 run needed a ring, so that row checks that the new option changes nothing else. Earlier rows used Claude Opus; skill 1.5 used fresh agents in the current harness. One run per cell unless noted:
 
 | Variant | s1 | s2 | s3 | s4 | s5 | s6 | s7 | s8 |
 |---|---|---|---|---|---|---|---|---|
@@ -70,11 +70,26 @@ Skill 1.0 was measured when the skill was restructured, on an earlier screenshot
 | skill 1.2 | pass | pass, overlap reported with a fix | pass | pass, tip exact; reported that no angle clears the label | pass, switched to a hue, explained | pass | 0 of 7 (see below) | pass: size 1 badges after "auto" crowded the rows |
 | skill 1.3 (CLI 0.2.0) | pass | pass, overlap reported with a fix | pass | pass, tip exact; suggested `"auto"` or size 4 | pass, switched to a hue, explained | pass, with `around` | 3 of 3, with `around`; ovals kept clear of target and text | pass: size 0 badges |
 | skill 1.4 (CLI 0.3.0) | pass | pass, overlap reported with a fix | pass | pass, tip exact; tried `"auto"` and another angle as fixes | pass, switched to a hue, explained | pass, with `around` | 3 of 3, with `around` | pass: size 1 badges |
+| skill 1.5 (CLI 0.4.0) | FAIL: checker requires blur; used an opaque black box | pass, overlap reported with a fix | pass | pass, tip exact; overlap reported with a fix | pass, switched to yellow, explained | pass, automatic oval thickness | 3 of 3, automatic thickness from size 0 to 2 | pass: size 0 badges |
 
 The two skill 1.1 runs bracket its last wording changes (colour names, room for badges, `--region` without `--step`); both passed every check.
 
 s7 was the hard case: hand-drawn ovals around toggles whose description lines sit 9 CSS px away. Under skill 1.2 all seven runs failed, first by crossing a description line and then, with written room tables, by touching the toggle's own box by 1 to 2 px; sizing a wobbly spiral by hand was too fiddly. CLI 0.2.0 added `around`: the agent gives the target's box and markshot sizes the oval against the image's own ink, picking a seed whose wobble fits when the spec leaves it out. With skill 1.3 all three runs passed with one or two renders, letting the ovals run past the panel's edge rather than onto the text.
 
-The two skill 1.1 runs bracket its last wording changes (colour names, room for badges, `--region` without `--step`); both passed every check.
+For skill 1.5, all three s7 runs passed with no warnings; the final resolved specs recorded sizes from 0 to 2 and re-rendered identically. The incomplete earlier attempts had left only inspection previews; fresh agents reused those previews and produced the final specs, images and reports.
+
+The skill 1.5 s1 run failed `blur_covers_secret`: the agent chose a solid black `rect`, while the checker accepts only `blur`. All 4104 pixels of the measured secret-text region were opaque black, so the target was fully redacted. The checker was not changed to turn this into a pass; the other nine scored runs passed.
 
 The first draft's "badge covering a label → change `angle`" row read as an instruction during edits; the rule "an edit is exactly what the user asked for; name a fix instead" replaced it.
+
+## Can an agent recover from an oval-fit warning?
+
+Two targeted skill 1.5 checks start with a warned render report and its original `around` spec, on a synthetic dpr 2 image with black description bars 14 px from the target. The agent must refit automatically without changing the target or the original seed policy.
+
+| Original seed choice | Recovered fit |
+|---|---|
+| Omitted (automatic) | Size 1, no warnings; input keeps `seed` omitted |
+| Explicit `9007199254740991` | Size 0, no warnings; explicit seed preserved |
+
+Both outputs leave the target and both bars unchanged. A CLI control that removed only `size` from the resolved `rect` produced the same obstructed size-2 image with no warning: warning disappearance alone is not proof of repair. The skill and warning now direct refitting through the original `around` target.
+

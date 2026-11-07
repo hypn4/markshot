@@ -466,16 +466,17 @@ fn auto_angle_avoids_busy_pixels_and_round_trips() {
     );
 }
 
-#[test]
-fn oval_around_clears_its_target_and_the_text_next_to_it() {
-    // A 240×42 target on white with black "description" bars 18 px above and below it, as
-    // under a toggle in a dense settings list (dpr 2). For every id tried, a hand-drawn oval
-    // drawn `around` the target leaves the target untouched, and with the thinner size 1 line
-    // also both bars.
-    let dir = work_dir("oval_around_clears_its_target_and_the_text_next_to_it");
+/// The 240×42 target box `(x0, y0, x1, y1)` at (300, 180) of an 800×400 white dpr 2 image,
+/// and the two black "description" bars `gap` px above and below it, 400×12 px each, as
+/// under a toggle in a dense settings list. Writes the image as `input.png` in `dir`.
+type Boxes = ((u32, u32, u32, u32), [(u32, u32, u32, u32); 2]);
+fn dense_rows(dir: &Path, gap: u32) -> (PathBuf, Boxes) {
     let (w, h) = (800_u32, 400_u32);
     let target = (300_u32, 180_u32, 540_u32, 222_u32);
-    let bars = [(300_u32, 150_u32, 700_u32, 162_u32), (300, 240, 700, 252)];
+    let bars = [
+        (300, 180 - gap - 12, 700, 180 - gap),
+        (300, 222 + gap, 700, 222 + gap + 12),
+    ];
     let inside = |x: u32, y: u32, (x0, y0, x1, y1): (u32, u32, u32, u32)| {
         (x0..x1).contains(&x) && (y0..y1).contains(&y)
     };
@@ -492,6 +493,26 @@ fn oval_around_clears_its_target_and_the_text_next_to_it() {
         .collect();
     let input = dir.join("input.png");
     fs::write(&input, encode_png(w, h, &rgba, Some(144.0), None).unwrap()).unwrap();
+    (input, (target, bars))
+}
+
+/// Asserts that `out` matches `src` everywhere inside `boxes`.
+fn untouched(out: &SourceImage, src: &SourceImage, boxes: &[(u32, u32, u32, u32)], what: &str) {
+    for &(x0, y0, x1, y1) in boxes {
+        for y in y0..y1 {
+            for x in x0..x1 {
+                assert_eq!(pixel(out, x, y), pixel(src, x, y), "{what}: ({x}, {y})");
+            }
+        }
+    }
+}
+
+#[test]
+fn oval_around_clears_its_target_and_the_text_next_to_it() {
+    // Bars 18 px from the target. For every id tried, a hand-drawn oval drawn `around` the
+    // target leaves the target untouched, and with the thinner size 1 line also both bars.
+    let dir = work_dir("oval_around_clears_its_target_and_the_text_next_to_it");
+    let (input, (target, bars)) = dense_rows(&dir, 18);
     let src = read_png(&input);
     let out = dir.join("out.png");
     // Without a seed the fit may also pick one of the next seeds, here from each id's own.
@@ -501,20 +522,44 @@ fn oval_around_clears_its_target_and_the_text_next_to_it() {
             let spec = json!({"annotations": [{"type": "oval", "id": id, "size": size,
                 "around": [300, 180, 240, 42]}]});
             report(&render(&input, &out, &spec, &[]));
-            let image = read_png(&out);
-            for &(x0, y0, x1, y1) in &kept {
-                for y in y0..y1 {
-                    for x in x0..x1 {
-                        assert_eq!(
-                            pixel(&image, x, y),
-                            pixel(&src, x, y),
-                            "size {size}, id {id}: ({x}, {y})"
-                        );
-                    }
-                }
-            }
+            untouched(
+                &read_png(&out),
+                &src,
+                &kept,
+                &format!("size {size}, id {id}"),
+            );
         }
     }
+}
+
+#[test]
+fn oval_around_without_a_size_takes_the_thickest_line_that_fits() {
+    // Bars 14 px from the target leave no room for the default size 2 line. Left out, `size`
+    // drops to the thickest that keeps clear of target and bars, which the report gives, with
+    // no warning; given as 2, the oval stays at 2 and the report warns.
+    let dir = work_dir("oval_around_without_a_size_takes_the_thickest_line_that_fits");
+    let (input, (target, bars)) = dense_rows(&dir, 14);
+    let src = read_png(&input);
+    let out = dir.join("out.png");
+    let spec = json!({"annotations": [{"type": "oval", "id": "a",
+        "around": [300, 180, 240, 42]}]});
+    let first = report(&render(&input, &out, &spec, &[]));
+    // Size 1 clears these bars; selecting size 0 would be unnecessarily thin.
+    assert_eq!(first["spec"]["annotations"][0]["size"], json!(1));
+    assert_eq!(first["warnings"], json!([]));
+    untouched(
+        &read_png(&out),
+        &src,
+        &[target, bars[0], bars[1]],
+        "automatically fitted oval",
+    );
+    let spec = json!({"annotations": [{"type": "oval", "id": "a", "size": 2,
+        "around": [300, 180, 240, 42]}]});
+    let given = report(&render(&input, &out, &spec, &[]));
+    assert_eq!(given["spec"]["annotations"][0]["size"], json!(2));
+    let warnings = given["warnings"].as_array().unwrap();
+    assert_eq!(warnings.len(), 1, "{warnings:?}");
+    assert_eq!(warnings[0]["id"], json!("a"));
 }
 
 #[test]
