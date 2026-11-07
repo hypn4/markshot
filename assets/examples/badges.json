@@ -1,0 +1,8 @@
+{"dpr": 2, "crop": [960, 230, 1440, 690], "annotations": [
+  {"type": "rect", "rect": [1912, 482, 292, 66], "fill": "outline", "spotlight": true, "color": "#FF4500"},
+  {"type": "counter", "center": [1912, 482], "style": "circle", "size": 1, "ring": true, "color": "#FF4500"},
+  {"type": "rect", "rect": [2080, 611, 124, 74], "fill": "outline", "spotlight": true, "color": "#FF4500"},
+  {"type": "counter", "center": [2080, 611], "style": "circle", "size": 1, "ring": true, "color": "#FF4500"},
+  {"type": "rect", "rect": [1912, 837, 292, 66], "fill": "outline", "spotlight": true, "color": "#FF4500"},
+  {"type": "counter", "center": [1912, 837], "style": "circle", "size": 1, "ring": true, "color": "#FF4500"}
+]}
