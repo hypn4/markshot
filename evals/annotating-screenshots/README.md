@@ -29,13 +29,21 @@ Application scenarios for `skills/annotating-screenshots/`. Run them whenever th
    bash evals/annotating-screenshots/eval.sh score /tmp/skill-eval skill
    ```
 
-   `score` runs `check.py` on every run directory and prints one row per run: `pass` when every key is `true`, else `FAIL` and the keys that are `false`. Values in parentheses are for you to judge (s5's colour). It exits with 1 when any run fails.
+   `score` runs `check.py` on every run directory and prints one row per run: `pass` when every key is `true`, else `FAIL` and the keys that are `false`. Values in parentheses are for you to judge (s5's colour, s7's toggle frames). It exits with 1 when any run fails.
 
 Then read each agent's reply: the checker can't judge what it told the user. To score a single run by hand: `EVAL_DIR=/tmp/skill-eval uv run --with pillow python evals/annotating-screenshots/check.py s4 /tmp/skill-eval/runs/skill-s4`.
 
 ## What does each scenario test?
 
-Every scenario starts from `shot.png`, a 1602×1002 PNG at 144 dpi (dpr 2): a white area with two lines of black text, six colour blocks with text (red `Blur 123`, green `Erase me`, blue `Secret 42`, yellow `Text AaBb`, purple `Hidden`, orange `Mosaic 7`), a `#808080` band with black text and a `#1E1E1E` band with white text. The block and text boxes in `check.py` were measured on it; measure them again if `shot.png` changes.
+Scenarios s1 to s6 start from `shot.png`, a 1602×1002 PNG at 144 dpi (dpr 2): a white area with two lines of black text, six colour blocks with text (red `Blur 123`, green `Erase me`, blue `Secret 42`, yellow `Text AaBb`, purple `Hidden`, orange `Mosaic 7`), a `#808080` band with black text and a `#1E1E1E` band with white text. The block and text boxes in `check.py` were measured on it; measure them again if `shot.png` changes.
+
+s7 and s8 start from `console.png`, a 2800×1800 Retina capture of a made-up cloud console's settings page, saved without DPI as many real captures are: a left nav, tabs, a dense four-row Services table whose status pills leave less room on every side than a default badge needs, and a Sharing policy panel with segmented button groups and toggles whose one-line grey descriptions sit 9 CSS px below them. It is `console.html` rendered by headless Chrome at device scale factor 2. To regenerate it, from the repository root:
+
+```sh
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --disable-gpu --hide-scrollbars --force-device-scale-factor=2 --window-size=1400,900 --screenshot="$PWD/evals/annotating-screenshots/console.png" "file://$PWD/evals/annotating-screenshots/console.html"
+```
+
+Chrome writes the PNG without a pHYs chunk, which the scenarios need; check that it still does. Another Chrome version or set of system fonts moves the text, so measure the boxes in `check.py` again with `grid --region` after regenerating it.
 
 | Scenario | Request | What must hold |
 |---|---|---|
@@ -45,10 +53,12 @@ Every scenario starts from `shot.png`, a 1602×1002 PNG at 144 dpi (dpr 2): a wh
 | s4 | enlarge a badge when only the previous stdout report survives | badge size 5, tail tip unchanged within 3 px (needs `center` → `at`), nothing else changed |
 | s5 | grey highlighter on a dark background | covers the line; the reply must tell the user that grey renders navy there |
 | s6 | circle a label with a hand-drawn oval and dim the rest, on a Retina capture saved without DPI (`shot-nodpi.png`, made by `setup.sh`) | dpr 2, one oval with `"spotlight": true` and no separate spotlight, the label's pixels untouched, no warnings, rendered from the original |
+| s7 | on `console.png`: box the button group under a named setting, circle two adjacent toggles with their labels by hand, number the three and dim the rest | dpr 2; each target in a frame of its own with `"spotlight": true` and no separate spotlight; badges 1 to 3 at their frames; the targets' text and switches untouched; no frame line on the descriptions and rows next to them; no warnings; rendered from the original. `toggle_frames` names the toggles' frames for you to judge: the user asked for ovals |
+| s8 | on `console.png`: number the four status cells of a dense table | dpr 2; badges 1 to 4, each marking its own row's status pill; no badge circle on a pill or on any other text in the table; no warnings; rendered from the original |
 
 ## What did they show?
 
-Skill 1.0 was measured when the skill was restructured, on an earlier screenshot with the same layout; skill 1.1 (frames with `spotlight`, the dpr rule, `grid --region`, oval room) on `shot.png`. Claude Opus, one run per cell unless noted:
+Skill 1.0 was measured when the skill was restructured, on an earlier screenshot with the same layout; skill 1.1 (frames with `spotlight`, the dpr rule, `grid --region`, oval room) on `shot.png`. s7 and s8 came later and have not been run yet. Claude Opus, one run per cell unless noted:
 
 | Variant | s1 | s2 | s3 | s4 | s5 | s6 |
 |---|---|---|---|---|---|---|
