@@ -19,3 +19,13 @@ updates:
     groups:
       cargo:
         patterns: ["*"]
+  # The fuzz crate is its own workspace with its own Cargo.lock.
+  - package-ecosystem: cargo
+    directory: /fuzz
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      fuzz:
+        patterns: ["*"]
