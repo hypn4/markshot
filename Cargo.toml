@@ -33,6 +33,11 @@ ttf-parser = "0.25.1"
 assert_cmd = "2.2.2"
 sha2 = "0.11.1"
 
+# `cargo binstall` downloads the release binaries instead of compiling.
+[package.metadata.binstall]
+pkg-url = "{ repo }/releases/download/v{ version }/markshot-{ target }{ binary-ext }"
+pkg-fmt = "bin"
+
 [lints.clippy]
 pedantic = { level = "warn", priority = -1 }
 
