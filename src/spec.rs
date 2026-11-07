@@ -291,13 +291,15 @@ pub struct CounterSpec {
     /// The badge center `[x, y]`, instead of `at`.
     pub center: Option<Point>,
     /// Tail direction in degrees: 0 right, 90 down. Default 135 (down-left). `"auto"` (with
-    /// `at`, for a `bubble` or `pin`) picks the direction whose badge stays inside the image,
-    /// off the other annotations and over the calmest pixels; the resolved spec gives the
-    /// number it picked.
+    /// `at`, for a `bubble` or `pin`) prefers directions whose full body, tail and ring bounds
+    /// stay inside the image or crop and clear other annotation bounds, then the calmest
+    /// pixels. If none fits, draws the best effort with a warning; size stays unchanged.
+    /// The resolved spec gives the angle it picked.
     pub angle: Option<Angle>,
     /// Default `bubble`.
     pub style: Option<CounterStyle>,
     /// Default: one more than the largest number of the counters before it.
+    /// Numeric ink that would overflow is scaled down to fit inside the circular body.
     pub number: Option<u32>,
     /// `true` draws a white ring outside the badge's body, tail included, `1/12` of its
     /// diameter wide, which sets it apart from a frame line or background of its own color.

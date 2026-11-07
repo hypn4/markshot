@@ -65,6 +65,11 @@ Nine annotation types, all in one spec:
 
 For an oval with `around`, an omitted `size` tries 2, 1, then 0; a size you give stays unchanged. If no candidate fits cleanly, the report warns rather than silently treating it as a clean fit. The resolved spec records the chosen size, rectangle and seed.
 
+For counters:
+- `size` stays as requested; numbers that would overflow shrink inside the badge.
+- Clipping checks include the tail and white ring, not just the circle.
+- `"angle": "auto"` warns if no direction fits the image or crop and clears other annotation bounds. It still draws the best-effort result; retry the original `at` spec with a smaller size or more room.
+
 ## Why use it instead of drawing on the image another way?
 
 An agent can't drag a mouse, but it can write JSON, look at the result and fix one value:

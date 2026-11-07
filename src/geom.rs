@@ -193,6 +193,96 @@ impl PathData {
                 .collect(),
         )
     }
+
+    /// Tight `[min_x, min_y, max_x, max_y]` bounds in the output units and axes of `map`.
+    ///
+    /// Applies `map` to the control and end points, then bounds the resulting cubics
+    /// without allocating a transformed path. For affine maps this is the exact
+    /// transformed curve, including rotated or y-down image-pixel coordinates.
+    /// Isolated moves count as points; a path with no points returns `None`.
+    #[must_use]
+    pub fn bounds(&self, map: impl Fn(V2) -> V2) -> Option<[f64; 4]> {
+        let mut bounds: Option<[f64; 4]> = None;
+        let mut current = None;
+        let mut start = None;
+        let mut include = |p: V2| {
+            if let Some(b) = &mut bounds {
+                b[0] = b[0].min(p.x);
+                b[1] = b[1].min(p.y);
+                b[2] = b[2].max(p.x);
+                b[3] = b[3].max(p.y);
+            } else {
+                bounds = Some([p.x, p.y, p.x, p.y]);
+            }
+        };
+        for seg in &self.0 {
+            match *seg {
+                Seg::Move(p) => {
+                    let p = map(p);
+                    include(p);
+                    current = Some(p);
+                    start = Some(p);
+                }
+                Seg::Line(p) => {
+                    let p = map(p);
+                    include(p);
+                    current = Some(p);
+                    start.get_or_insert(p);
+                }
+                Seg::Cubic(c1, c2, p) => {
+                    let p0 = current.unwrap_or_else(|| map(V2::default()));
+                    let (c1, c2, p) = (map(c1), map(c2), map(p));
+                    let x = cubic_axis_bounds(p0.x, c1.x, c2.x, p.x);
+                    let y = cubic_axis_bounds(p0.y, c1.y, c2.y, p.y);
+                    include(V2 { x: x[0], y: y[0] });
+                    include(V2 { x: x[1], y: y[1] });
+                    current = Some(p);
+                    start.get_or_insert(p0);
+                }
+                // Closing adds only a straight segment, whose endpoints are already
+                // included, but subsequent curves resume at this subpath's start.
+                Seg::Close => current = start,
+            }
+        }
+        bounds
+    }
+}
+
+/// One coordinate's cubic bounds, in the same units as its four control points.
+fn cubic_axis_bounds(p0: f64, p1: f64, p2: f64, p3: f64) -> [f64; 2] {
+    let mut bounds = [p0.min(p3), p0.max(p3)];
+    let mut include = |t: f64| {
+        if t > 0.0 && t < 1.0 {
+            // De Casteljau evaluation avoids cancellation near a segment's endpoints.
+            let lerp = |a: f64, b: f64| (1.0 - t) * a + t * b;
+            let (a, b, c) = (lerp(p0, p1), lerp(p1, p2), lerp(p2, p3));
+            let value = lerp(lerp(a, b), lerp(b, c));
+            bounds[0] = bounds[0].min(value);
+            bounds[1] = bounds[1].max(value);
+        }
+    };
+    // The derivative divided by three is a*t^2 + b*t + c.
+    let (d0, d1, d2) = (p1 - p0, p2 - p1, p3 - p2);
+    let (a, b, c) = (d0 - 2.0 * d1 + d2, 2.0 * (d1 - d0), d0);
+    if a == 0.0 {
+        if b != 0.0 {
+            include(-c / b);
+        }
+    } else {
+        // Normalize before squaring, and compute the second root through the root
+        // product rather than subtracting nearly equal values.
+        let scale = a.abs().max(b.abs()).max(c.abs());
+        let (a, b, c) = (a / scale, b / scale, c / scale);
+        let discriminant = b * b - 4.0 * a * c;
+        if discriminant == 0.0 {
+            include(-b / (2.0 * a));
+        } else if discriminant > 0.0 {
+            let numerator = -0.5 * (b + discriminant.sqrt().copysign(b));
+            include(numerator / a);
+            include(c / numerator);
+        }
+    }
+    bounds
 }
 
 #[cfg(test)]
@@ -287,5 +377,98 @@ mod tests {
                 Seg::Close,
             ])
         );
+    }
+
+    fn assert_bounds(path: &PathData, map: impl Fn(V2) -> V2, expected: [f64; 4]) {
+        let actual = path.bounds(map).expect("a path with points has bounds");
+        for (actual, expected) in actual.into_iter().zip(expected) {
+            assert!((actual - expected).abs() < 1e-12, "{actual} != {expected}");
+        }
+    }
+
+    #[test]
+    fn bounds_include_cubic_peak_without_control_point_hull() {
+        let path = PathData(vec![
+            Seg::Move(v(0.0, 0.0)),
+            Seg::Cubic(v(0.0, 4.0), v(4.0, 4.0), v(4.0, 0.0)),
+        ]);
+        assert_bounds(&path, |p| p, [0.0, 0.0, 4.0, 3.0]);
+    }
+
+    #[test]
+    fn bounds_find_extrema_after_rotation_scale_and_translation() {
+        let path = PathData(vec![
+            Seg::Move(v(0.0, 0.0)),
+            Seg::Cubic(v(0.0, 4.0), v(4.0, 4.0), v(4.0, 0.0)),
+        ]);
+        // A 3-4-5 rotation and scale: x reaches 22/9 at t=1/3, y reaches 65/4 at t=3/4.
+        assert_bounds(
+            &path,
+            |p| v(3.0 * p.x - 4.0 * p.y + 10.0, 4.0 * p.x + 3.0 * p.y - 4.0),
+            [2.444_444_444_444_444_6, -4.0, 22.0, 16.25],
+        );
+    }
+
+    #[test]
+    fn bounds_include_both_cubic_extrema_and_constant_axis() {
+        let path = PathData(vec![
+            Seg::Move(v(2.0, 0.0)),
+            Seg::Cubic(v(2.0, 3.0), v(2.0, -3.0), v(2.0, 0.0)),
+        ]);
+        assert_bounds(
+            &path,
+            |p| p,
+            [2.0, -0.866_025_403_784_438_6, 2.0, 0.866_025_403_784_438_6],
+        );
+    }
+
+    #[test]
+    fn bounds_handle_linear_and_zero_derivatives() {
+        let path = PathData(vec![
+            Seg::Move(v(0.0, 0.0)),
+            Seg::Cubic(v(1.0, 2.0), v(2.0, 2.0), v(3.0, 0.0)),
+        ]);
+        assert_bounds(&path, |p| p, [0.0, 0.0, 3.0, 1.5]);
+        let point = PathData(vec![
+            Seg::Move(v(7.0, -2.0)),
+            Seg::Cubic(v(7.0, -2.0), v(7.0, -2.0), v(7.0, -2.0)),
+            Seg::Close,
+        ]);
+        assert_bounds(&point, |p| p, [7.0, -2.0, 7.0, -2.0]);
+    }
+
+    #[test]
+    fn bounds_resume_at_subpath_start_after_close() {
+        let path = PathData(vec![
+            Seg::Move(v(0.0, 0.0)),
+            Seg::Line(v(4.0, -2.0)),
+            Seg::Close,
+            Seg::Cubic(v(0.0, 4.0), v(4.0, 4.0), v(4.0, 0.0)),
+        ]);
+        assert_bounds(&path, |p| p, [0.0, -2.0, 4.0, 3.0]);
+    }
+
+    #[test]
+    fn bounds_include_disjoint_subpaths_and_isolated_moves() {
+        let path = PathData(vec![
+            Seg::Move(v(-3.0, 2.0)),
+            Seg::Line(v(-1.0, 5.0)),
+            Seg::Close,
+            Seg::Move(v(8.0, -4.0)),
+        ]);
+        assert_bounds(&path, |p| p, [-3.0, -4.0, 8.0, 5.0]);
+        assert_eq!(PathData::default().bounds(|p| p), None);
+        assert_eq!(PathData(vec![Seg::Close]).bounds(|p| p), None);
+    }
+
+    #[test]
+    fn bounds_keep_small_quadratic_roots_when_the_other_root_is_large() {
+        let path = PathData(vec![
+            Seg::Move(v(0.0, 0.0)),
+            Seg::Cubic(v(1.0, -1.0), v(2.0, -1.0), v(3.0, 1e-15)),
+        ]);
+        // The tiny endpoint perturbation makes the derivative quadratic rather than
+        // linear; its in-range root remains near 1/2 and its minimum near -3/4.
+        assert_bounds(&path, |p| p, [0.0, -0.75, 3.0, 1e-15]);
     }
 }

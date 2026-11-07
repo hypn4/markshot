@@ -603,6 +603,143 @@ fn a_ringed_counter_has_a_white_ring_outside_its_body() {
 }
 
 #[test]
+fn counter_tail_clipping_warns_even_when_the_circle_fits() {
+    let dir = work_dir("counter_tail_clipping_warns_even_when_the_circle_fits");
+    let input = write_fixture(&dir);
+    let spec = json!({"dpr": 1, "annotations": [
+        {"type": "counter", "id": "bubble", "center": [580, 120], "angle": 0},
+        {"type": "counter", "id": "pin", "center": [200, 380], "angle": 90,
+         "style": "pin"},
+        {"type": "counter", "id": "ring", "center": [578, 250], "angle": 0,
+         "ring": true}
+    ]});
+    let result = report(&render(&input, &dir.join("out.png"), &spec, &[]));
+    let warnings = result["warnings"].as_array().unwrap();
+    let ids: Vec<_> = warnings.iter().map(|w| w["id"].as_str().unwrap()).collect();
+    assert_eq!(ids, ["bubble", "pin", "ring"]);
+    assert!(
+        warnings
+            .iter()
+            .all(|w| w["message"].as_str().unwrap().contains("clipped"))
+    );
+}
+
+#[test]
+fn counter_visible_tail_and_tail_ring_are_not_skipped() {
+    let dir = work_dir("counter_visible_tail_and_tail_ring_are_not_skipped");
+    let input = write_fixture(&dir);
+    // R = 18: the bubble reaches 27 px right of its center. The first tail reaches x = 7;
+    // the second stops at x = -1, but its 3 px outer ring reaches the image.
+    let spec = json!({"dpr": 1, "annotations": [
+        {"type": "counter", "id": "tail", "center": [-20, 200], "angle": 0},
+        {"type": "counter", "id": "ring", "center": [-28, 300], "angle": 0,
+         "ring": true}
+    ]});
+    let out = dir.join("out.png");
+    let result = report(&render(&input, &out, &spec, &[]));
+    let annotations = result["spec"]["annotations"].as_array().unwrap();
+    let ids: Vec<_> = annotations
+        .iter()
+        .map(|a| a["id"].as_str().unwrap())
+        .collect();
+    assert_eq!(ids, ["tail", "ring"]);
+    let image = read_png(&out);
+    assert_eq!(pixel(&image, 2, 200), RED);
+    assert_eq!(pixel(&image, 0, 300), [255; 4]);
+}
+
+#[test]
+fn counter_long_numbers_keep_all_digits_inside_the_body() {
+    let dir = work_dir("counter_long_numbers_keep_all_digits_inside_the_body");
+    let input = dir.join("input.png");
+    let rgba: Vec<u8> = (0..400 * 300).flat_map(|_| [128, 128, 128, 255]).collect();
+    fs::write(&input, encode_png(400, 300, &rgba, None, None).unwrap()).unwrap();
+    // Radius comes from the documented diameter: size 2 is 36 pt, size 7 is 150 pt.
+    for (size, dpr, number, radius, min_aspect, max_aspect) in [
+        (2, 2, 1000_u32, 36.0_f64, 2.9, 3.5),
+        (2, 2, u32::MAX, 36.0, 7.5, 10.0),
+        (7, 1, 1000, 75.0, 2.9, 3.5),
+        (7, 1, u32::MAX, 75.0, 7.5, 10.0),
+    ] {
+        for (color, white) in [("#FF0C01", true), ("#FFDC2C", false)] {
+            let spec = json!({"dpr": dpr, "annotations": [
+                {"type": "counter", "center": [200, 150], "style": "circle",
+                 "size": size, "number": number, "color": color}
+            ]});
+            let out = dir.join("out.png");
+            let first = report(&render(&input, &out, &spec, &[]));
+            let image = read_png(&out);
+            let mask: Vec<bool> = image
+                .rgba
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .map(|p| {
+                    if white {
+                        p[..3].iter().all(|&v| v > 210)
+                    } else {
+                        p[..3].iter().all(|&v| v < 64)
+                    }
+                })
+                .collect();
+            let mut ink_bounds: Option<[u32; 4]> = None;
+            for y in 0..300_u32 {
+                for x in 0..400_u32 {
+                    if mask[(y * 400 + x) as usize] {
+                        let dx = f64::from(x) + 0.5 - 200.0;
+                        let dy = f64::from(y) + 0.5 - 150.0;
+                        assert!(
+                            dx * dx + dy * dy <= (radius - 1.0).powi(2),
+                            "{number}, size {size}, dpr {dpr}, {color}: ink outside at ({x}, {y})"
+                        );
+                        if let Some([left, top, right, bottom]) = &mut ink_bounds {
+                            *left = (*left).min(x);
+                            *top = (*top).min(y);
+                            *right = (*right).max(x);
+                            *bottom = (*bottom).max(y);
+                        } else {
+                            ink_bounds = Some([x, y, x, y]);
+                        }
+                    }
+                }
+            }
+            // Unclipped "1000" is about 3.2 times as wide as tall; "4294967295" about 8.6.
+            // Allow pixel rounding at small sizes, but reject clipping or dropping most digits
+            // instead of uniformly shrinking the complete line.
+            let [left, top, right, bottom] = ink_bounds.expect("visible numeric ink");
+            let aspect = f64::from(right - left + 1) / f64::from(bottom - top + 1);
+            assert!(
+                (min_aspect..=max_aspect).contains(&aspect),
+                "{number}, size {size}, dpr {dpr}, {color}: numeric aspect ratio {aspect}"
+            );
+            let again = dir.join("again.png");
+            report(&render(&input, &again, &first["spec"], &[]));
+            assert_eq!(fs::read(&out).unwrap(), fs::read(&again).unwrap());
+        }
+    }
+}
+
+#[test]
+fn counter_auto_angle_does_not_treat_texture_as_no_room() {
+    let dir = work_dir("counter_auto_angle_does_not_treat_texture_as_no_room");
+    let rgba: Vec<u8> = (0..300_u32)
+        .flat_map(|y| {
+            (0..400_u32).flat_map(move |x| {
+                let v = if (x / 4 + y / 4) % 2 == 0 { 80 } else { 180 };
+                [v, v, v, 255]
+            })
+        })
+        .collect();
+    let input = dir.join("input.png");
+    fs::write(&input, encode_png(400, 300, &rgba, None, None).unwrap()).unwrap();
+    let spec = json!({"dpr": 1, "annotations": [
+        {"type": "counter", "at": [200, 150], "angle": "auto"}
+    ]});
+    let result = report(&render(&input, &dir.join("out.png"), &spec, &[]));
+    assert_eq!(result["warnings"], json!([]));
+}
+
+#[test]
 fn a_label_plate_has_circular_corners_a_quarter_em_wide() {
     // Size 7 at dpr 4 sets 40 pt text, a 160 px em, so the plate's corners are circles of
     // radius 40 px centred 40 px in from each side. A black plate at (20, 20) on white leaves

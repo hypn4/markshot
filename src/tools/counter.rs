@@ -9,9 +9,9 @@ use tiny_skia::{BlendMode, FillRule, LineCap, LineJoin};
 
 use crate::canvas::{Canvas, Ink, StrokeStyle};
 use crate::color::Rgb;
-use crate::geom::{PathData, V2};
+use crate::geom::{PathData, Seg, V2};
 use crate::image_io::luma;
-use crate::resolve::ResolvedCounter;
+use crate::resolve::{ResolvedCounter, round_pixel};
 use crate::spec::CounterStyle;
 use crate::svg_path::parse_mlc;
 use crate::text::{self, Weight};
@@ -191,6 +191,51 @@ pub fn center_from_at(at: V2, angle_deg_screen: f64, r: f64, style: CounterStyle
     at - V2::dir(-angle_deg_screen.to_radians()) * offset
 }
 
+/// The full body's bounds `[x0, y0, x1, y1]` in y-down px, including its tail and outer ring.
+#[must_use]
+pub(crate) fn bounds(
+    center: [f64; 2],
+    angle: f64,
+    r: f64,
+    style: CounterStyle,
+    ring: f64,
+) -> [f64; 4] {
+    let tail = match style {
+        CounterStyle::Circle => {
+            let reach = r + ring;
+            return [
+                center[0] - reach,
+                center[1] - reach,
+                center[0] + reach,
+                center[1] + reach,
+            ];
+        }
+        CounterStyle::Bubble => &TAILS[0],
+        CounterStyle::Pin => &TAILS[1],
+    };
+    let turn = -angle.to_radians() - QUARTER_TURN;
+    let (sin, cos) = (crate::math::sin(turn), crate::math::cos(turn));
+    let scale = r / 25.0;
+    let [left, top, right, bottom] = tail
+        .bounds(|p| {
+            let q = p - V2 { x: 50.0, y: 50.0 };
+            V2 {
+                x: center[0] + scale * (q.x * cos - q.y * sin),
+                y: center[1] - scale * (q.x * sin + q.y * cos),
+            }
+        })
+        .expect("bundled counter outlines contain points");
+    [left - ring, top - ring, right + ring, bottom + ring]
+}
+
+/// A candidate's final center in y-down px, sampled cost and full-geometry feasibility.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Placement {
+    pub center: [f64; 2],
+    pub cost: f64,
+    pub fits: bool,
+}
+
 /// The tail directions `"angle": "auto"` tries, in screen degrees, in the order that breaks
 /// ties: the default 135 first, then alternately either side of it in 15° steps.
 pub const AUTO_ANGLES: [f64; 24] = [
@@ -198,21 +243,22 @@ pub const AUTO_ANGLES: [f64; 24] = [
     240.0, 15.0, 255.0, 0.0, 270.0, 345.0, 285.0, 330.0, 300.0, 315.0,
 ];
 
-/// How badly a badge of radius `r` and a ring `ring` px wide sits when its tail marks `at`
-/// (y-down px) along `angle`: over a 9 × 9 grid of samples across the disc `1.1 * r + ring`
-/// around its center, 1000 × the share
-/// outside `image.area`, plus 100 × the share inside any of `obstacles` (`[x0, y0, x1, y1]`,
-/// y-down px), plus 10 × the mean absolute deviation of the samples' Rec. 601 luma (0 to 1)
-/// from their mean, which is high over text and edges. 0 is a free, flat, in-image spot.
+/// Scores a counter marking `at` along `angle`, using its rounded center in y-down px.
+///
+/// A fit keeps the body's full bounds, tail and ring included, inside `image.area` and off
+/// obstacle bounds. Cost samples the disc `1.1 * r + ring` on a 9 by 9 grid: 1000 times the
+/// share outside the area, 100 times the share over obstacles, plus 10 times the samples'
+/// mean absolute luma deviation. Background texture affects cost, not feasibility.
 #[must_use]
-pub fn placement_cost(
+pub(crate) fn placement(
     at: [f64; 2],
     angle: f64,
     r: f64,
+    style: CounterStyle,
     ring: f64,
     image: &super::Pixels<'_>,
     obstacles: &[[f64; 4]],
-) -> f64 {
+) -> Placement {
     let height = f64::from(image.height);
     let up = center_from_at(
         V2 {
@@ -221,12 +267,21 @@ pub fn placement_cost(
         },
         angle,
         r,
-        CounterStyle::Bubble,
+        style,
     );
-    let center = [up.x, height - up.y];
+    let center = [round_pixel(up.x), round_pixel(height - up.y)];
+    let [left, top, right, bottom] = bounds(center, angle, r, style, ring);
+    let fits = left >= image.area[0]
+        && top >= image.area[1]
+        && right <= image.area[2]
+        && bottom <= image.area[3]
+        && !obstacles
+            .iter()
+            .any(|&[x0, y0, x1, y1]| left < x1 && x0 < right && top < y1 && y0 < bottom);
     let reach = 1.1 * r + ring;
     let (mut samples, mut outside, mut covered) = (0.0, 0.0, 0.0);
-    let mut lumas = Vec::with_capacity(81);
+    let mut lumas = [0.0; 81];
+    let mut luma_count = 0_u8;
     for column in 0..9_u8 {
         for row in 0..9_u8 {
             let offset = [column, row].map(|k| (f64::from(k) - 4.0) / 4.0 * reach);
@@ -246,18 +301,24 @@ pub fn placement_cost(
                 covered += 1.0;
             }
             if let Some(rgba) = image.rgba {
-                lumas.push(luma(rgba, image.width, sample));
+                lumas[usize::from(luma_count)] = luma(rgba, image.width, sample);
+                luma_count += 1;
             }
         }
     }
-    let busy = if lumas.is_empty() {
+    let lumas = &lumas[..usize::from(luma_count)];
+    let busy = if luma_count == 0 {
         0.0
     } else {
-        let n = f64::from(u32::try_from(lumas.len()).unwrap_or(u32::MAX));
+        let n = f64::from(luma_count);
         let mean = lumas.iter().sum::<f64>() / n;
         lumas.iter().map(|l| (l - mean).abs()).sum::<f64>() / n
     };
-    1000.0 * outside / samples + 100.0 * covered / samples + 10.0 * busy
+    Placement {
+        center,
+        cost: 1000.0 * outside / samples + 100.0 * covered / samples + 10.0 * busy,
+        fits,
+    }
 }
 
 /// The label's weight, size in px and ink for a counter filled `fill` showing `count` on a
@@ -276,19 +337,20 @@ pub fn label_style(fill: Rgb, count: u32, d: f64, dpr: f64) -> (Weight, f64, Rgb
 /// Draws `k` on the main surface: with `ring`, its body's outline stroked white twice the
 /// [`ring_width`] wide, round-joined so the ring follows the tail's tip; then its body filled in
 /// its color, which covers the stroke's inner half; then its number in the [`label_style`],
-/// laid out by `label`.
+/// laid out by `label` and scaled down only if its ink would leave the circular body.
 ///
 /// # Panics
 /// When `k.size` is 10 or more; resolved sizes are 0 to 7.
 pub fn draw(c: &mut Canvas, k: &ResolvedCounter) {
     let d = DIAM[usize::from(k.size)];
+    let r = radius(k.size, c.dpr);
     let center = c.up(k.center);
     let opaque = |rgb| Ink {
         rgb,
         alpha: 1.0,
         blend: BlendMode::SourceOver,
     };
-    let outline = body(center, k.angle, radius(k.size, c.dpr), k.style);
+    let outline = body(center, k.angle, r, k.style);
     if k.ring {
         let style = StrokeStyle {
             width: 2.0 * ring_width(k.size, c.dpr, true),
@@ -300,7 +362,8 @@ pub fn draw(c: &mut Canvas, k: &ResolvedCounter) {
     }
     c.main().fill(&outline, opaque(k.color), FillRule::Winding);
     let (weight, px, ink) = label_style(k.color, k.number, d, c.dpr);
-    let glyphs = label(k.number, weight, px, center, d, c.dpr);
+    let mut glyphs = label(k.number, weight, px, center, d, c.dpr);
+    fit_label(&mut glyphs, center, r);
     c.main().fill(&glyphs, opaque(ink), FillRule::Winding);
 }
 
@@ -324,6 +387,46 @@ fn body(center: V2, angle: f64, r: f64, style: CounterStyle) -> PathData {
         let dist = r * (q.x * q.x + q.y * q.y).sqrt() / 25.0;
         center + V2::dir(turn + q.angle()) * dist
     })
+}
+
+/// Keeps the label's ink inside the circular body, leaving an already-fitting path unchanged.
+fn fit_label(path: &mut PathData, center: V2, r: f64) {
+    // A Bezier stays inside the convex hull of its controls. Most short labels fit without
+    // solving any curve extrema.
+    let inside = |p: V2| {
+        let q = p - center;
+        q.x * q.x + q.y * q.y <= r * r
+    };
+    if path.0.iter().all(|segment| match *segment {
+        Seg::Move(p) | Seg::Line(p) => inside(p),
+        Seg::Cubic(a, b, p) => inside(a) && inside(b) && inside(p),
+        Seg::Close => true,
+    }) {
+        return;
+    }
+    let Some([left, bottom, right, top]) = path.bounds(std::convert::identity) else {
+        return;
+    };
+    let dx = (left - center.x).abs().max((right - center.x).abs());
+    let dy = (bottom - center.y).abs().max((top - center.y).abs());
+    let reach = (dx * dx + dy * dy).sqrt();
+    if reach <= r {
+        return;
+    }
+    // Keep at least one pixel of clearance for antialiasing, or a tenth of larger radii.
+    let scale = (r - (r * 0.1).max(1.0)) / reach;
+    let fit = |p: &mut V2| *p = center + (*p - center) * scale;
+    for segment in &mut path.0 {
+        match segment {
+            Seg::Move(p) | Seg::Line(p) => fit(p),
+            Seg::Cubic(a, b, p) => {
+                fit(a);
+                fit(b);
+                fit(p);
+            }
+            Seg::Close => {}
+        }
+    }
 }
 
 /// `number` at `px` px per em on a counter of `d` points at `center` (y-up px). Its box

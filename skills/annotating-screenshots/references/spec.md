@@ -17,7 +17,7 @@
 - `"coords": {"space": "scaled", "width": W, "height": H}`: the coordinates were read on a W×H view of the image. Each axis is scaled separately; a W×H whose aspect ratio is more than 1 % off the image's gives a warning. Use it only for positions estimated on that view; numbers read off `grid` labels are already image pixels.
 - `"coords": {"space": "normalized"}`: 0–1000 across each axis.
 - Every coordinate must stay within 16× the image's longer side of the origin, or the spec is rejected.
-- Annotations partly outside the image are clipped; ones entirely outside are skipped. Both give a warning.
+- Annotations partly outside the image are clipped; ones entirely outside are skipped. Both give a warning. Counter bounds include the tail and optional white ring, so a visible tail or ring is still drawn when the circle is outside.
 - The stdout `spec` is always in image pixels with `"coords": {"space": "pixels"}`.
 
 ## Draw order

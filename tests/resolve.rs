@@ -1041,6 +1041,68 @@ fn auto_angle_keeps_the_badge_inside_the_crop() {
 }
 
 #[test]
+fn counter_auto_angle_warns_when_the_crop_cannot_hold_the_badge() {
+    // The 72 px body plus two 6 px rings is 84 px tall, but the crop is only 50 px tall.
+    let r = resolve_json(
+        r#"{"dpr": 2, "crop": [100, 100, 200, 50], "annotations": [
+            {"type": "counter", "at": [200, 125], "angle": "auto", "size": 2,
+             "ring": true}
+        ]}"#,
+        400,
+        300,
+    );
+    assert_eq!(warned_ids(&r), ["counter-1"]);
+    let Resolved::Counter(counter) = &r.items[0] else {
+        panic!("{:?}", r.items);
+    };
+    assert_eq!(
+        counter.size, 2,
+        "a failed fit must not change an explicit size"
+    );
+    assert!(counter.auto_at.is_none());
+}
+
+#[test]
+fn counter_auto_angle_warns_when_all_directions_overlap_an_annotation() {
+    // Every candidate center is 29.7 px from (200, 150). Its 18 px body is within this box.
+    let r = resolve_json(
+        r#"{"annotations": [
+            {"type": "counter", "at": [200, 150], "angle": "auto"},
+            {"type": "rect", "rect": [150, 100, 100, 100], "fill": "solid"}
+        ]}"#,
+        400,
+        300,
+    );
+    assert_eq!(warned_ids(&r), ["counter-1"]);
+}
+
+#[test]
+fn counter_auto_angle_warns_when_its_tail_ring_cannot_fit_the_crop() {
+    // A left-side body can fit, but its rightward tail and 3 px ring reach past crop x = 200.
+    let r = resolve_json(
+        r#"{"crop": [0, 0, 200, 300], "annotations": [
+            {"type": "counter", "at": [202, 150], "angle": "auto", "ring": true}
+        ]}"#,
+        400,
+        300,
+    );
+    assert_eq!(warned_ids(&r), ["counter-1"]);
+}
+
+#[test]
+fn counter_auto_angle_accepts_a_ring_touching_the_crop_edges() {
+    // A 36 px body plus two 3 px rings fits a 42 px crop exactly when the tail is horizontal.
+    let r = resolve_json(
+        r#"{"crop": [0, 0, 400, 42], "annotations": [
+            {"type": "counter", "at": [200, 21], "angle": "auto", "ring": true}
+        ]}"#,
+        400,
+        300,
+    );
+    assert_eq!(warned_ids(&r), Vec::<&str>::new());
+}
+
+#[test]
 fn oval_around_resolves_to_a_rect_that_contains_its_target() {
     // `around` is the target's box; the resolved spec gives the oval's own `rect`, larger than
     // the box, and no `around`, so feeding it back draws the same oval.
