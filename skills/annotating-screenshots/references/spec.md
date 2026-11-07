@@ -51,6 +51,7 @@ A PNG without DPI gets dpr 1 and a warning, because many tools save Retina captu
 | `shape` | spotlight | `rect` |
 | `angle` | counter | 135 |
 | `number` | counter | one more than the largest so far |
+| `ring` | counter | `false` |
 | `dash`, `start_cap`, `end_cap` | line | `false`, `none`, `none` |
 | `coords` | spec | `{"space": "pixels"}` |
 | `spotlight_dim` (0–1) | spec | 0.214 |
