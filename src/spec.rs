@@ -278,12 +278,33 @@ pub struct CounterSpec {
     pub at: Option<Point>,
     /// The badge center `[x, y]`, instead of `at`.
     pub center: Option<Point>,
-    /// Tail direction in degrees: 0 right, 90 down. Default 135 (down-left).
-    pub angle: Option<f64>,
+    /// Tail direction in degrees: 0 right, 90 down. Default 135 (down-left). `"auto"` (with
+    /// `at`, for a `bubble` or `pin`) picks the direction whose badge stays inside the image,
+    /// off the other annotations and over the calmest pixels; the resolved spec gives the
+    /// number it picked.
+    pub angle: Option<Angle>,
     /// Default `bubble`.
     pub style: Option<CounterStyle>,
     /// Default: one more than the largest number of the counters before it.
     pub number: Option<u32>,
+}
+
+/// A counter's tail direction.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(untagged)]
+pub enum Angle {
+    /// Degrees on screen: 0 right, 90 down.
+    Degrees(f64),
+    /// Chosen by markshot.
+    Keyword(AngleKeyword),
+}
+
+/// The word an [`Angle`] may be instead of a number.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum AngleKeyword {
+    /// The direction whose badge fits best.
+    Auto,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]

@@ -5,7 +5,7 @@ use serde::Serialize;
 use crate::canvas::Canvas;
 use crate::error::Error;
 use crate::image_io::{ColorSpace, SourceImage, dpr_from_dpi};
-use crate::resolve::{Resolved, Warning, resolve};
+use crate::resolve::{Resolved, Warning, resolve_on};
 use crate::spec::Spec;
 use crate::tools;
 use crate::tools::shape::ShapeKind;
@@ -41,7 +41,14 @@ pub fn render(
     dpr_override: Option<f64>,
 ) -> Result<(Vec<u8>, Report), Error> {
     let (width, height) = (src.width, src.height);
-    let resolution = resolve(spec, width, height, dpr_from_dpi(src.dpi), dpr_override)?;
+    let resolution = resolve_on(
+        spec,
+        width,
+        height,
+        &src.rgba,
+        dpr_from_dpi(src.dpi),
+        dpr_override,
+    )?;
     let mut warnings = Vec::new();
     if src.dpi.is_none() && dpr_override.is_none() && spec.dpr.is_none() {
         warnings.push(Warning {

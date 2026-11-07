@@ -85,12 +85,13 @@ The whole image is dimmed with black at the top-level `spotlight_dim` (default 0
 
 `at` is the point the badge's tail marks; the badge sits 1.65 radii away, opposite the tail. `angle` is the tail's direction in degrees: 0 right, 90 down, 135 down-left (the default). `style` is `bubble` (default), `pin` or `circle`; a `circle` has no tail and is centred on `at`. `center` places the badge itself instead of `at`. `number` defaults to one more than the largest so far. The badge diameter for `size` 0–7 is 22, 28, 36, 48, 64, 84, 112, 150 points.
 
-To keep a badge off the thing it points at, aim the tail from the empty side: a badge left of a box points right with `"angle": 0`. The badge needs about 2.65 radii of free space on that side (around 95 px at size 2 on a dpr 2 capture); where no side has that much, aim diagonally (e.g. `45`, `135`) or use a smaller `size`.
+To keep a badge off the thing it points at, aim the tail from the empty side: a badge left of a box points right with `"angle": 0`. The badge needs about 2.65 radii of free space on that side (around 95 px at size 2 on a dpr 2 capture). When you are not sure which side is free, use `"angle": "auto"`: markshot tries 24 directions and keeps the badge inside the image, off other annotations and off text, and the stdout spec gives the angle it chose. If no side is free, use a smaller `size`.
 
 ```json
 {"annotations": [
   {"type": "counter", "at": [200, 200]},
   {"type": "counter", "at": [400, 200], "angle": 90, "style": "pin"},
+  {"type": "counter", "at": [400, 400], "angle": "auto"},
   {"type": "counter", "center": [600, 200], "style": "circle", "number": 7}
 ]}
 ```

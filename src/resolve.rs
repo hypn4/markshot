@@ -14,8 +14,9 @@ use crate::error::Error;
 use crate::geom::V2;
 use crate::rng::{MAX_SEED, seed_from_id};
 use crate::spec::{
-    Annotation, ArrowSpec, ArrowStyle, BlurMode, BlurSpec, Cap, Coords, CounterSpec, CounterStyle,
-    Fill, HighlightSpec, LineSpec, Point, Rect, ShapeSpec, Spec, SpotShape, SpotlightSpec,
+    Angle, AngleKeyword, Annotation, ArrowSpec, ArrowStyle, BlurMode, BlurSpec, Cap, Coords,
+    CounterSpec, CounterStyle, Fill, HighlightSpec, LineSpec, Point, Rect, ShapeSpec, Spec,
+    SpotShape, SpotlightSpec,
 };
 use crate::tools::counter;
 
@@ -110,6 +111,9 @@ pub struct ResolvedCounter {
     pub angle: f64,
     pub style: CounterStyle,
     pub number: u32,
+    /// The point the tail marks (y-down px) while `angle` is `"auto"` and still to be chosen;
+    /// `None` once `angle` and `center` are final.
+    pub auto_at: Option<Point>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -228,7 +232,7 @@ impl Resolved {
                 size: Some(c.size),
                 at: None,
                 center: Some(c.center),
-                angle: Some(c.angle),
+                angle: Some(Angle::Degrees(c.angle)),
                 style: Some(c.style),
                 number: Some(c.number),
             }),
@@ -301,12 +305,42 @@ impl Resolution {
 /// 0.5 to 4. Each coordinate must map to at most 16× the longer image side in pixels; a
 /// counter's `center` may lie as far past that as its `at` can put it.
 ///
+/// A counter with `"angle": "auto"` is placed without looking at the pixels; see
+/// [`resolve_on`].
+///
 /// # Errors
 /// [`Error::Spec`] naming the offending value, e.g. `annotations[2].size`, `dpr` or `--dpr`.
 pub fn resolve(
     spec: &Spec,
     width: u32,
     height: u32,
+    image_dpr: f64,
+    dpr_override: Option<f64>,
+) -> Result<Resolution, Error> {
+    resolve_with(spec, width, height, None, image_dpr, dpr_override)
+}
+
+/// [`resolve`] for the `width` × `height` straight-alpha RGBA8 image `rgba`, whose pixels a
+/// counter with `"angle": "auto"` keeps its badge off.
+///
+/// # Errors
+/// As [`resolve`].
+pub fn resolve_on(
+    spec: &Spec,
+    width: u32,
+    height: u32,
+    rgba: &[u8],
+    image_dpr: f64,
+    dpr_override: Option<f64>,
+) -> Result<Resolution, Error> {
+    resolve_with(spec, width, height, Some(rgba), image_dpr, dpr_override)
+}
+
+fn resolve_with(
+    spec: &Spec,
+    width: u32,
+    height: u32,
+    rgba: Option<&[u8]>,
     image_dpr: f64,
     dpr_override: Option<f64>,
 ) -> Result<Resolution, Error> {
@@ -330,7 +364,7 @@ pub fn resolve(
         .transpose()?;
     let ids = assign_ids(&spec.annotations)?;
     let mut max_number = 0;
-    let mut items = Vec::with_capacity(spec.annotations.len());
+    let mut all = Vec::with_capacity(spec.annotations.len());
     for (index, (annotation, id)) in spec.annotations.iter().zip(ids).enumerate() {
         let resolver = Resolver {
             index,
@@ -338,7 +372,11 @@ pub fn resolve(
             dpr,
             height: f64::from(height),
         };
-        let item = resolver.annotation(annotation, id, &mut max_number)?;
+        all.push(resolver.annotation(annotation, id, &mut max_number)?);
+    }
+    place_auto_counters(&mut all, dpr, width, height, rgba);
+    let mut items = Vec::with_capacity(all.len());
+    for item in all {
         let warning = |message| Warning {
             id: item.id().to_owned(),
             message,
@@ -369,6 +407,78 @@ pub fn resolve(
         items,
         warnings,
     })
+}
+
+/// Gives each counter with `"angle": "auto"` its angle and center, in spec order: the first of
+/// [`counter::AUTO_ANGLES`] with the lowest [`counter::placement_cost`], the obstacles being
+/// every other annotation's extent except counters still to be placed.
+fn place_auto_counters(
+    items: &mut [Resolved],
+    dpr: f64,
+    width: u32,
+    height: u32,
+    rgba: Option<&[u8]>,
+) {
+    for i in 0..items.len() {
+        let Resolved::Counter(ResolvedCounter {
+            auto_at: Some(at),
+            size,
+            style,
+            ..
+        }) = items[i]
+        else {
+            continue;
+        };
+        let obstacles: Vec<[f64; 4]> = items
+            .iter()
+            .enumerate()
+            .filter(|&(j, item)| {
+                j != i
+                    && !matches!(
+                        item,
+                        Resolved::Counter(ResolvedCounter {
+                            auto_at: Some(_),
+                            ..
+                        })
+                    )
+            })
+            .filter_map(|(_, item)| item.extent(dpr).ok())
+            .collect();
+        let r = counter::radius(size, dpr);
+        let image = counter::Pixels {
+            width,
+            height,
+            rgba,
+        };
+        let angle = counter::AUTO_ANGLES
+            .into_iter()
+            .map(|angle| {
+                (
+                    angle,
+                    counter::placement_cost(at, angle, r, &image, &obstacles),
+                )
+            })
+            .fold(None, |best: Option<(f64, f64)>, (angle, cost)| match best {
+                Some((_, best_cost)) if best_cost <= cost => best,
+                _ => Some((angle, cost)),
+            })
+            .map_or(DEFAULT_COUNTER_ANGLE, |(angle, _)| angle);
+        let h = f64::from(height);
+        let center = counter::center_from_at(
+            V2 {
+                x: at[0],
+                y: h - at[1],
+            },
+            angle,
+            r,
+            style,
+        );
+        if let Resolved::Counter(c) = &mut items[i] {
+            c.angle = angle;
+            c.center = [round_pixel(center.x), round_pixel(h - center.y)];
+            c.auto_at = None;
+        }
+    }
 }
 
 /// The spec's `crop` in whole pixels, rounded like a rect's corners and clipped to the
@@ -624,8 +734,19 @@ impl Resolver<'_> {
     fn counter(&self, c: &CounterSpec, id: String, number: u32) -> Result<ResolvedCounter, Error> {
         let size = self.size(c.size)?;
         let style = c.style.unwrap_or_default();
-        let angle = c.angle.unwrap_or(DEFAULT_COUNTER_ANGLE);
+        let auto = c.angle == Some(Angle::Keyword(AngleKeyword::Auto));
+        if auto && (c.at.is_none() || style == CounterStyle::Circle) {
+            return Err(self.error(
+                "angle",
+                "\"auto\" needs a tail to aim: a `bubble` or `pin` with `at`",
+            ));
+        }
+        let angle = match c.angle {
+            Some(Angle::Degrees(angle)) => angle,
+            Some(Angle::Keyword(AngleKeyword::Auto)) | None => DEFAULT_COUNTER_ANGLE,
+        };
         let r = counter::radius(size, self.dpr);
+        let mut auto_at = None;
         let center = match (c.at, c.center) {
             // `at` can put the center 1.65 radii past the coordinate limit (and half a pixel
             // more by rounding), and a resolved spec gives that center back.
@@ -638,6 +759,9 @@ impl Resolver<'_> {
                 // `at` is the point the tail marks; the badge sits opposite its tail. Only `at`
                 // is bounded.
                 let [x, y] = self.point("at", at)?;
+                if auto {
+                    auto_at = Some([x, y]);
+                }
                 let at_up = V2 {
                     x,
                     y: self.height - y,
@@ -657,6 +781,7 @@ impl Resolver<'_> {
             angle,
             style,
             number,
+            auto_at,
             id,
         })
     }
