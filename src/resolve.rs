@@ -119,6 +119,8 @@ pub struct ResolvedCounter {
     pub angle: f64,
     pub style: CounterStyle,
     pub number: u32,
+    /// Whether a white ring goes around the body.
+    pub ring: bool,
     /// The point the tail marks (y-down px) while `angle` is `"auto"` and still to be chosen;
     /// `None` once `angle` and `center` are final.
     pub auto_at: Option<Point>,
@@ -202,7 +204,7 @@ impl Resolved {
             },
             Self::Highlight(h) => Ok(bounds(&h.points)),
             Self::Counter(c) => {
-                let r = counter::radius(c.size, dpr);
+                let r = counter::radius(c.size, dpr) + counter::ring_width(c.size, dpr, c.ring);
                 let [x, y] = c.center;
                 Ok([x - r, y - r, x + r, y + r])
             }
@@ -262,6 +264,7 @@ impl Resolved {
                 angle: Some(Angle::Degrees(c.angle)),
                 style: Some(c.style),
                 number: Some(c.number),
+                ring: c.ring.then_some(true),
             }),
             Self::Line(l) => Annotation::Line(LineSpec {
                 id: Some(l.id.clone()),
@@ -544,6 +547,7 @@ fn place_auto_counters(
             auto_at: Some(at),
             size,
             style,
+            ring,
             ..
         }) = items[i]
         else {
@@ -576,7 +580,14 @@ fn place_auto_counters(
             .map(|angle| {
                 (
                     angle,
-                    counter::placement_cost(at, angle, r, &image, &obstacles),
+                    counter::placement_cost(
+                        at,
+                        angle,
+                        r,
+                        counter::ring_width(size, dpr, ring),
+                        &image,
+                        &obstacles,
+                    ),
                 )
             })
             .fold(None, |best: Option<(f64, f64)>, (angle, cost)| match best {
@@ -918,6 +929,7 @@ impl Resolver<'_> {
             angle,
             style,
             number,
+            ring: c.ring.unwrap_or(false),
             auto_at,
             id,
         })
