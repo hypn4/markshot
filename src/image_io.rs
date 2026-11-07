@@ -145,6 +145,20 @@ fn read_pixels(reader: &mut png::Reader<Cursor<&[u8]>>) -> Result<Vec<u8>, Error
     Ok(image)
 }
 
+/// The Rec. 601 luma, 0 to 1, of the pixel containing `[x, y]` (y-down px, inside the image)
+/// of the `width`-wide straight-alpha RGBA8 `rgba`.
+#[must_use]
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "x and y are non-negative and inside the image"
+)]
+pub fn luma(rgba: &[u8], width: u32, [x, y]: [f64; 2]) -> f64 {
+    let start = (y as usize * width as usize + x as usize) * 4;
+    let [red, green, blue] = [rgba[start], rgba[start + 1], rgba[start + 2]].map(f64::from);
+    (0.299 * red + 0.587 * green + 0.114 * blue) / 255.0
+}
+
 /// Encodes straight-alpha RGBA8 rows, writing `dpi` as pHYs (pixels per meter) and `icc` as iCCP.
 ///
 /// # Errors

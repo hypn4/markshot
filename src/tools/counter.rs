@@ -10,6 +10,7 @@ use tiny_skia::{BlendMode, FillRule};
 use crate::canvas::{Canvas, Ink};
 use crate::color::Rgb;
 use crate::geom::{PathData, V2};
+use crate::image_io::luma;
 use crate::resolve::ResolvedCounter;
 use crate::spec::CounterStyle;
 use crate::svg_path::parse_mlc;
@@ -183,16 +184,6 @@ pub const AUTO_ANGLES: [f64; 24] = [
     240.0, 15.0, 255.0, 0.0, 270.0, 345.0, 285.0, 330.0, 300.0, 315.0,
 ];
 
-/// The image a counter is placed on: its size, its straight-alpha RGBA8 pixels when known,
-/// and the part of it the badge must stay in (`[x0, y0, x1, y1]`, y-down px): the whole image,
-/// or the crop that is written.
-pub struct Pixels<'a> {
-    pub width: u32,
-    pub height: u32,
-    pub rgba: Option<&'a [u8]>,
-    pub area: [f64; 4],
-}
-
 /// How badly a badge of radius `r` sits when its tail marks `at` (y-down px) along `angle`:
 /// over a 9 × 9 grid of samples across the disc 1.1 r around its center, 1000 × the share
 /// outside `image.area`, plus 100 × the share inside any of `obstacles` (`[x0, y0, x1, y1]`,
@@ -203,7 +194,7 @@ pub fn placement_cost(
     at: [f64; 2],
     angle: f64,
     r: f64,
-    image: &Pixels<'_>,
+    image: &super::Pixels<'_>,
     obstacles: &[[f64; 4]],
 ) -> f64 {
     let height = f64::from(image.height);
@@ -251,19 +242,6 @@ pub fn placement_cost(
         lumas.iter().map(|l| (l - mean).abs()).sum::<f64>() / n
     };
     1000.0 * outside / samples + 100.0 * covered / samples + 10.0 * busy
-}
-
-/// The Rec. 601 luma, 0 to 1, of the pixel containing `[x, y]` (y-down px, inside the image)
-/// of the `width`-wide `rgba`.
-#[expect(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "x and y are non-negative and inside the image"
-)]
-fn luma(rgba: &[u8], width: u32, [x, y]: [f64; 2]) -> f64 {
-    let start = (y as usize * width as usize + x as usize) * 4;
-    let [red, green, blue] = [rgba[start], rgba[start + 1], rgba[start + 2]].map(f64::from);
-    (0.299 * red + 0.587 * green + 0.114 * blue) / 255.0
 }
 
 /// The label's weight, size in px and ink for a counter filled `fill` showing `count` on a

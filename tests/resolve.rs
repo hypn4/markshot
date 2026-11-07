@@ -1039,3 +1039,59 @@ fn auto_angle_keeps_the_badge_inside_the_crop() {
     let (angle, [x, _]) = counter_placement(json, 400, 300);
     assert!(x + 18.0 <= 300.0, "{angle}: badge centre x {x}");
 }
+
+#[test]
+fn oval_around_resolves_to_a_rect_that_contains_its_target() {
+    // `around` is the target's box; the resolved spec gives the oval's own `rect`, larger than
+    // the box, and no `around`, so feeding it back draws the same oval.
+    let r = resolve_json(
+        r#"{"annotations": [{"type": "oval", "around": [300, 200, 240, 42]}]}"#,
+        800,
+        600,
+    );
+    let Resolved::Oval(oval) = &r.items[0] else {
+        panic!("{:?}", r.items[0]);
+    };
+    let [left, top, width, height] = oval.rect;
+    assert!(
+        left < 300.0 && top < 200.0 && left + width > 540.0 && top + height > 242.0,
+        "{:?}",
+        oval.rect
+    );
+    let spec = serde_json::to_value(r.to_spec()).expect("spec serializes");
+    assert_eq!(spec["annotations"][0]["around"], json!(null));
+    assert_eq!(spec["annotations"][0]["rect"], json!(oval.rect));
+}
+
+#[test]
+fn around_is_for_ovals_and_excludes_rect() {
+    for (shape, message) in [
+        (
+            r#"{"type": "rect", "around": [10, 10, 50, 20]}"#,
+            "`around` is for ovals",
+        ),
+        (
+            r#"{"type": "oval", "around": [10, 10, 50, 20], "rect": [0, 0, 80, 40]}"#,
+            "not both",
+        ),
+    ] {
+        let json = format!(r#"{{"annotations": [{shape}]}}"#);
+        let (path, got) = spec_error(resolve(&parse(&json), 400, 300, 1.0, None));
+        assert!(path.starts_with("annotations[0]"), "{shape}: {path}");
+        assert!(got.contains(message), "{shape}: {got}");
+    }
+}
+
+#[test]
+fn a_seed_given_with_around_is_kept() {
+    // Fitting may pick another seed only when the spec leaves it to markshot.
+    let r = resolve_json(
+        r#"{"annotations": [{"type": "oval", "seed": 5, "around": [300, 200, 240, 42]}]}"#,
+        800,
+        600,
+    );
+    let Resolved::Oval(oval) = &r.items[0] else {
+        panic!("{:?}", r.items[0]);
+    };
+    assert_eq!(oval.seed, 5);
+}

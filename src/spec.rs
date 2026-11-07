@@ -166,9 +166,14 @@ pub struct ShapeSpec {
     pub size: Option<u8>,
     /// Seed of the hand-drawn randomness of `sketch`, 0 to 2^53 − 1. Default: derived from `id`.
     pub seed: Option<u64>,
-    /// `[x, y, width, height]`.
-    #[schemars(required)]
+    /// `[x, y, width, height]`. An oval may give `around` instead.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub rect: Option<Rect>,
+    /// Ovals only, instead of `rect`: the box `[x, y, width, height]` of the thing to circle.
+    /// markshot sizes the oval so that its line clears the box and crosses as little of the
+    /// image's ink (neighbouring text, borders) as it can; the resolved spec gives that `rect`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub around: Option<Rect>,
     /// Default `sketch`.
     pub fill: Option<Fill>,
     /// Opacity of the `semi` and `solid` fill, 0.1 to 1. Default 0.4 for `semi`, 1 for `solid`.

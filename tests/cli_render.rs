@@ -465,3 +465,54 @@ fn auto_angle_avoids_busy_pixels_and_round_trips() {
         "the PNGs differ"
     );
 }
+
+#[test]
+fn oval_around_clears_its_target_and_the_text_next_to_it() {
+    // A 240×42 target on white with black "description" bars 18 px above and below it, as
+    // under a toggle in a dense settings list (dpr 2). For every id tried, a hand-drawn oval
+    // drawn `around` the target leaves the target untouched, and with the thinner size 1 line
+    // also both bars.
+    let dir = work_dir("oval_around_clears_its_target_and_the_text_next_to_it");
+    let (w, h) = (800_u32, 400_u32);
+    let target = (300_u32, 180_u32, 540_u32, 222_u32);
+    let bars = [(300_u32, 150_u32, 700_u32, 162_u32), (300, 240, 700, 252)];
+    let inside = |x: u32, y: u32, (x0, y0, x1, y1): (u32, u32, u32, u32)| {
+        (x0..x1).contains(&x) && (y0..y1).contains(&y)
+    };
+    let rgba: Vec<u8> = (0..h)
+        .flat_map(|y| (0..w).map(move |x| (x, y)))
+        .flat_map(|(x, y)| {
+            let v = if bars.iter().any(|&b| inside(x, y, b)) {
+                0
+            } else {
+                255
+            };
+            [v, v, v, 255]
+        })
+        .collect();
+    let input = dir.join("input.png");
+    fs::write(&input, encode_png(w, h, &rgba, Some(144.0), None).unwrap()).unwrap();
+    let src = read_png(&input);
+    let out = dir.join("out.png");
+    // Without a seed the fit may also pick one of the next seeds, here from each id's own.
+    let ids = ["a", "b", "c", "d", "e", "f"];
+    for (size, kept) in [(1, vec![target, bars[0], bars[1]]), (2, vec![target])] {
+        for id in ids {
+            let spec = json!({"annotations": [{"type": "oval", "id": id, "size": size,
+                "around": [300, 180, 240, 42]}]});
+            report(&render(&input, &out, &spec, &[]));
+            let image = read_png(&out);
+            for &(x0, y0, x1, y1) in &kept {
+                for y in y0..y1 {
+                    for x in x0..x1 {
+                        assert_eq!(
+                            pixel(&image, x, y),
+                            pixel(&src, x, y),
+                            "size {size}, id {id}: ({x}, {y})"
+                        );
+                    }
+                }
+            }
+        }
+    }
+}
