@@ -32,6 +32,7 @@ cargo test --locked
 | `src/canvas.rs`, `src/text.rs`, `src/color.rs`, `src/image_io.rs` | Y-up canvas, embedded Inter text, colour helpers, PNG in and out |
 | `src/math.rs`, `src/rng.rs` | Platform-independent float functions and the seeded generator |
 | `tests/` | CLI, resolver, golden-image, determinism and skill-example tests |
+| `scripts/` | `install.sh` and `install.ps1`, published with every release and tested on each CI platform |
 | `assets/examples/` | The README's example images and the specs that drew them (`tests/readme_examples.rs` keeps the specs valid) |
 | `fuzz/` | `cargo fuzz` targets for PNG decoding and rendering, with their seed inputs |
 | `skills/annotating-screenshots/` | The Agent Skill shipped to users; `evals/` holds its scenarios |

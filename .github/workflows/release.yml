@@ -115,8 +115,9 @@ jobs:
           pattern: markshot-*
           path: build
       - name: Collect binaries
-        # Assets are the bare executables, `markshot-<target>` (`.exe` on Windows). The embedded
-        # Inter fonts carry their own copyright and OFL notice.
+        # Assets are the bare executables, `markshot-<target>` (`.exe` on Windows), and the
+        # install scripts (which fetch the latest release unless `MARKSHOT_VERSION` names one).
+        # The embedded Inter fonts carry their own copyright and OFL notice.
         run: |
           mkdir dist
           for dir in build/markshot-*; do
@@ -126,6 +127,7 @@ jobs:
               *) cp "$dir/markshot" "dist/$name" ;;
             esac
           done
+          cp scripts/install.sh scripts/install.ps1 dist/
           (cd dist && sha256sum -- * > SHA256SUMS)
           cat dist/SHA256SUMS
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
