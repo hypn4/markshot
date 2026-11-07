@@ -14,7 +14,7 @@ here="$repo/evals/annotating-screenshots"
 cargo build --release --locked --quiet --manifest-path "$repo/Cargo.toml"
 mkdir -p "$eval_dir/bin" "$eval_dir/runs"
 ln -sf "$repo/target/release/markshot" "$eval_dir/bin/markshot"
-cp "$here/shot.png" "$eval_dir/shot.png"
+cp "$here/shot.png" "$here/console.png" "$eval_dir/"
 # The same screenshot without its pHYs chunk, as some tools save Retina captures.
 python3 - "$here/shot.png" "$eval_dir/shot-nodpi.png" <<'PY'
 import struct, sys
