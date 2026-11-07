@@ -25,6 +25,10 @@ pub struct Spec {
     pub dpr: Option<f64>,
     /// Opacity, 0 to 1, of the black curtain that spotlights cut holes in. Default 0.214.
     pub spotlight_dim: Option<f64>,
+    /// Writes only this part of the annotated image, `[x, y, width, height]` in the coordinate
+    /// space, clipped to the image. Default: the whole image.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub crop: Option<Rect>,
     /// Drawn blurs first, then the spotlight curtain, then everything else in order.
     pub annotations: Vec<Annotation>,
 }

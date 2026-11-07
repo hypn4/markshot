@@ -9,6 +9,7 @@
 - [Size and dpr](#size-and-dpr)
 - [Defaults](#defaults)
 - [Colours](#colours)
+- [Cropping the output](#cropping-the-output)
 
 ## Coordinates
 
@@ -52,6 +53,7 @@ A PNG without DPI gets dpr 1 and a warning, because many tools save Retina captu
 | `dash`, `start_cap`, `end_cap` | line | `false`, `none`, `none` |
 | `coords` | spec | `{"space": "pixels"}` |
 | `spotlight_dim` (0–1) | spec | 0.214 |
+| `crop` (`[x, y, width, height]`) | spec | the whole image |
 | `dpr` (0.5–4) | spec | from the PNG's DPI (144 → 2), else 1 |
 
 Unknown fields are errors.
@@ -73,3 +75,14 @@ Unknown fields are errors.
 | white | `#FFFFFF` |
 
 For a highlighter, pass the plain colour; the blend darkens it on light backgrounds.
+
+## Cropping the output
+
+A top-level `"crop": [x, y, width, height]` writes only that part of the annotated image, for a guide that shows one panel. It uses the same coordinates as the annotations, so keep reading positions on the whole image; the report's `width` and `height` stay the whole image's. Leave room around the marks: badges and hand-drawn lines reach a little past their targets.
+
+```json
+{"crop": [60, 40, 520, 300], "annotations": [
+  {"type": "rect", "rect": [120, 100, 200, 80], "fill": "outline"},
+  {"type": "counter", "at": [118, 140], "angle": 0}
+]}
+```

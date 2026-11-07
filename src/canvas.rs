@@ -9,7 +9,7 @@ use tiny_skia::{
 use crate::color::Rgb;
 use crate::error::Error;
 use crate::geom::{PathData, Seg, V2};
-use crate::image_io::{ColorSpace, SourceImage, encode_png};
+use crate::image_io::{ColorSpace, SourceImage, crop_rgba, encode_png};
 
 /// CoreGraphics' default miter limit (tiny-skia's own default is 4).
 const MITER_LIMIT: f32 = 10.0;
@@ -277,6 +277,22 @@ impl Canvas {
             self.width,
             self.height,
             &self.main.to_rgba(),
+            self.src.dpi,
+            self.src.icc.as_deref(),
+        )
+    }
+
+    /// Encodes the `[x, y, width, height]` part of the main surface (y-down px, within the
+    /// image), keeping the source's DPI and ICC profile.
+    ///
+    /// # Errors
+    /// [`Error::Png`] when encoding fails.
+    pub fn into_cropped_png(self, region: [u32; 4]) -> Result<Vec<u8>, Error> {
+        let rgba = crop_rgba(&self.main.to_rgba(), self.width, region);
+        encode_png(
+            region[2],
+            region[3],
+            &rgba,
             self.src.dpi,
             self.src.icc.as_deref(),
         )

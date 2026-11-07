@@ -399,3 +399,39 @@ fn other_colour_profiles_warn() {
         assert_eq!(read_png(&out).icc, Some(icc), "{description}");
     }
 }
+
+#[test]
+fn crop_writes_only_that_part_and_round_trips() {
+    // `"crop": [100, 50, 200, 120]` on the 600×400 fixture writes a 200×120 PNG whose pixels
+    // are the full render's from (100, 50), with the DPI kept; the report still describes the
+    // whole image, and its resolved spec (with the crop) renders the same bytes again.
+    let dir = work_dir("crop_writes_only_that_part_and_round_trips");
+    let input = write_fixture(&dir);
+    let line = json!({"type": "line", "from": [40, 60], "to": [560, 340]});
+    let full = dir.join("full.png");
+    report(&render(&input, &full, &json!({"annotations": [line]}), &[]));
+    let out = dir.join("out.png");
+    let spec = json!({"crop": [100, 50, 200, 120], "annotations": [line]});
+    let first = report(&render(&input, &out, &spec, &[]));
+    assert_eq!(
+        (first["width"].clone(), first["height"].clone()),
+        (json!(600), json!(400))
+    );
+    assert_eq!(first["spec"]["crop"], json!([100.0, 50.0, 200.0, 120.0]));
+    let (full, cropped) = (read_png(&full), read_png(&out));
+    assert_eq!((cropped.width, cropped.height), (200, 120));
+    assert_eq!(cropped.dpi, Some(144.0));
+    for (x, y) in [(0, 0), (199, 119), (150, 70), (60, 30)] {
+        assert_eq!(
+            pixel(&cropped, x, y),
+            pixel(&full, x + 100, y + 50),
+            "({x}, {y})"
+        );
+    }
+    let again = dir.join("again.png");
+    report(&render(&input, &again, &first["spec"], &[]));
+    assert!(
+        fs::read(&again).unwrap() == fs::read(&out).unwrap(),
+        "the PNGs differ"
+    );
+}

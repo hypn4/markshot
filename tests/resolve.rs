@@ -5,7 +5,7 @@ use std::fmt::Debug;
 
 use markshot::color::Rgb;
 use markshot::error::Error;
-use markshot::resolve::{Resolution, Resolved, resolve};
+use markshot::resolve::{Resolution, Resolved, Warning, resolve};
 use markshot::rng::seed_from_id;
 use markshot::spec::{ArrowStyle, BlurMode, Cap, CounterStyle, Fill, Spec, SpotShape};
 use serde_json::json;
@@ -859,5 +859,62 @@ fn to_spec_spells_out_every_field() {
     assert_eq!(
         spec["annotations"][4]["points"],
         json!([[40.0, 80.0], [90.0, 80.0]])
+    );
+}
+
+#[test]
+fn crop_maps_like_a_rect_and_is_clipped_to_the_image() {
+    // `crop` is in the spec's coordinate space: on a 400×300 view of the 800×600 image,
+    // [50, 40, 100, 80] is [100, 80, 200, 160] in pixels. One running off the image keeps the
+    // part inside, and the resolved spec lists the pixel crop.
+    let r = resolve_json(
+        r#"{"coords": {"space": "scaled", "width": 400, "height": 300},
+            "crop": [50, 40, 100, 80], "annotations": []}"#,
+        800,
+        600,
+    );
+    assert_eq!(r.crop, Some([100.0, 80.0, 200.0, 160.0]));
+    assert_eq!(r.to_spec().crop, Some([100.0, 80.0, 200.0, 160.0]));
+    let r = resolve_json(
+        r#"{"crop": [700, 500, 300, 300], "annotations": []}"#,
+        800,
+        600,
+    );
+    assert_eq!(r.crop, Some([700.0, 500.0, 100.0, 100.0]));
+    assert_eq!(resolve_json(r#"{"annotations": []}"#, 800, 600).crop, None);
+}
+
+#[test]
+fn crop_without_area_or_off_the_image_is_an_error() {
+    for (crop, message) in [
+        ("[10, 10, 0, 50]", "must have a positive width and height"),
+        ("[900, 0, 50, 50]", "outside the 800×600 image"),
+        ("[-100, -100, 100, 100]", "outside the 800×600 image"),
+    ] {
+        let json = format!(r#"{{"crop": {crop}, "annotations": []}}"#);
+        let (path, got) = spec_error(resolve(&parse(&json), 800, 600, 1.0, None));
+        assert_eq!(path, "crop", "{crop}");
+        assert!(got.starts_with(message), "{crop}: {got}");
+    }
+}
+
+#[test]
+fn an_annotation_outside_the_crop_warns() {
+    // Drawn on the image, but none of it reaches the cropped output.
+    let r = resolve_json(
+        r#"{"crop": [0, 0, 100, 100], "annotations": [
+            {"type": "rect", "rect": [20, 20, 40, 40]},
+            {"type": "rect", "rect": [300, 300, 40, 40]}
+        ]}"#,
+        800,
+        600,
+    );
+    assert_eq!(r.items.len(), 2);
+    assert_eq!(
+        r.warnings,
+        [Warning {
+            id: "rect-2".to_owned(),
+            message: "entirely outside the crop; drawn but not in the output".to_owned(),
+        }]
     );
 }

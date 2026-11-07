@@ -84,6 +84,20 @@ pub fn decode_png(bytes: &[u8]) -> Result<SourceImage, Error> {
     })
 }
 
+/// The `[x, y, width, height]` part of `rgba`, an image `stride_px` pixels wide, as RGBA8 rows.
+/// The part must lie within the image.
+#[must_use]
+pub fn crop_rgba(rgba: &[u8], stride_px: u32, [x, y, width, height]: [u32; 4]) -> Vec<u8> {
+    let (stride, left, len) = (stride_px as usize * 4, x as usize * 4, width as usize * 4);
+    (y..y + height)
+        .flat_map(|r| {
+            let start = r as usize * stride + left;
+            &rgba[start..start + len]
+        })
+        .copied()
+        .collect()
+}
+
 /// Encodes straight-alpha RGBA8 rows, writing `dpi` as pHYs (pixels per meter) and `icc` as iCCP.
 ///
 /// # Errors

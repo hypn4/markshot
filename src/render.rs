@@ -25,7 +25,8 @@ pub struct Report {
 
 /// Draws `spec` on `src` and encodes the result as PNG, keeping the source's DPI and ICC
 /// profile. The order is fixed: ① every blur, ② the spotlight curtain, ③ everything else in
-/// spec order, spotlight borders included. A profile other than sRGB or Display P3 is treated
+/// spec order, spotlight borders included. With a `crop` only that part is encoded; the report
+/// still gives the whole image's size. A profile other than sRGB or Display P3 is treated
 /// as sRGB, with a warning. A PNG without DPI also gets a warning when neither `dpr_override`
 /// nor the spec gives the dpr, since its default of 1 is wrong for a high-density capture.
 ///
@@ -91,6 +92,10 @@ pub fn render(
         }
     }
     let resolved = resolution.to_spec();
+    let png = match resolution.crop {
+        Some(crop) => canvas.into_cropped_png(whole_pixels(crop))?,
+        None => canvas.into_png()?,
+    };
     warnings.extend(resolution.warnings);
     let report = Report {
         width,
@@ -99,7 +104,17 @@ pub fn render(
         spec: resolved,
         warnings,
     };
-    Ok((canvas.into_png()?, report))
+    Ok((png, report))
+}
+
+/// A resolved crop, whole non-negative pixels, as integers.
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "a resolved crop is whole pixels within the image"
+)]
+fn whole_pixels(rect: [f64; 4]) -> [u32; 4] {
+    rect.map(|v| v as u32)
 }
 
 #[cfg(test)]

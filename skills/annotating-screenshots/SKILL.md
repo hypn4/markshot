@@ -50,6 +50,7 @@ Copy this checklist and tick it off:
 | frame something and dim the rest | `rect`, `oval` | `"spotlight": true` on the frame, not a second spotlight |
 | number the steps | `counter` | `at` (where the tail points), `angle`; `style`; `number` |
 | draw a line or divider | `line` | `from`, `to`; `dash`; `start_cap`, `end_cap` |
+| show only part of the screenshot | top-level `crop` | `[x, y, width, height]`, in the same coordinates ([references/spec.md](references/spec.md)) |
 
 Every tool's fields, behaviour and a working example: [references/tools.md](references/tools.md).
 
