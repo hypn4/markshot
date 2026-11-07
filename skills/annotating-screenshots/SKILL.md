@@ -47,6 +47,7 @@ Copy this checklist and tick it off:
 | hide private data | `blur` | `rect`; `mode`: `pixelate`, `erase` (an opaque box: `rect` with `"fill": "solid"`) |
 | mark text like a highlighter | `highlight` | `from`/`to`, or `points` |
 | focus on one area, dim the rest | `spotlight` | `rect`; `shape`; top-level `spotlight_dim` |
+| frame something and dim the rest | `rect`, `oval` | `"spotlight": true` on the frame, not a second spotlight |
 | number the steps | `counter` | `at` (where the tail points), `angle`; `style`; `number` |
 | draw a line or divider | `line` | `from`, `to`; `dash`; `start_cap`, `end_cap` |
 

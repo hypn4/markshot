@@ -66,6 +66,8 @@ pub struct ResolvedShape {
     /// The spec's `fill_alpha`, 0.1 to 1. `None` leaves the fill its default; only `semi` and
     /// `solid` fills use it.
     pub fill_alpha: Option<f64>,
+    /// Dims everything outside the shape, with a hole along its line.
+    pub spotlight: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -253,6 +255,7 @@ fn shape_spec(s: &ResolvedShape) -> ShapeSpec {
         rect: Some(s.rect),
         fill: Some(s.fill),
         fill_alpha: s.fill_alpha,
+        spotlight: s.spotlight.then_some(true),
     }
 }
 
@@ -278,7 +281,7 @@ impl Resolution {
     /// that feeding it back draws the same image. Only the alternatives not taken stay unset:
     /// counters give `center`, highlights give `points`, and straight arrows have no `via`.
     /// A `fill_alpha` the spec left out stays out too, so that changing `fill` gives the new
-    /// fill its own default opacity.
+    /// fill its own default opacity. `spotlight` is listed only when true.
     #[must_use]
     pub fn to_spec(&self) -> Spec {
         Spec {
@@ -522,6 +525,7 @@ impl Resolver<'_> {
             rect: self.rect(s.rect)?,
             fill: s.fill.unwrap_or_default(),
             fill_alpha: s.fill_alpha,
+            spotlight: s.spotlight.unwrap_or(false),
             id,
         })
     }

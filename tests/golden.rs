@@ -378,6 +378,22 @@ fn golden_spotlight_overlap() {
 }
 
 #[test]
+fn golden_spotlight_frames() {
+    // Frames with `"spotlight": true`, each hole cut along its own line: a hand-drawn oval
+    // whose spiral reaches its start (seed 2), a hand-drawn rect across the white and grey
+    // bands, and an outline oval at size 4 on the dark band.
+    check(
+        "spotlight-frames",
+        r#"{"annotations": [
+            {"type": "oval", "spotlight": true, "seed": 2, "rect": [40, 40, 240, 110]},
+            {"type": "rect", "spotlight": true, "rect": [330, 60, 220, 160]},
+            {"type": "oval", "spotlight": true, "fill": "outline", "size": 4,
+             "rect": [120, 280, 300, 90]}
+        ]}"#,
+    );
+}
+
+#[test]
 fn golden_counter_circle() {
     // Numbered 1, 2, 3, 0 and 4: size 0, the default size, size 3 on the grey band, size 4
     // across the grey and dark bands, and size 7 in blue.

@@ -358,6 +358,38 @@ fn fill_alpha_is_kept_only_when_given() {
 }
 
 #[test]
+fn shape_spotlight_is_listed_only_when_true() {
+    // A frame that dims the rest keeps `"spotlight": true` in the resolved spec, so feeding it
+    // back dims again; `false` and a missing field resolve alike and stay out.
+    let r = resolve_json(
+        r#"{"annotations": [
+            {"type": "rect", "rect": [0, 0, 10, 10], "spotlight": true},
+            {"type": "oval", "rect": [0, 0, 10, 10], "spotlight": false},
+            {"type": "oval", "rect": [0, 0, 10, 10]}
+        ]}"#,
+        100,
+        100,
+    );
+    let flags: Vec<bool> = r
+        .items
+        .iter()
+        .map(|item| match item {
+            Resolved::Rect(shape) | Resolved::Oval(shape) => shape.spotlight,
+            other => panic!("{other:?}"),
+        })
+        .collect();
+    assert_eq!(flags, [true, false, false]);
+    let spec = serde_json::to_value(r.to_spec()).expect("spec serializes");
+    let listed: Vec<Option<&serde_json::Value>> = spec["annotations"]
+        .as_array()
+        .expect("annotations array")
+        .iter()
+        .map(|annotation| annotation.get("spotlight"))
+        .collect();
+    assert_eq!(listed, [Some(&json!(true)), None, None]);
+}
+
+#[test]
 fn counter_at_places_the_center_opposite_the_tail() {
     let center = |extra: &str, dpr: f64| {
         let json = format!(

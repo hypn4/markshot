@@ -64,14 +64,20 @@ pub fn render(
             tools::blur::draw(&mut canvas, b);
         }
     }
-    let spots: Vec<_> = items
+    let holes: Vec<_> = items
         .iter()
         .filter_map(|item| match item {
-            Resolved::Spotlight(s) => Some(s),
+            Resolved::Spotlight(s) => Some(tools::spotlight::outline(&canvas, s)),
+            Resolved::Rect(s) if s.spotlight => {
+                Some(Some(tools::shape::hole(&canvas, s, ShapeKind::Rect)))
+            }
+            Resolved::Oval(s) if s.spotlight => {
+                Some(Some(tools::shape::hole(&canvas, s, ShapeKind::Oval)))
+            }
             _ => None,
         })
         .collect();
-    tools::spotlight::draw_curtain(&mut canvas, &spots, resolution.spotlight_dim);
+    tools::spotlight::draw_curtain(&mut canvas, holes, resolution.spotlight_dim);
     for item in items {
         match item {
             Resolved::Blur(_) => {} // Drawn first.
@@ -309,5 +315,84 @@ mod tests {
             dimmed[..3].iter().all(|&v| v.abs_diff(200) <= 1) && dimmed[3] == 255,
             "{dimmed:?}"
         );
+    }
+
+    #[test]
+    fn a_frame_spotlight_meets_its_line() {
+        // A frame with `"spotlight": true` cuts its hole along its own line, so the dimming
+        // ends under the border: on mid-grey (128, dimmed to round(128 * 200/255) = 100), each
+        // row and column through the middle is dimmed up to the first border pixel from the
+        // image edge and undimmed up to the first border pixel from the centre. Hand-drawn
+        // lines wobble with the seed, so several seeds are checked. A hand-drawn oval's spiral
+        // may stop short of its start, leaving a gap the closing line of the hole shows
+        // through; seeds 2, 6, 9, 10 and 11 draw spirals that reach their start.
+        let (w, h) = (300_usize, 200_usize);
+        let (cx, cy) = (150, 100);
+        let ovals = [2_u64, 6, 9, 10, 11].map(|seed| {
+            format!(r#"{{"type": "oval", "seed": {seed}, "rect": [40, 40, 220, 120]}}"#)
+        });
+        let rects = (0..8_u64).map(|seed| {
+            format!(r#"{{"type": "rect", "seed": {seed}, "rect": [40, 40, 220, 120]}}"#)
+        });
+        let frames = ovals.into_iter().chain(rects).chain([
+            r#"{"type": "oval", "fill": "outline", "rect": [40, 40, 220, 120]}"#.to_owned(),
+            r#"{"type": "rect", "fill": "outline", "rect": [40, 40, 220, 120]}"#.to_owned(),
+        ]);
+        for frame in frames {
+            let frame = frame.replace(r#""rect": ["#, r#""spotlight": true, "rect": ["#);
+            let json = format!(r#"{{"annotations": [{frame}]}}"#);
+            let src = image(300, 200, |_, _| [128; 3]);
+            let (png, _) = render(src, &Spec::from_json(&json).unwrap(), None).unwrap();
+            let rgba = decode_png(&png).unwrap().rgba;
+            let at = |x: usize, y: usize| -> [u8; 3] {
+                rgba[(y * w + x) * 4..][..3].try_into().unwrap()
+            };
+            let border = |p: [u8; 3]| p[0] != p[1] || p[1] != p[2];
+            // Walks from `from` toward `to` until the border, asserting `want` on the way.
+            let walk = |path: &mut dyn Iterator<Item = (usize, usize)>, want: u8, what: &str| {
+                for (x, y) in path {
+                    let p = at(x, y);
+                    if border(p) {
+                        return;
+                    }
+                    assert_eq!(p, [want; 3], "{frame}: {what} at ({x}, {y})");
+                }
+                panic!("{frame}: {what}: no border");
+            };
+            for y in 70..=130 {
+                walk(&mut (0..cx).map(|x| (x, y)), 100, "from the left");
+                walk(&mut (cx..w).rev().map(|x| (x, y)), 100, "from the right");
+                walk(&mut (0..cx).rev().map(|x| (x, y)), 128, "centre to left");
+                walk(&mut (cx..w).map(|x| (x, y)), 128, "centre to right");
+            }
+            for x in 80..=220 {
+                walk(&mut (0..cy).map(|y| (x, y)), 100, "from the top");
+                walk(&mut (cy..h).rev().map(|y| (x, y)), 100, "from the bottom");
+                walk(&mut (0..cy).rev().map(|y| (x, y)), 128, "centre to top");
+                walk(&mut (cy..h).map(|y| (x, y)), 128, "centre to bottom");
+            }
+        }
+    }
+
+    #[test]
+    fn frame_and_spotlight_holes_merge() {
+        // The frame's hand-drawn hole runs the same way as a spotlight's outline, so where the
+        // oval over [40, 40]–[160, 140] and the spotlight over [120, 60]–[240, 140] overlap,
+        // around (140, 100), the image is cut once and stays white; outside both it is dimmed
+        // to round(255 * 200/255) = 200.
+        let json = r#"{"annotations": [
+            {"type": "oval", "spotlight": true, "rect": [40, 40, 120, 100]},
+            {"type": "spotlight", "size": 0, "rect": [120, 60, 120, 80]}
+        ]}"#;
+        let (png, _) = render(white(300, 200), &Spec::from_json(json).unwrap(), None).unwrap();
+        let rgba = decode_png(&png).unwrap().rgba;
+        let at =
+            |x: usize, y: usize| -> [u8; 4] { rgba[(y * 300 + x) * 4..][..4].try_into().unwrap() };
+        for (x, y) in [(80, 90), (140, 100), (200, 100)] {
+            assert_eq!(at(x, y), [255; 4], "({x}, {y})");
+        }
+        for (x, y) in [(10, 10), (280, 20), (200, 180)] {
+            assert_eq!(at(x, y), [200, 200, 200, 255], "({x}, {y})");
+        }
     }
 }

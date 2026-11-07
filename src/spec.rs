@@ -166,6 +166,10 @@ pub struct ShapeSpec {
     /// Opacity of the `semi` and `solid` fill, 0.1 to 1. Default 0.4 for `semi`, 1 for `solid`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fill_alpha: Option<f64>,
+    /// `true` also dims everything outside the shape, as a spotlight does: the hole follows
+    /// the shape's own line, hand-drawn or not, so the dimming meets its border. Default false.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub spotlight: Option<bool>,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]

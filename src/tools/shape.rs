@@ -12,7 +12,7 @@ mod squircle;
 use tiny_skia::{BlendMode, FillRule, LineCap, LineJoin};
 
 use crate::canvas::{Canvas, Ink, StrokeStyle};
-use crate::geom::PathData;
+use crate::geom::{PathData, Seg, V2};
 use crate::resolve::ResolvedShape;
 use crate::rng::rnd100;
 use crate::spec::Fill;
@@ -49,29 +49,21 @@ pub enum ShapeKind {
 /// # Panics
 /// When `s.size` is 10 or more; resolved sizes are 0 to 7.
 pub fn draw(c: &mut Canvas, s: &ResolvedShape, kind: ShapeKind) {
-    let rect = c.up_rect(s.rect);
-    let (_, _, w, h) = rect;
-    let dpr = c.dpr;
-    let wpt = WIDTHS[usize::from(s.size)];
-    let stroke = stroke_px(w, h, wpt, dpr);
-    let handdrawn = s.fill == Fill::Sketch;
-    let rnd = rnd100(s.seed);
+    let g = Geometry::new(c, s);
     let ink = Ink {
         rgb: s.color,
         alpha: 1.0,
         blend: BlendMode::SourceOver,
     };
-    if handdrawn && w.min(h) > MIN_HANDDRAWN_SIDE {
+    if g.handdrawn {
         let outline = match kind {
-            ShapeKind::Rect => handdrawn::rect(rect, wpt, stroke, dpr, &rnd),
-            ShapeKind::Oval => handdrawn::oval(rect, stroke, dpr, &rnd),
+            ShapeKind::Rect => handdrawn::rect(g.rect, g.wpt, g.stroke, g.dpr, &g.rnd),
+            ShapeKind::Oval => handdrawn::oval(g.rect, g.stroke, g.dpr, &g.rnd),
         };
         c.main().fill(&outline, ink, FillRule::Winding);
         return;
     }
-    // Intentional: a small sketch rect keeps the hand-drawn jitter.
-    let jitter = if handdrawn { JITTER } else { 0.0 };
-    let path = plain_path(kind, rect, jitter, 2.0 * wpt, dpr, &rnd);
+    let path = g.plain_path(kind, s.fill);
     let fill_alpha = match s.fill {
         Fill::Sketch | Fill::Outline => None,
         Fill::Semi => Some(s.fill_alpha.unwrap_or(SEMI_FILL_ALPHA)),
@@ -82,12 +74,90 @@ pub fn draw(c: &mut Canvas, s: &ResolvedShape, kind: ShapeKind) {
         c.main().fill(&path, background, FillRule::Winding);
     }
     let style = StrokeStyle {
-        width: stroke,
+        width: g.stroke,
         cap: LineCap::Butt,
         join: LineJoin::Round,
         dash: None,
     };
     c.main().stroke(&path, ink, &style);
+}
+
+/// The spotlight hole of `s` in y-up px: the centre line [`draw`] strokes, closed, running
+/// counter-clockwise like a spotlight's outline so that overlapping holes merge. A hand-drawn
+/// oval's spiral is closed by a straight line between its ends.
+///
+/// # Panics
+/// When `s.size` is 10 or more; resolved sizes are 0 to 7.
+#[must_use]
+pub fn hole(c: &Canvas, s: &ResolvedShape, kind: ShapeKind) -> PathData {
+    let g = Geometry::new(c, s);
+    if !g.handdrawn {
+        return g.plain_path(kind, s.fill);
+    }
+    let line = match kind {
+        ShapeKind::Rect => handdrawn::rect_line(g.rect, g.wpt, g.dpr, &g.rnd),
+        ShapeKind::Oval => handdrawn::oval_line(g.rect, g.stroke, g.dpr, &g.rnd),
+    };
+    let mut pos: Vec<V2> = line.iter().map(|p| p.pos).collect();
+    if signed_area(&pos) < 0.0 {
+        pos.reverse();
+    }
+    let mut segs: Vec<Seg> = pos.iter().map(|&p| Seg::Line(p)).collect();
+    if let Some(Seg::Line(first)) = segs.first().copied() {
+        segs[0] = Seg::Move(first);
+        segs.push(Seg::Close);
+    }
+    PathData(segs)
+}
+
+/// What [`draw`] and [`hole`] share about `s`: its y-up rect, widths, randomness and whether
+/// it is hand-drawn.
+struct Geometry {
+    rect: (f64, f64, f64, f64),
+    dpr: f64,
+    /// The size's width in points.
+    wpt: f64,
+    /// The stroke width in px.
+    stroke: f64,
+    rnd: [f64; 100],
+    /// A `sketch` over 40 px on its shorter side.
+    handdrawn: bool,
+}
+
+impl Geometry {
+    /// The geometry of `s` on `c`.
+    ///
+    /// # Panics
+    /// When `s.size` is 10 or more; resolved sizes are 0 to 7.
+    fn new(c: &Canvas, s: &ResolvedShape) -> Self {
+        let rect = c.up_rect(s.rect);
+        let (_, _, w, h) = rect;
+        let wpt = WIDTHS[usize::from(s.size)];
+        Self {
+            rect,
+            dpr: c.dpr,
+            wpt,
+            stroke: stroke_px(w, h, wpt, c.dpr),
+            rnd: rnd100(s.seed),
+            handdrawn: s.fill == Fill::Sketch && w.min(h) > MIN_HANDDRAWN_SIDE,
+        }
+    }
+
+    /// The outline of a shape that is not hand-drawn. Intentional: a small `sketch` rect keeps
+    /// the hand-drawn jitter.
+    fn plain_path(&self, kind: ShapeKind, fill: Fill) -> PathData {
+        let jitter = if fill == Fill::Sketch { JITTER } else { 0.0 };
+        plain_path(kind, self.rect, jitter, 2.0 * self.wpt, self.dpr, &self.rnd)
+    }
+}
+
+/// Twice the signed area of the polygon `pts` (y-up): positive when it runs
+/// counter-clockwise.
+fn signed_area(pts: &[V2]) -> f64 {
+    pts.iter()
+        .zip(pts.iter().cycle().skip(1))
+        .map(|(a, b)| a.x * b.y - b.x * a.y)
+        .sum()
 }
 
 /// The outline of `kind` on `rect` when not hand-drawn: the rounded rect with corners of `cp`
@@ -133,6 +203,7 @@ mod tests {
             rect,
             fill,
             fill_alpha: None,
+            spotlight: false,
         }
     }
 

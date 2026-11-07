@@ -30,8 +30,17 @@ pub(super) fn rect(
     rnd: &[f64; 100],
 ) -> PathData {
     let thinning = (0.3 - stroke / 150.0).clamp(0.08, 0.3);
-    let line = flatten(&wobbly_rect(rect, wpt, dpr, rnd), 2.0 * dpr);
-    outline_path(line, stroke, thinning, true, rnd)
+    outline_path(rect_line(rect, wpt, dpr, rnd), stroke, thinning, true, rnd)
+}
+
+/// The centre line [`rect`] strokes, as points every `2 * dpr` px.
+pub(super) fn rect_line(
+    rect: (f64, f64, f64, f64),
+    wpt: f64,
+    dpr: f64,
+    rnd: &[f64; 100],
+) -> Vec<Pt> {
+    flatten(&wobbly_rect(rect, wpt, dpr, rnd), 2.0 * dpr)
 }
 
 /// The hand-drawn oval on `rect` (y-up px, corner first) as a closed outline, for a stroke
@@ -42,9 +51,19 @@ pub(super) fn oval(
     dpr: f64,
     rnd: &[f64; 100],
 ) -> PathData {
+    outline_path(oval_line(rect, stroke, dpr, rnd), stroke, 0.25, false, rnd)
+}
+
+/// The centre line [`oval`] strokes, as points every `2 * dpr` px.
+pub(super) fn oval_line(
+    rect: (f64, f64, f64, f64),
+    stroke: f64,
+    dpr: f64,
+    rnd: &[f64; 100],
+) -> Vec<Pt> {
     let mut line = simplify(&spiral(rect, stroke, rnd), 0.5 * dpr);
     handles(&mut line);
-    outline_path(flatten(&line, 2.0 * dpr), stroke, 0.25, false, rnd)
+    flatten(&line, 2.0 * dpr)
 }
 
 /// The hand-drawn rect's centre line: the jittered rounded rect with corners of

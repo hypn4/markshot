@@ -1,8 +1,8 @@
-//! The spotlight tool: a black curtain over the image with a hole for every spotlight, and
-//! each spotlight's border. The curtain is drawn once, after the blurs and before every other
-//! annotation, so it dims the image and the blurs but no annotation; the borders are drawn
-//! with the annotations, in spec order. A hole is the outline its border is stroked along: the
-//! shape tools' rounded rect or squircle.
+//! The spotlight tool: a black curtain over the image with a hole for every spotlight (and
+//! every rect or oval with `spotlight` set), and each spotlight's border. The curtain is drawn
+//! once, after the blurs and before every other annotation, so it dims the image and the blurs
+//! but no annotation; the borders are drawn with the annotations, in spec order. A hole is the
+//! outline its border is stroked along: the shape tools' rounded rect or squircle.
 
 use tiny_skia::{BlendMode, FillRule, LineCap, LineJoin};
 
@@ -48,12 +48,10 @@ pub fn outline(c: &Canvas, s: &ResolvedSpotlight) -> Option<PathData> {
 }
 
 /// Draws the curtain: black at `dim` over the whole image, with square corners and the union
-/// of the spotlights' outlines cut out. Without spotlights there is none.
-///
-/// # Panics
-/// When a spotlight's size is 10 or more; resolved sizes are 0 to 7.
-pub fn draw_curtain(c: &mut Canvas, spots: &[&ResolvedSpotlight], dim: f64) {
-    if spots.is_empty() {
+/// of `holes` (counter-clockwise outlines, one per dimming annotation) cut out. Without
+/// dimming annotations there is none; `None` stands for one that cuts no hole.
+pub fn draw_curtain(c: &mut Canvas, holes: Vec<Option<PathData>>, dim: f64) {
+    if holes.is_empty() {
         return;
     }
     let mut curtain = c.new_layer();
@@ -65,16 +63,21 @@ pub fn draw_curtain(c: &mut Canvas, spots: &[&ResolvedSpotlight], dim: f64) {
     // The layer keeps 8-bit alpha, round(dim * 255)/255: 55/255 for the default 0.214, so that
     // outside the holes every value v becomes round(v * 200/255).
     curtain.fill(&whole(c), ink, FillRule::Winding);
-    // Rects and squircles both run counter-clockwise, so where holes overlap they wind twice
-    // and the nonzero rule cuts their union.
-    let holes = spots.iter().filter_map(|s| outline(c, s));
+    // The holes all run counter-clockwise, so where they overlap they wind twice and the
+    // nonzero rule cuts their union.
     let clear = Ink {
         alpha: 1.0,
         blend: BlendMode::Clear,
         ..ink
     };
     curtain.fill(
-        &PathData(holes.flat_map(|hole| hole.0).collect()),
+        &PathData(
+            holes
+                .into_iter()
+                .flatten()
+                .flat_map(|hole| hole.0)
+                .collect(),
+        ),
         clear,
         FillRule::Winding,
     );
@@ -165,6 +168,13 @@ mod tests {
         grey(200, 120, |_, _| 255)
     }
 
+    /// Draws the curtain at the default 0.214 with the holes of `spots`, as the render
+    /// pipeline cuts them.
+    fn dim_around(c: &mut Canvas, spots: &[&ResolvedSpotlight]) {
+        let holes = spots.iter().map(|s| outline(c, s)).collect();
+        draw_curtain(c, holes, 0.214);
+    }
+
     /// `c`'s pixels as saved, rows top-down.
     fn pixels(c: Canvas) -> Vec<[u8; 4]> {
         let rgba = decode_png(&c.into_png().unwrap()).unwrap().rgba;
@@ -185,7 +195,7 @@ mod tests {
         // around it black at 0.214 dims the image, corners included.
         let s = spot([40.0, 30.0, 100.0, 60.0], 2, SpotShape::Rect);
         let mut c = white();
-        draw_curtain(&mut c, &[&s], 0.214);
+        dim_around(&mut c, &[&s]);
         let px = pixels(c);
         assert_eq!(px[60 * WIDTH + 90], WHITE);
         for (x, y) in [(20, 60), (160, 60), (90, 10), (90, 110), (0, 0), (199, 119)] {
@@ -205,7 +215,7 @@ mod tests {
             spot([120.0, 10.0, 60.0, 60.0], 2, SpotShape::Oval),
         ];
         let mut c = white();
-        draw_curtain(&mut c, &spots.iter().collect::<Vec<_>>(), 0.214);
+        dim_around(&mut c, &spots.iter().collect::<Vec<_>>());
         let px = pixels(c);
         for (x, y) in [(40, 35), (80, 65), (100, 95), (135, 55), (160, 30)] {
             assert_eq!(px[y * WIDTH + x], WHITE, "({x}, {y})");
@@ -223,7 +233,7 @@ mod tests {
         let rect = [40.0, 30.0, 100.0, 60.0];
         let curtain = |s: &ResolvedSpotlight| {
             let mut c = white();
-            draw_curtain(&mut c, &[s], 0.214);
+            dim_around(&mut c, &[s]);
             c
         };
         let thin = spot(rect, 1, SpotShape::Rect);
@@ -279,7 +289,7 @@ mod tests {
         // below the image.
         let mut c = grey(256, 1, |x, _| u8::try_from(x).unwrap());
         let s = spot([0.0, 10.0, 20.0, 20.0], 2, SpotShape::Rect);
-        draw_curtain(&mut c, &[&s], 0.214);
+        dim_around(&mut c, &[&s]);
         for (v, px) in (0_u32..).zip(pixels(c)) {
             // round(v * 200/255): v * 200/255 is never halfway between two integers.
             let want = u8::try_from((v * 200 + 127) / 255).unwrap();

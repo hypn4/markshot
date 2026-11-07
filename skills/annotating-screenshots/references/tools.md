@@ -29,11 +29,22 @@ Each example is a complete spec for an 800×600 screenshot. `markshot schema` li
 
 `fill`: `sketch` (default, a hand-drawn border), `outline`, `semi` (a border plus a fill at `fill_alpha`, default 0.4) and `solid` (an opaque box: use it with `"color": "#000000"` to redact). Shapes whose shorter side is 40 px or less get a plain border even with `sketch`. An oval is a squircle that touches the middle of each side of `rect`, fuller than a true ellipse.
 
+A `sketch` oval is a hand-drawn spiral: its line wanders up to 1.3 line widths inside and outside that curve and may stop short of or run past its start. To clear the target's corners, make the oval's `rect` the target's box grown on every side by half the target's height plus two line widths (a line width is the size's points times dpr: 3 × 2 = 6 px at the default size on a Retina capture). If the line still crosses the target, grow `rect` or try another `seed`.
+
 ```json
 {"annotations": [
   {"type": "rect", "rect": [80, 60, 260, 120]},
   {"type": "oval", "rect": [420, 60, 260, 120], "fill": "outline"},
   {"type": "rect", "rect": [80, 300, 260, 120], "fill": "semi", "color": "#2E7CF6"}
+]}
+```
+
+`"spotlight": true` frames the target and dims everything else, the dimming ending exactly under the frame's line, hand-drawn or not. Use it instead of a separate spotlight on the same area, which would leave a bright rim beside a hand-drawn line. Several frames with `spotlight` cut one hole each in the same dimming.
+
+```json
+{"annotations": [
+  {"type": "rect", "rect": [80, 60, 260, 120], "fill": "outline", "spotlight": true},
+  {"type": "oval", "rect": [420, 260, 260, 120], "spotlight": true}
 ]}
 ```
 
@@ -61,7 +72,7 @@ Each example is a complete spec for an 800×600 screenshot. `markshot schema` li
 
 ## spotlight: dim everything except an area
 
-The whole image is dimmed with black at the top-level `spotlight_dim` (default 0.214; try 0.4 for a stronger effect), and every spotlight cuts a hole in it. Overlapping holes merge. `shape` is `rect` (rounded, the default) or `oval`; `size` sets the border width, `0` for no border. A spotlight entirely outside the image is skipped, and then nothing is dimmed.
+The whole image is dimmed with black at the top-level `spotlight_dim` (default 0.214; try 0.4 for a stronger effect), and every spotlight cuts a hole in it. Overlapping holes merge. `shape` is `rect` (rounded, the default) or `oval`; `size` sets the border width, `0` for no border. A spotlight entirely outside the image is skipped, and then nothing is dimmed. To frame a target with a `rect` or `oval` and dim the rest, set `"spotlight": true` on the frame instead (see [rect / oval](#rect--oval-frame-something)).
 
 ```json
 {"spotlight_dim": 0.4, "annotations": [
