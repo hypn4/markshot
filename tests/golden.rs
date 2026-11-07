@@ -380,7 +380,7 @@ fn golden_spotlight_overlap() {
 #[test]
 fn golden_spotlight_frames() {
     // Frames with `"spotlight": true`, each hole cut along its own line: a hand-drawn oval
-    // whose spiral reaches its start (seed 2), a hand-drawn rect across the white and grey
+    // whose spiral runs past its start (seed 2), a hand-drawn rect across the white and grey
     // bands, and an outline oval at size 4 on the dark band.
     check(
         "spotlight-frames",

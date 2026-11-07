@@ -33,7 +33,7 @@ pub(super) fn rect(
     outline_path(rect_line(rect, wpt, dpr, rnd), stroke, thinning, true, rnd)
 }
 
-/// The centre line [`rect`] strokes, as points every `2 * dpr` px.
+/// The centre line [`rect`] strokes, flattened to points at least `2 * dpr` px apart.
 pub(super) fn rect_line(
     rect: (f64, f64, f64, f64),
     wpt: f64,
@@ -44,24 +44,33 @@ pub(super) fn rect_line(
 }
 
 /// The hand-drawn oval on `rect` (y-up px, corner first) as a closed outline, for a stroke
-/// `stroke` px wide, 0.75–1.25 times that.
+/// `stroke` px wide, 0.75–1.25 times that. `closed` makes the spiral run past its start (see
+/// [`spiral`]).
 pub(super) fn oval(
     rect: (f64, f64, f64, f64),
     stroke: f64,
     dpr: f64,
+    closed: bool,
     rnd: &[f64; 100],
 ) -> PathData {
-    outline_path(oval_line(rect, stroke, dpr, rnd), stroke, 0.25, false, rnd)
+    outline_path(
+        oval_line(rect, stroke, dpr, closed, rnd),
+        stroke,
+        0.25,
+        false,
+        rnd,
+    )
 }
 
-/// The centre line [`oval`] strokes, as points every `2 * dpr` px.
+/// The centre line [`oval`] strokes, flattened to points at least `2 * dpr` px apart.
 pub(super) fn oval_line(
     rect: (f64, f64, f64, f64),
     stroke: f64,
     dpr: f64,
+    closed: bool,
     rnd: &[f64; 100],
 ) -> Vec<Pt> {
-    let mut line = simplify(&spiral(rect, stroke, rnd), 0.5 * dpr);
+    let mut line = simplify(&spiral(rect, stroke, closed, rnd), 0.5 * dpr);
     handles(&mut line);
     flatten(&line, 2.0 * dpr)
 }
@@ -89,8 +98,15 @@ fn wobbly_rect(rect: (f64, f64, f64, f64), wpt: f64, dpr: f64, rnd: &[f64; 100])
 /// inscribed `m/4` inside the rect (`m` its shorter side), which touches the rect's sides,
 /// from the angle `6.28 * rnd[37]` on. Under a stroke a fifth of `m` the curve turns 0.98–1.04
 /// times (draw 8) while its distance drifts from 1.3 strokes inside to 1.3 outside: a spiral
-/// that ends past or short of its start. Thicker strokes get the closed ring.
-fn spiral((left, bottom, w, h): (f64, f64, f64, f64), stroke: f64, rnd: &[f64; 100]) -> Vec<Pt> {
+/// that ends past or short of its start. `closed` keeps it from ending short, turning it
+/// 1.02–1.04 times instead, so that a spotlight hole along it has no gap. Thicker strokes get
+/// the closed ring.
+fn spiral(
+    (left, bottom, w, h): (f64, f64, f64, f64),
+    stroke: f64,
+    closed: bool,
+    rnd: &[f64; 100],
+) -> Vec<Pt> {
     let short = w.min(h);
     let center = V2 {
         x: (left + w + left) * 0.5,
@@ -101,10 +117,12 @@ fn spiral((left, bottom, w, h): (f64, f64, f64, f64), stroke: f64, rnd: &[f64; 1
     let (semi, squash) = (inner * 0.5, (h - short * 0.5) / inner);
     let (drift, turn) = if stroke * 5.0 < short {
         let draw = rnd[8];
-        (
-            stroke * 2.6,
-            (draw * 0.06 + 0.98 + draw * 0.06 + 0.98) * PI_TRUNCATED,
-        )
+        let turn = if closed {
+            (draw * 0.02 + 1.02) * 2.0 * PI_TRUNCATED
+        } else {
+            (draw * 0.06 + 0.98 + draw * 0.06 + 0.98) * PI_TRUNCATED
+        };
+        (stroke * 2.6, turn)
     } else {
         (0.0, 2.0 * PI_TRUNCATED)
     };
@@ -248,7 +266,7 @@ mod tests {
     fn a_thick_stroke_makes_a_ring_spanning_the_rect() {
         // 200 × 100 with a 20 px stroke (5 * 20 ≥ 100): no drift, a full turn from the right
         // mid-edge (draw 37 at 0), reaching each side to within sampling error.
-        let pts = spiral((10.0, 20.0, 200.0, 100.0), 20.0, &ZERO_DRAWS);
+        let pts = spiral((10.0, 20.0, 200.0, 100.0), 20.0, false, &ZERO_DRAWS);
         assert_eq!(pts.len(), 1000);
         assert_near(pts[0].pos, (210.0, 70.0), 1e-9);
         let (xs, ys): (Vec<f64>, Vec<f64>) = pts.iter().map(|p| (p.pos.x, p.pos.y)).unzip();
@@ -263,7 +281,7 @@ mod tests {
         // Draw 37 at 0.25 starts it at 6.28/4 rad: near the top mid-edge.
         let mut rnd = ZERO_DRAWS;
         rnd[37] = 0.25;
-        let top = spiral((10.0, 20.0, 200.0, 100.0), 20.0, &rnd)[0].pos;
+        let top = spiral((10.0, 20.0, 200.0, 100.0), 20.0, false, &rnd)[0].pos;
         assert_near(top, (110.066_360_561_098_07, 119.999_991_192_550_58), 1e-9);
     }
 
@@ -271,13 +289,28 @@ mod tests {
     fn a_thin_stroke_spirals_out_past_its_start() {
         // A 6 px stroke: the distance drifts by 2.6 * 6 = 15.6 px over 0.98 turns (draw 8 at 0),
         // starting 7.8 px inside the right mid-edge and ending 7.8 px outside.
-        let pts = spiral((10.0, 20.0, 200.0, 100.0), 6.0, &ZERO_DRAWS);
+        let pts = spiral((10.0, 20.0, 200.0, 100.0), 6.0, false, &ZERO_DRAWS);
         assert_near(pts[0].pos, (202.2, 70.0), 1e-9);
         assert_near(
             pts[999].pos,
             (215.079_793_065_421_82, 55.242_639_078_898_364),
             1e-9,
         );
+    }
+
+    #[test]
+    fn a_closed_spiral_ends_past_its_start() {
+        // `closed` turns 1.02 times at draw 8 = 0 (1.04 at 1): the spiral that stopped 0.02
+        // turns short of its start above now ends that far past it, above the right mid-edge
+        // (y-up) and outside where it started, under the same 15.6 px drift.
+        for draw in [0.0, 1.0] {
+            let mut rnd = ZERO_DRAWS;
+            rnd[8] = draw;
+            let pts = spiral((10.0, 20.0, 200.0, 100.0), 6.0, true, &rnd);
+            assert_near(pts[0].pos, (202.2, 70.0), 1e-9);
+            let end = pts[999].pos;
+            assert!(end.y > 70.0 && end.x > 202.2, "draw {draw}: {end:?}");
+        }
     }
 
     #[test]
