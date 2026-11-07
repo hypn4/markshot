@@ -95,26 +95,35 @@ jobs:
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: dist/markshot-*
-      # git-cliff's built-in `github` template: GitHub-style "What's Changed", no cliff.toml.
+      # git-cliff's built-in `github` template: GitHub-style "What's Changed", no cliff.toml. A
+      # stable release lists everything since the previous stable tag, skipping pre-releases.
       - name: Generate release notes
         id: git-cliff
         uses: orhun/git-cliff-action@a9a95522b26fe6403f7bb24031f21fb573d0f5ff # v4.9.1
         with:
           version: v2.14.2
           config: github
-          args: --current --strip all --github-repo ${{ github.repository }}
+          args: >-
+            --current --strip all --github-repo ${{ github.repository }}
+            --tag-pattern ${{ contains(github.ref_name, '-') && '"^v"' || '"^v[0-9]+\.[0-9]+\.[0-9]+$"' }}
         env:
           OUTPUT: RELEASE_NOTES.md
+      # A tag with a suffix (`v1.2.0-rc.1`) is published as a pre-release, which never becomes
+      # the "latest" release that the README's download links point at.
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           NOTES: ${{ steps.git-cliff.outputs.changelog }}
         run: |
+          case "$GITHUB_REF_NAME" in
+            *-*) kind=(--prerelease --latest=false) ;;
+            *) kind=(--latest) ;;
+          esac
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            gh release edit "$GITHUB_REF_NAME" --notes-file "$NOTES"
+            gh release edit "$GITHUB_REF_NAME" --notes-file "$NOTES" "${kind[@]}"
             gh release upload "$GITHUB_REF_NAME" --clobber dist/*
           else
             gh release create "$GITHUB_REF_NAME" --verify-tag --title "$GITHUB_REF_NAME" \
-              --notes-file "$NOTES" dist/*
+              --notes-file "$NOTES" "${kind[@]}" dist/*
           fi
