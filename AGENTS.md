@@ -16,6 +16,7 @@ cargo test --locked
 - Release profile (what ships): `cargo test --release --locked`.
 - One test file or test: `cargo test --test golden`, `cargo test --test resolve counter_`.
 - Skill changes: `uvx --from skills-ref agentskills validate skills/annotating-screenshots`.
+- Fuzzing (nightly and `cargo install cargo-fuzz --locked`): `mkdir -p fuzz/corpus/decode_png && cargo +nightly fuzz run decode_png fuzz/corpus/decode_png fuzz/seeds/decode_png -- -max_total_time=180 -timeout=10` (or `render`). A crash or timeout gets a regression test in the main crate before its fix.
 - Try the CLI: `cargo run -- schema`, `cargo run -- grid in.png -o grid.png`, `cargo run -- render in.png --spec spec.json -o out.png`.
 
 ## Where things live
@@ -31,6 +32,7 @@ cargo test --locked
 | `src/math.rs`, `src/rng.rs` | Platform-independent float functions and the seeded generator |
 | `tests/` | CLI, resolver, golden-image, determinism and skill-example tests |
 | `assets/examples/` | The README's example images and the specs that drew them (`tests/readme_examples.rs` keeps the specs valid) |
+| `fuzz/` | `cargo fuzz` targets for PNG decoding and rendering, with their seed inputs |
 | `skills/annotating-screenshots/` | The Agent Skill shipped to users; `evals/` holds its scenarios |
 | `.github/workflows/` | `ci.yml` (lint once, test on five native platforms), `release.yml` (`v*` tags) |
 

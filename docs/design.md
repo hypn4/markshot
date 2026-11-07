@@ -152,4 +152,5 @@ Blur and highlight read the input image's pixels, never another annotation's.
 - `tests/determinism.rs`: a probe scene of the tiny-skia paths the renderer uses must hash to a recorded SHA-256.
 - `tests/resolve.rs` and the `cli_*` tests: coordinate spaces, rounding, defaults, ids and seeds, bounds, warnings, error locations, exit codes, the grid, the schema, and that rendering a report's spec again gives identical bytes.
 - `tests/skill_examples.rs`: the skill's frontmatter and links, and that every JSON example in it renders on an 800×600 screenshot without warnings.
+- `fuzz/`: `cargo fuzz` targets that feed arbitrary bytes to `decode_png` and arbitrary specs to `render` on a fixed 64×48 image; any `Ok` or `Err` passes, a panic, abort, timeout or allocation over 2 GB fails.
 - [`evals/annotating-screenshots/`](../evals/annotating-screenshots/README.md): agent scenarios for the skill, scored by `check.py`; rerun them after changing the skill.

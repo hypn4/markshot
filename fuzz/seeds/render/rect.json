@@ -1,0 +1,5 @@
+{"annotations": [
+  {"type": "rect", "rect": [80, 60, 260, 120]},
+  {"type": "oval", "rect": [420, 60, 260, 120], "fill": "outline"},
+  {"type": "rect", "rect": [80, 300, 260, 120], "fill": "semi", "color": "#2E7CF6"}
+]}

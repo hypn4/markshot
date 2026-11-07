@@ -1,0 +1,4 @@
+{"spotlight_dim": 0.4, "annotations": [
+  {"type": "spotlight", "rect": [250, 180, 300, 160]},
+  {"type": "spotlight", "rect": [600, 400, 120, 120], "shape": "oval", "size": 0}
+]}

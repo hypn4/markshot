@@ -1,0 +1,5 @@
+{"annotations": [
+  {"type": "arrow", "from": [120, 420], "to": [330, 260]},
+  {"type": "arrow", "style": "sketch", "from": [700, 120], "to": [520, 220]},
+  {"type": "arrow", "style": "line", "from": [420, 520], "to": [700, 420], "via": [620, 540]}
+]}
