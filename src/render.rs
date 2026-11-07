@@ -323,18 +323,18 @@ mod tests {
         // ends under the border: on mid-grey (128, dimmed to round(128 * 200/255) = 100), each
         // row and column through the middle is dimmed up to the first border pixel from the
         // image edge and undimmed up to the first border pixel from the centre. Hand-drawn
-        // lines wobble with the seed, so several seeds are checked. A hand-drawn oval's spiral
-        // may stop short of its start, leaving a gap the closing line of the hole shows
-        // through; seeds 2, 6, 9, 10 and 11 draw spirals that reach their start.
+        // lines wobble with the seed, so several seeds are checked. With `spotlight` a
+        // hand-drawn oval's spiral always runs past its start, so no seed leaves a gap for the
+        // hole's closing line to show through.
         let (w, h) = (300_usize, 200_usize);
         let (cx, cy) = (150, 100);
-        let ovals = [2_u64, 6, 9, 10, 11].map(|seed| {
+        let ovals = (0..12_u64).map(|seed| {
             format!(r#"{{"type": "oval", "seed": {seed}, "rect": [40, 40, 220, 120]}}"#)
         });
         let rects = (0..8_u64).map(|seed| {
             format!(r#"{{"type": "rect", "seed": {seed}, "rect": [40, 40, 220, 120]}}"#)
         });
-        let frames = ovals.into_iter().chain(rects).chain([
+        let frames = ovals.chain(rects).chain([
             r#"{"type": "oval", "fill": "outline", "rect": [40, 40, 220, 120]}"#.to_owned(),
             r#"{"type": "rect", "fill": "outline", "rect": [40, 40, 220, 120]}"#.to_owned(),
         ]);

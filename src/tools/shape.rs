@@ -58,7 +58,7 @@ pub fn draw(c: &mut Canvas, s: &ResolvedShape, kind: ShapeKind) {
     if g.handdrawn {
         let outline = match kind {
             ShapeKind::Rect => handdrawn::rect(g.rect, g.wpt, g.stroke, g.dpr, &g.rnd),
-            ShapeKind::Oval => handdrawn::oval(g.rect, g.stroke, g.dpr, &g.rnd),
+            ShapeKind::Oval => handdrawn::oval(g.rect, g.stroke, g.dpr, s.spotlight, &g.rnd),
         };
         c.main().fill(&outline, ink, FillRule::Winding);
         return;
@@ -84,7 +84,8 @@ pub fn draw(c: &mut Canvas, s: &ResolvedShape, kind: ShapeKind) {
 
 /// The spotlight hole of `s` in y-up px: the centre line [`draw`] strokes, closed, running
 /// counter-clockwise like a spotlight's outline so that overlapping holes merge. A hand-drawn
-/// oval's spiral is closed by a straight line between its ends.
+/// oval's spiral, which then runs past its start, is closed by a straight line between its
+/// ends.
 ///
 /// # Panics
 /// When `s.size` is 10 or more; resolved sizes are 0 to 7.
@@ -96,7 +97,7 @@ pub fn hole(c: &Canvas, s: &ResolvedShape, kind: ShapeKind) -> PathData {
     }
     let line = match kind {
         ShapeKind::Rect => handdrawn::rect_line(g.rect, g.wpt, g.dpr, &g.rnd),
-        ShapeKind::Oval => handdrawn::oval_line(g.rect, g.stroke, g.dpr, &g.rnd),
+        ShapeKind::Oval => handdrawn::oval_line(g.rect, g.stroke, g.dpr, s.spotlight, &g.rnd),
     };
     let mut pos: Vec<V2> = line.iter().map(|p| p.pos).collect();
     if signed_area(&pos) < 0.0 {
