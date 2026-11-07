@@ -138,6 +138,46 @@ impl PathData {
         ]);
     }
 
+    /// Appends the closed rect with lower-left corner `(left, bottom)` and size `width` by
+    /// `height` (y-up px)
+    /// whose corners are quarter circles of radius `r`, at most half the shorter side: four
+    /// edges and four cubics, starting at the bottom edge's left end and running
+    /// counter-clockwise.
+    pub fn add_rounded_rect(&mut self, left: f64, bottom: f64, width: f64, height: f64, r: f64) {
+        let r = r.min(width.min(height) / 2.0).max(0.0);
+        let k = r * CIRCLE_KAPPA;
+        let (right, top) = (left + width, bottom + height);
+        let at = |x: f64, y: f64| V2 { x, y };
+        self.0.extend([
+            Seg::Move(at(left + r, bottom)),
+            Seg::Line(at(right - r, bottom)),
+            Seg::Cubic(
+                at(right - r + k, bottom),
+                at(right, bottom + r - k),
+                at(right, bottom + r),
+            ),
+            Seg::Line(at(right, top - r)),
+            Seg::Cubic(
+                at(right, top - r + k),
+                at(right - r + k, top),
+                at(right - r, top),
+            ),
+            Seg::Line(at(left + r, top)),
+            Seg::Cubic(
+                at(left + r - k, top),
+                at(left, top - r + k),
+                at(left, top - r),
+            ),
+            Seg::Line(at(left, bottom + r)),
+            Seg::Cubic(
+                at(left, bottom + r - k),
+                at(left + r - k, bottom),
+                at(left + r, bottom),
+            ),
+            Seg::Close,
+        ]);
+    }
+
     /// The same path with `f` applied to every point.
     #[must_use]
     pub fn map(&self, f: impl Fn(V2) -> V2) -> PathData {
