@@ -1,0 +1,4 @@
+{"annotations": [
+  {"type": "line", "from": [100, 300], "to": [700, 300], "dash": true},
+  {"type": "line", "from": [100, 400], "to": [700, 400], "start_cap": "bullet", "end_cap": "arrow"}
+]}

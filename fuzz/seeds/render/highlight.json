@@ -1,0 +1,4 @@
+{"annotations": [
+  {"type": "highlight", "from": [100, 100], "to": [400, 100]},
+  {"type": "highlight", "points": [[100, 300], [250, 320], [400, 300]], "color": "#A6F68D", "size": 4}
+]}

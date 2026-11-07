@@ -1,0 +1,5 @@
+{"annotations": [
+  {"type": "counter", "at": [200, 200]},
+  {"type": "counter", "at": [400, 200], "angle": 90, "style": "pin"},
+  {"type": "counter", "center": [600, 200], "style": "circle", "number": 7}
+]}

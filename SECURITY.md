@@ -18,6 +18,8 @@ markshot reads untrusted PNG files and JSON specs, often on behalf of an AI agen
 - writing anywhere other than the `--out` path;
 - a release binary that does not match its `SHA256SUMS` entry or build provenance attestation.
 
+The PNG decoder and the renderer are fuzzed ([`fuzz/`](fuzz/)) to look for the first kind.
+
 A wrong-looking annotation is a bug; please use a [bug report](https://github.com/hypn4/markshot/issues/new?template=bug_report.yml).
 
 ## How can I check that a binary is genuine?

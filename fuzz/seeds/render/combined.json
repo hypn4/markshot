@@ -1,0 +1,8 @@
+{"coords": {"space": "scaled", "width": 400, "height": 300}, "annotations": [
+  {"type": "blur", "id": "email", "rect": [40, 30, 160, 20]},
+  {"type": "blur", "id": "token", "rect": [40, 60, 220, 20], "mode": "erase"},
+  {"type": "rect", "id": "settings", "rect": [250, 120, 110, 40], "fill": "outline"},
+  {"type": "counter", "id": "step-1", "at": [248, 140], "angle": 0},
+  {"type": "rect", "id": "save", "rect": [250, 220, 110, 40], "fill": "outline"},
+  {"type": "counter", "id": "step-2", "at": [248, 240], "angle": 0}
+]}

@@ -1,0 +1,4 @@
+{"annotations": [
+  {"type": "blur", "rect": [100, 80, 300, 40]},
+  {"type": "blur", "rect": [100, 160, 300, 40], "mode": "erase"}
+]}
