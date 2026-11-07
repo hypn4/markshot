@@ -52,7 +52,7 @@ curl -fL -o ~/.local/bin/markshot \
 chmod +x ~/.local/bin/markshot
 ```
 
-Replace the asset name for other platforms. The Windows builds link the C runtime statically, so they need no Visual C++ redistributable. To check a download, compare `shasum -a 256 ~/.local/bin/markshot` with its line in [`SHA256SUMS`](https://github.com/hypn4/markshot/releases/latest/download/SHA256SUMS), or run `gh attestation verify ~/.local/bin/markshot --repo hypn4/markshot` to confirm that GitHub Actions built it from this repository.
+Replace the asset name for other platforms. A binary downloaded with a browser on macOS is quarantined and blocked as unsigned; clear that with `xattr -d com.apple.quarantine ~/.local/bin/markshot` (`curl` downloads are not quarantined). The Windows builds link the C runtime statically, so they need no Visual C++ redistributable. To check a download, compare `shasum -a 256 ~/.local/bin/markshot` with its line in [`SHA256SUMS`](https://github.com/hypn4/markshot/releases/latest/download/SHA256SUMS), or run `gh attestation verify ~/.local/bin/markshot --repo hypn4/markshot` to confirm that GitHub Actions built it from this repository.
 
 **Or build from source.** You need Rust 1.99 or later:
 

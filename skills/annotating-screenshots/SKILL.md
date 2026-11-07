@@ -1,7 +1,7 @@
 ---
 name: annotating-screenshots
 description: Use when the user wants a screenshot or other PNG annotated (arrows pointing at UI elements, boxes or ovals around them, private data blurred, erased or redacted, text highlighted, one area spotlighted, numbered step badges, or lines), or wants a previous annotation adjusted. Draws the annotations deterministically with the markshot CLI.
-compatibility: Requires the markshot CLI (macOS, Linux or Windows) on PATH, a POSIX-style shell for the examples, and the ability to view PNG images.
+compatibility: Requires the markshot CLI 0.1.0 or later (macOS, Linux or Windows) on PATH, a POSIX-style shell for the examples, and the ability to view PNG images.
 metadata:
   cli: markshot
   version: "1.1"
@@ -17,7 +17,7 @@ markshot grid   <in.png> -o <grid.png> [--step N] [--region X,Y,W,H]
 markshot schema        # every spec field, its range and default
 ```
 
-If `markshot` is not on PATH, ask the user where it is installed; don't draw the annotations some other way.
+If `markshot` is not on PATH, ask the user where it is installed, or offer to install it (https://github.com/hypn4/markshot#how-do-i-install-it); don't draw the annotations some other way. `markshot --version` must print 0.1.0 or later.
 
 ## Workflow
 

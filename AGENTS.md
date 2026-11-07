@@ -50,7 +50,7 @@ Breaking one of these is a bug even when every test passes.
 ## Code
 
 - rustfmt defaults; clippy `pedantic` is on and warnings fail CI.
-- Silence a lint only with `#[expect(lint, reason = "...")]` on the narrowest item. Never `#[allow]`, never a crate-wide opt-out.
+- Silence a lint only with `#[expect(lint, reason = "...")]` on the narrowest item. Never `#[allow]`, never a crate-wide opt-out. The one exception is `tests/common/mod.rs`, whose helpers each test crate uses only in part, so `dead_code` fires in some crates and not others and `#[expect]` cannot work there.
 - Doc comments state what an item does in the present tense, with units (px, pt, y-up) where they matter. Comments describe behaviour, not history or where an idea came from.
 - No `unwrap`/`expect` on input-derived values outside tests; return `Error::Spec` with the path of the bad value (e.g. `annotations[2].size`).
 - Add a dependency only when the standard library or an existing dependency cannot do the job, and say why in the commit body. `Cargo.lock` is committed; use `--locked`.
@@ -68,6 +68,7 @@ Breaking one of these is a bug even when every test passes.
 - When behaviour changes, update in the same change: `docs/design.md`, the README if users see it, and `skills/annotating-screenshots/` (`SKILL.md`, `references/`) if agents use it. Rerun the evals in `evals/annotating-screenshots/` after changing the skill's instructions.
 - The README answers reader questions (What, Why, How); keep new sections in that form.
 - There is no changelog file. Release notes are generated from commit subjects, so subjects must make sense to users.
+- The skill states the oldest CLI it works with (`compatibility` in `SKILL.md`). When the skill starts using a new spec field or option, raise that version to the release that adds it and bump the skill's `metadata.version`.
 
 ## Commits and pull requests
 
