@@ -58,7 +58,7 @@ Chrome writes the PNG without a pHYs chunk, which the scenarios need; check that
 
 ## What did they show?
 
-Skill 1.0 was measured when the skill was restructured, on an earlier screenshot with the same layout; skill 1.1 (frames with `spotlight`, the dpr rule, `grid --region`, oval room) and skill 1.2 (`crop`, `"angle": "auto"`, `text`, room for ovals in dense rows) on `shot.png` and `console.png`. Claude Opus, one run per cell unless noted:
+Skill 1.0 was measured when the skill was restructured, on an earlier screenshot with the same layout; skill 1.1 (frames with `spotlight`, the dpr rule, `grid --region`, oval room) and skill 1.2 (`crop`, `"angle": "auto"`, `text`, room for ovals in dense rows) and skill 1.3 (ovals sized by markshot with `around`) on `shot.png` and `console.png`. Claude Opus, one run per cell unless noted:
 
 | Variant | s1 | s2 | s3 | s4 | s5 | s6 | s7 | s8 |
 |---|---|---|---|---|---|---|---|---|
@@ -68,10 +68,11 @@ Skill 1.0 was measured when the skill was restructured, on an earlier screenshot
 | skill 1.0 | pass | 2 of 2, nothing changed unasked | not run | 3 of 3 with one render, tip exact; nothing changed unasked | not run | not run | not run | not run |
 | skill 1.1 | 2 of 2 | 2 of 2, overlap reported with a fix | 2 of 2 | 2 of 2, tip exact | 2 of 2, switched to a hue, explained | 2 of 2: dpr 2 chosen, one render, label untouched | not run | not run |
 | skill 1.2 | pass | pass, overlap reported with a fix | pass | pass, tip exact; reported that no angle clears the label | pass, switched to a hue, explained | pass | 0 of 7 (see below) | pass: size 1 badges after "auto" crowded the rows |
+| skill 1.3 (CLI 0.2.0) | pass | pass, overlap reported with a fix | pass | pass, tip exact; suggested `"auto"` or size 4 | pass, switched to a hue, explained | pass, with `around` | 3 of 3, with `around`; ovals kept clear of target and text | pass: size 0 badges |
 
 The two skill 1.1 runs bracket its last wording changes (colour names, room for badges, `--region` without `--step`); both passed every check.
 
-s7 is the open problem: hand-drawn ovals around toggles whose description lines sit 9 CSS px away. The first skill 1.2 run crossed a description line; after the skill gained the thinner-line advice and then the room table, all six later runs kept clear of the descriptions but each touched its own target's box by 1 to 2 px (`targets_untouched`), and none switched to a hand-drawn `rect` as the skill now advises when any side lacks room. Every run reported a careful zoomed check, so the near miss is below what agents see on a zoomed view.
+s7 was the hard case: hand-drawn ovals around toggles whose description lines sit 9 CSS px away. Under skill 1.2 all seven runs failed, first by crossing a description line and then, with written room tables, by touching the toggle's own box by 1 to 2 px; sizing a wobbly spiral by hand was too fiddly. CLI 0.2.0 added `around`: the agent gives the target's box and markshot sizes the oval against the image's own ink, picking a seed whose wobble fits when the spec leaves it out. With skill 1.3 all three runs passed with one or two renders, letting the ovals run past the panel's edge rather than onto the text.
 
 The two skill 1.1 runs bracket its last wording changes (colour names, room for badges, `--region` without `--step`); both passed every check.
 
