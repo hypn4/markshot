@@ -183,16 +183,19 @@ pub const AUTO_ANGLES: [f64; 24] = [
     240.0, 15.0, 255.0, 0.0, 270.0, 345.0, 285.0, 330.0, 300.0, 315.0,
 ];
 
-/// The image a counter is placed on: its size, and its straight-alpha RGBA8 pixels when known.
+/// The image a counter is placed on: its size, its straight-alpha RGBA8 pixels when known,
+/// and the part of it the badge must stay in (`[x0, y0, x1, y1]`, y-down px): the whole image,
+/// or the crop that is written.
 pub struct Pixels<'a> {
     pub width: u32,
     pub height: u32,
     pub rgba: Option<&'a [u8]>,
+    pub area: [f64; 4],
 }
 
 /// How badly a badge of radius `r` sits when its tail marks `at` (y-down px) along `angle`:
 /// over a 9 × 9 grid of samples across the disc 1.1 r around its center, 1000 × the share
-/// outside the image, plus 100 × the share inside any of `obstacles` (`[x0, y0, x1, y1]`,
+/// outside `image.area`, plus 100 × the share inside any of `obstacles` (`[x0, y0, x1, y1]`,
 /// y-down px), plus 10 × the mean absolute deviation of the samples' Rec. 601 luma (0 to 1)
 /// from their mean, which is high over text and edges. 0 is a free, flat, in-image spot.
 #[must_use]
@@ -203,7 +206,7 @@ pub fn placement_cost(
     image: &Pixels<'_>,
     obstacles: &[[f64; 4]],
 ) -> f64 {
-    let (width, height) = (f64::from(image.width), f64::from(image.height));
+    let height = f64::from(image.height);
     let up = center_from_at(
         V2 {
             x: at[0],
@@ -225,7 +228,8 @@ pub fn placement_cost(
             }
             samples += 1.0;
             let sample = [center[0] + offset[0], center[1] + offset[1]];
-            if !(0.0..width).contains(&sample[0]) || !(0.0..height).contains(&sample[1]) {
+            let [left, top, right, bottom] = image.area;
+            if !(left..right).contains(&sample[0]) || !(top..bottom).contains(&sample[1]) {
                 outside += 1.0;
                 continue;
             }

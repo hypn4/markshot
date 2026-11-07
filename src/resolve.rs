@@ -402,7 +402,11 @@ fn resolve_with(
         };
         all.push(resolver.annotation(annotation, id, &mut max_number)?);
     }
-    place_auto_counters(&mut all, dpr, width, height, rgba);
+    let area = crop.map_or(
+        [0.0, 0.0, f64::from(width), f64::from(height)],
+        |[x, y, w, h]| [x, y, x + w, y + h],
+    );
+    place_auto_counters(&mut all, dpr, width, height, rgba, area);
     let mut items = Vec::with_capacity(all.len());
     for item in all {
         let warning = |message| Warning {
@@ -439,13 +443,15 @@ fn resolve_with(
 
 /// Gives each counter with `"angle": "auto"` its angle and center, in spec order: the first of
 /// [`counter::AUTO_ANGLES`] with the lowest [`counter::placement_cost`], the obstacles being
-/// every other annotation's extent except counters still to be placed.
+/// every other annotation's extent except counters still to be placed, and the badge kept in
+/// `area` (`[x0, y0, x1, y1]`: the crop, or the whole image).
 fn place_auto_counters(
     items: &mut [Resolved],
     dpr: f64,
     width: u32,
     height: u32,
     rgba: Option<&[u8]>,
+    area: [f64; 4],
 ) {
     for i in 0..items.len() {
         let Resolved::Counter(ResolvedCounter {
@@ -477,6 +483,7 @@ fn place_auto_counters(
             width,
             height,
             rgba,
+            area,
         };
         let angle = counter::AUTO_ANGLES
             .into_iter()
