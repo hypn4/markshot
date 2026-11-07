@@ -58,15 +58,20 @@ Chrome writes the PNG without a pHYs chunk, which the scenarios need; check that
 
 ## What did they show?
 
-Skill 1.0 was measured when the skill was restructured, on an earlier screenshot with the same layout; skill 1.1 (frames with `spotlight`, the dpr rule, `grid --region`, oval room) on `shot.png`. s7 and s8 came later and have not been run yet. Claude Opus, one run per cell unless noted:
+Skill 1.0 was measured when the skill was restructured, on an earlier screenshot with the same layout; skill 1.1 (frames with `spotlight`, the dpr rule, `grid --region`, oval room) and skill 1.2 (`crop`, `"angle": "auto"`, `text`, room for ovals in dense rows) on `shot.png` and `console.png`. Claude Opus, one run per cell unless noted:
 
-| Variant | s1 | s2 | s3 | s4 | s5 | s6 |
-|---|---|---|---|---|---|---|
-| control (no skill) | pass | pass | pass | 1 of 2 (tail 3 px off) | grey shipped as navy, explained | not run |
-| skill before 1.0 | pass | pass | pass | 2 of 2, but the tail tip was found by test renders or estimated | switched to a hue, explained | not run |
-| skill 1.0, first draft | pass | pass, but changed `angle` unasked | pass | 2 of 3; all three changed `angle` unasked | switched to a hue, explained | not run |
-| skill 1.0 | pass | 2 of 2, nothing changed unasked | not run | 3 of 3 with one render, tip exact; nothing changed unasked | not run | not run |
-| skill 1.1 | 2 of 2 | 2 of 2, overlap reported with a fix | 2 of 2 | 2 of 2, tip exact | 2 of 2, switched to a hue, explained | 2 of 2: dpr 2 chosen, one render, label untouched |
+| Variant | s1 | s2 | s3 | s4 | s5 | s6 | s7 | s8 |
+|---|---|---|---|---|---|---|---|---|
+| control (no skill) | pass | pass | pass | 1 of 2 (tail 3 px off) | grey shipped as navy, explained | not run | not run | not run |
+| skill before 1.0 | pass | pass | pass | 2 of 2, but the tail tip was found by test renders or estimated | switched to a hue, explained | not run | not run | not run |
+| skill 1.0, first draft | pass | pass, but changed `angle` unasked | pass | 2 of 3; all three changed `angle` unasked | switched to a hue, explained | not run | not run | not run |
+| skill 1.0 | pass | 2 of 2, nothing changed unasked | not run | 3 of 3 with one render, tip exact; nothing changed unasked | not run | not run | not run | not run |
+| skill 1.1 | 2 of 2 | 2 of 2, overlap reported with a fix | 2 of 2 | 2 of 2, tip exact | 2 of 2, switched to a hue, explained | 2 of 2: dpr 2 chosen, one render, label untouched | not run | not run |
+| skill 1.2 | pass | pass, overlap reported with a fix | pass | pass, tip exact; reported that no angle clears the label | pass, switched to a hue, explained | pass | 0 of 7 (see below) | pass: size 1 badges after "auto" crowded the rows |
+
+The two skill 1.1 runs bracket its last wording changes (colour names, room for badges, `--region` without `--step`); both passed every check.
+
+s7 is the open problem: hand-drawn ovals around toggles whose description lines sit 9 CSS px away. The first skill 1.2 run crossed a description line; after the skill gained the thinner-line advice and then the room table, all six later runs kept clear of the descriptions but each touched its own target's box by 1 to 2 px (`targets_untouched`), and none switched to a hand-drawn `rect` as the skill now advises when any side lacks room. Every run reported a careful zoomed check, so the near miss is below what agents see on a zoomed view.
 
 The two skill 1.1 runs bracket its last wording changes (colour names, room for badges, `--region` without `--step`); both passed every check.
 

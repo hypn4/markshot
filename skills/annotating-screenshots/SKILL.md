@@ -4,7 +4,7 @@ description: Use when the user wants a screenshot or other PNG annotated (arrows
 compatibility: Requires the markshot CLI 0.1.0 or later (macOS, Linux or Windows) on PATH, a POSIX-style shell for the examples, and the ability to view PNG images.
 metadata:
   cli: markshot
-  version: "1.1"
+  version: "1.2"
 ---
 
 # Annotating screenshots
