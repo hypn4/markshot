@@ -5,9 +5,9 @@
 
 use std::sync::LazyLock;
 
-use tiny_skia::{BlendMode, FillRule};
+use tiny_skia::{BlendMode, FillRule, LineCap, LineJoin};
 
-use crate::canvas::{Canvas, Ink};
+use crate::canvas::{Canvas, Ink, StrokeStyle};
 use crate::color::Rgb;
 use crate::geom::{PathData, V2};
 use crate::image_io::luma;
@@ -165,6 +165,20 @@ pub fn radius(size: u8, dpr: f64) -> f64 {
     DIAM[usize::from(size)] / 2.0 * dpr
 }
 
+/// The width in px of the white ring around a counter of `size` at `dpr` when `ring` is set,
+/// `1/12` of its diameter; 0 without a ring.
+///
+/// # Panics
+/// When `size` is 10 or more; resolved sizes are 0 to 7.
+#[must_use]
+pub fn ring_width(size: u8, dpr: f64, ring: bool) -> f64 {
+    if ring {
+        DIAM[usize::from(size)] / 12.0 * dpr
+    } else {
+        0.0
+    }
+}
+
 /// The center of a counter of radius `r` whose tail marks `at` (y-up px): `1.65 * r` back from
 /// it along the tail, which points `angle_deg_screen` degrees on screen (0 right, 90 down). A
 /// circle has no tail and is centered on `at`.
@@ -184,8 +198,9 @@ pub const AUTO_ANGLES: [f64; 24] = [
     240.0, 15.0, 255.0, 0.0, 270.0, 345.0, 285.0, 330.0, 300.0, 315.0,
 ];
 
-/// How badly a badge of radius `r` sits when its tail marks `at` (y-down px) along `angle`:
-/// over a 9 × 9 grid of samples across the disc 1.1 r around its center, 1000 × the share
+/// How badly a badge of radius `r` and a ring `ring` px wide sits when its tail marks `at`
+/// (y-down px) along `angle`: over a 9 × 9 grid of samples across the disc `1.1 * r + ring`
+/// around its center, 1000 × the share
 /// outside `image.area`, plus 100 × the share inside any of `obstacles` (`[x0, y0, x1, y1]`,
 /// y-down px), plus 10 × the mean absolute deviation of the samples' Rec. 601 luma (0 to 1)
 /// from their mean, which is high over text and edges. 0 is a free, flat, in-image spot.
@@ -194,6 +209,7 @@ pub fn placement_cost(
     at: [f64; 2],
     angle: f64,
     r: f64,
+    ring: f64,
     image: &super::Pixels<'_>,
     obstacles: &[[f64; 4]],
 ) -> f64 {
@@ -208,7 +224,7 @@ pub fn placement_cost(
         CounterStyle::Bubble,
     );
     let center = [up.x, height - up.y];
-    let reach = 1.1 * r;
+    let reach = 1.1 * r + ring;
     let (mut samples, mut outside, mut covered) = (0.0, 0.0, 0.0);
     let mut lumas = Vec::with_capacity(81);
     for column in 0..9_u8 {
@@ -257,8 +273,10 @@ pub fn label_style(fill: Rgb, count: u32, d: f64, dpr: f64) -> (Weight, f64, Rgb
     }
 }
 
-/// Draws `k` on the main surface: its body filled in its color, then its number in the
-/// [`label_style`], laid out by `label`.
+/// Draws `k` on the main surface: with `ring`, its body's outline stroked white twice the
+/// [`ring_width`] wide, round-joined so the ring follows the tail's tip; then its body filled in
+/// its color, which covers the stroke's inner half; then its number in the [`label_style`],
+/// laid out by `label`.
 ///
 /// # Panics
 /// When `k.size` is 10 or more; resolved sizes are 0 to 7.
@@ -271,6 +289,15 @@ pub fn draw(c: &mut Canvas, k: &ResolvedCounter) {
         blend: BlendMode::SourceOver,
     };
     let outline = body(center, k.angle, radius(k.size, c.dpr), k.style);
+    if k.ring {
+        let style = StrokeStyle {
+            width: 2.0 * ring_width(k.size, c.dpr, true),
+            cap: LineCap::Round,
+            join: LineJoin::Round,
+            dash: None,
+        };
+        c.main().stroke(&outline, opaque(WHITE), &style);
+    }
     c.main().fill(&outline, opaque(k.color), FillRule::Winding);
     let (weight, px, ink) = label_style(k.color, k.number, d, c.dpr);
     let glyphs = label(k.number, weight, px, center, d, c.dpr);
@@ -575,6 +602,7 @@ mod tests {
                 auto_at: None,
                 style: CounterStyle::Circle,
                 number: 8,
+                ring: false,
             };
             let src = SourceImage {
                 width: 100,

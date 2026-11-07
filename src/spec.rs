@@ -296,6 +296,11 @@ pub struct CounterSpec {
     pub style: Option<CounterStyle>,
     /// Default: one more than the largest number of the counters before it.
     pub number: Option<u32>,
+    /// `true` draws a white ring outside the badge's body, tail included, `1/12` of its
+    /// diameter wide, which sets it apart from a frame line or background of its own color.
+    /// Default false.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ring: Option<bool>,
 }
 
 /// A counter's tail direction.

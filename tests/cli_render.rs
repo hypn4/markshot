@@ -516,3 +516,43 @@ fn oval_around_clears_its_target_and_the_text_next_to_it() {
         }
     }
 }
+
+#[test]
+fn a_ringed_counter_has_a_white_ring_outside_its_body() {
+    // Size 2 at dpr 1: a 36 px badge, radius 18, and a ring 36/12 = 3 px wide outside it, so
+    // from 18 to 21 px off the center. On mid grey, a ringed circle at (80, 100) turns the
+    // pixel centred 19.5 px above it white and leaves the one 22.5 px above alone; a plain one
+    // at (200, 100) leaves 19.5 px grey. A bubble's tail pointing right toward `at` x = 150
+    // ends near x = 147, so the pixel at x = 148 stays grey past a plain bubble's tip and turns
+    // white within a ringed one's ring: the ring follows the tail. The report's spec keeps
+    // `ring` and re-renders the same bytes.
+    let dir = work_dir("a_ringed_counter_has_a_white_ring_outside_its_body");
+    let (w, h) = (300_u32, 200_u32);
+    let rgba: Vec<u8> = (0..w * h).flat_map(|_| [128, 128, 128, 255]).collect();
+    let input = dir.join("input.png");
+    fs::write(&input, encode_png(w, h, &rgba, Some(72.0), None).unwrap()).unwrap();
+    let out = dir.join("out.png");
+    let spec = json!({"annotations": [
+        {"type": "counter", "center": [80, 100], "style": "circle", "ring": true},
+        {"type": "counter", "center": [200, 100], "style": "circle"},
+        {"type": "counter", "at": [150, 170], "angle": 0, "ring": true},
+        {"type": "counter", "at": [150, 40], "angle": 0}
+    ]});
+    let first = report(&render(&input, &out, &spec, &[]));
+    let image = read_png(&out);
+    let (white, grey) = ([255, 255, 255, 255], [128, 128, 128, 255]);
+    assert_eq!(pixel(&image, 80, 80), white);
+    assert_eq!(pixel(&image, 80, 77), grey);
+    assert_eq!(pixel(&image, 200, 80), grey);
+    assert_eq!(pixel(&image, 148, 170), white);
+    assert_eq!(pixel(&image, 148, 40), grey);
+    let annotations = &first["spec"]["annotations"];
+    assert_eq!(annotations[0]["ring"], json!(true));
+    assert_eq!(annotations[1].get("ring"), None);
+    let again = dir.join("again.png");
+    report(&render(&input, &again, &first["spec"], &[]));
+    assert!(
+        fs::read(&again).unwrap() == fs::read(&out).unwrap(),
+        "the PNGs differ"
+    );
+}
