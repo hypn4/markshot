@@ -42,6 +42,6 @@ Measured when the skill was restructured, on an earlier screenshot with the same
 | control (no skill) | pass | pass | pass | 1 of 2 (tail 3 px off) | grey shipped as navy, explained |
 | previous skill | pass | pass | pass | 2 of 2, but the tail tip was found by test renders or estimated | switched to a hue, explained |
 | this skill, first draft | pass | pass, but changed `angle` unasked | pass | 2 of 3; all three changed `angle` unasked | switched to a hue, explained |
-| this skill | pass | 2 of 2, nothing changed unasked | — | 3 of 3 with one render, tip exact; nothing changed unasked | — |
+| this skill | pass | 2 of 2, nothing changed unasked | not run | 3 of 3 with one render, tip exact; nothing changed unasked | not run |
 
 The first draft's "badge covering a label → change `angle`" row read as an instruction during edits; the rule "an edit is exactly what the user asked for; name a fix instead" replaced it.

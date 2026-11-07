@@ -3,8 +3,8 @@
 use super::{Pt, clamp01, dot, norm};
 use crate::math::pow;
 
-/// A running average of positions, each output point being `avg = alpha·avg + (1 − alpha)·P[i]`
-/// with `alpha` = `strength` (0 = none) adapted per point: slow points (`res·speed` < 5) lean
+/// A running average of positions, each output point being `avg = alpha * avg + (1 − alpha) * P[i]`
+/// with `alpha` = `strength` (0 = none) adapted per point: slow points (`res * speed` < 5) lean
 /// toward `1 − (1 − strength)²`, the last four ease off as `(alpha/1.5)^1…4`, the average never
 /// trails more than `10/res` behind, sharp corners (cos > 0.3 between the ways back to the
 /// average and on to the next point) are kept exactly, and straight runs smooth 3% harder.
@@ -73,7 +73,7 @@ mod tests {
     #[test]
     fn smooth_trails_a_fast_straight_stroke() {
         // 10 px steps at res 1, strength 0.5: straight runs smooth 3% harder (×1.03), the lag
-        // is capped at 10/res (so it settles at 0.5·1.03·10 = 5.15 behind), and the last four
+        // is capped at 10/res (so it settles at 0.5 * 1.03 * 10 = 5.15 behind), and the last four
         // points ease off with (a/1.5)^1…4 (the very last without the straight boost).
         let s = smooth(&straight(10, 10.0), 0.5, 1.0);
         assert_close(
@@ -88,8 +88,8 @@ mod tests {
 
     #[test]
     fn smooth_blends_slow_points_harder_and_keeps_other_fields() {
-        // 2 px steps: res·speed < 5, so alpha = 0.75·k + 0.5·(1 − k) with
-        // k = 0.5·(1.666666 − 2/3) ≈ 0.5, i.e. ≈ 0.625, ×1.03 → x₁ = 2·(1 − 0.64375).
+        // 2 px steps: res * speed < 5, so alpha = 0.75 * k + 0.5 * (1 − k) with
+        // k = 0.5 * (1.666666 − 2/3) ≈ 0.5, i.e. ≈ 0.625, ×1.03 → x₁ = 2 * (1 − 0.64375).
         let mut p = straight(8, 2.0);
         p[1].weight = 0.25;
         let s = smooth(&p, 0.5, 1.0);

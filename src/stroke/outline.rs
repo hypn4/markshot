@@ -340,7 +340,7 @@ mod tests {
     #[test]
     fn outline_thins_each_side_to_a_third_of_the_width() {
         // The flattened stroke has points 4–7 px apart; the outline's right side (up to the
-        // end cap) keeps only points over 0.33·56 apart, bar its last one.
+        // end cap) keeps only points over 0.33 * 56 apart, bar its last one.
         let o = straight_outline();
         let right = &o[..end_cap(&o)];
         assert!(right.len() > 2, "{right:?}");

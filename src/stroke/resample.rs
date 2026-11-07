@@ -2,7 +2,7 @@
 
 use super::{Pt, dot};
 
-/// Thins the stroke to points more than `0.33·spacing` apart. Keeps the first point and each
+/// Thins the stroke to points more than `0.33 * spacing` apart. Keeps the first point and each
 /// inner one that far from the last kept; the last point is then appended, or replaces the
 /// last kept one when closer than that (unless that is the first). Points are copied whole.
 /// Two points or fewer pass through.

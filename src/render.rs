@@ -294,7 +294,7 @@ mod tests {
         let at = |x: usize, y: usize| &rgba[(y * 100 + x) * 4..][..4];
         assert_eq!(at(80, 80), [255; 4]);
         assert_eq!(at(99, 99), [255; 4]);
-        // Outside, black at 0.214 leaves round(255·(1 − 0.214)) = 200, ±1.
+        // Outside, black at 0.214 leaves round(255 * (1 − 0.214)) = 200, ±1.
         let dimmed = at(30, 30);
         assert!(
             dimmed[..3].iter().all(|&v| v.abs_diff(200) <= 1) && dimmed[3] == 255,

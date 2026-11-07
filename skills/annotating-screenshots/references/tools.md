@@ -4,16 +4,16 @@ Each example is a complete spec for an 800×600 screenshot. `markshot schema` li
 
 ## Contents
 
-- [arrow — point at something](#arrow--point-at-something)
-- [rect / oval — frame something](#rect--oval--frame-something)
-- [blur — hide private data](#blur--hide-private-data)
-- [highlight — mark text like a highlighter](#highlight--mark-text-like-a-highlighter)
-- [spotlight — dim everything except an area](#spotlight--dim-everything-except-an-area)
-- [counter — numbered step badges](#counter--numbered-step-badges)
-- [line — a straight line](#line--a-straight-line)
+- [arrow: point at something](#arrow-point-at-something)
+- [rect / oval: frame something](#rect--oval-frame-something)
+- [blur: hide private data](#blur-hide-private-data)
+- [highlight: mark text like a highlighter](#highlight-mark-text-like-a-highlighter)
+- [spotlight: dim everything except an area](#spotlight-dim-everything-except-an-area)
+- [counter: numbered step badges](#counter-numbered-step-badges)
+- [line: a straight line](#line-a-straight-line)
 - [Combining tools: hide private data, then number the steps](#combining-tools-hide-private-data-then-number-the-steps)
 
-## arrow — point at something
+## arrow: point at something
 
 `style`: `shaped` (default, a filled tapered arrow), `sketch` (hand-drawn), `line` and `double`. `variant` 0–3 picks the `shaped` outline. `via` is a point the arrow curves through. When `via` bends it strongly, a `shaped` arrow overshoots `to` slightly, so leave a few pixels of room past the target.
 
@@ -25,7 +25,7 @@ Each example is a complete spec for an 800×600 screenshot. `markshot schema` li
 ]}
 ```
 
-## rect / oval — frame something
+## rect / oval: frame something
 
 `fill`: `sketch` (default, a hand-drawn border), `outline`, `semi` (a border plus a fill at `fill_alpha`, default 0.4) and `solid` (an opaque box: use it with `"color": "#000000"` to redact). Shapes whose shorter side is 40 px or less get a plain border even with `sketch`. An oval is a squircle that touches the middle of each side of `rect`, fuller than a true ellipse.
 
@@ -37,7 +37,7 @@ Each example is a complete spec for an 800×600 screenshot. `markshot schema` li
 ]}
 ```
 
-## blur — hide private data
+## blur: hide private data
 
 `mode`: `pixelate` (default, a mosaic whose block size grows with `size`) or `erase` (paints the area over with the colours along its border; best for text on a flat background). Cover the whole text with a few pixels to spare. A blur always reads the original pixels and is drawn first, under every other annotation.
 
@@ -48,7 +48,7 @@ Each example is a complete spec for an 800×600 screenshot. `markshot schema` li
 ]}
 ```
 
-## highlight — mark text like a highlighter
+## highlight: mark text like a highlighter
 
 `from`/`to` draws a straight stroke, `points` a polyline; a single point draws a dot. The blend follows the background's brightness: multiply on light backgrounds, translucent on mid and dark ones. Pass the plain base colour (default `#FFF68D`), not a pre-darkened one. On mid and dark backgrounds the colour is drawn fully saturated, so grey, white or black come out navy there: pick a hue. `cap` 0–3 picks the end shape.
 
@@ -59,7 +59,7 @@ Each example is a complete spec for an 800×600 screenshot. `markshot schema` li
 ]}
 ```
 
-## spotlight — dim everything except an area
+## spotlight: dim everything except an area
 
 The whole image is dimmed with black at the top-level `spotlight_dim` (default 0.214; try 0.4 for a stronger effect), and every spotlight cuts a hole in it. Overlapping holes merge. `shape` is `rect` (rounded, the default) or `oval`; `size` sets the border width, `0` for no border. A spotlight entirely outside the image is skipped, and then nothing is dimmed.
 
@@ -70,7 +70,7 @@ The whole image is dimmed with black at the top-level `spotlight_dim` (default 0
 ]}
 ```
 
-## counter — numbered step badges
+## counter: numbered step badges
 
 `at` is the point the badge's tail marks; the badge sits 1.65 radii away, opposite the tail. `angle` is the tail's direction in degrees: 0 right, 90 down, 135 down-left (the default). `style` is `bubble` (default), `pin` or `circle`; a `circle` has no tail and is centred on `at`. `center` places the badge itself instead of `at`. `number` defaults to one more than the largest so far. The badge diameter for `size` 0–7 is 22, 28, 36, 48, 64, 84, 112, 150 points.
 
@@ -84,7 +84,7 @@ To keep a badge off the thing it points at, aim the tail from the empty side: a 
 ]}
 ```
 
-## line — a straight line
+## line: a straight line
 
 `dash` makes it dashed. `start_cap` and `end_cap` are each `none` (default), `arrow` or `bullet`.
 

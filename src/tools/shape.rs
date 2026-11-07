@@ -204,7 +204,7 @@ mod tests {
     #[test]
     fn sketch_falls_back_when_small() {
         // A shorter side of 40 px is not over 40: the sketch is the plain outline, 6 px wide
-        // (min(40/10, 3 pt)·2), the rect still with the hand-drawn jitter.
+        // (min(40/10, 3 pt) * 2), the rect still with the hand-drawn jitter.
         let s = shape(Fill::Sketch, [30.0, 20.0, 40.0, 200.0]);
         for kind in [ShapeKind::Rect, ShapeKind::Oval] {
             assert!(

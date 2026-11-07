@@ -12,7 +12,7 @@ use super::JITTER;
 use super::rounded_rect::elements;
 
 /// The hand-drawn rect's corner size in points for a stroke `wpt` points wide:
-/// `max(1.1k − 0.004k², 10)` with `k = 6·wpt` (12 for no stroke).
+/// `max(1.1k − 0.004k², 10)` with `k = 6 * wpt` (12 for no stroke).
 #[must_use]
 pub fn hd_corner(wpt: f64) -> f64 {
     let k = if wpt == 0.0 { 12.0 } else { wpt * 6.0 };
@@ -68,7 +68,7 @@ fn wobbly_rect(rect: (f64, f64, f64, f64), wpt: f64, dpr: f64, rnd: &[f64; 100])
 
 /// The hand-drawn oval's centre line: 1000 points on the curve `m/4` outside the ellipse
 /// inscribed `m/4` inside the rect (`m` its shorter side), which touches the rect's sides,
-/// from the angle `6.28·rnd[37]` on. Under a stroke a fifth of `m` the curve turns 0.98–1.04
+/// from the angle `6.28 * rnd[37]` on. Under a stroke a fifth of `m` the curve turns 0.98–1.04
 /// times (draw 8) while its distance drifts from 1.3 strokes inside to 1.3 outside: a spiral
 /// that ends past or short of its start. Thicker strokes get the closed ring.
 fn spiral((left, bottom, w, h): (f64, f64, f64, f64), stroke: f64, rnd: &[f64; 100]) -> Vec<Pt> {
@@ -78,7 +78,7 @@ fn spiral((left, bottom, w, h): (f64, f64, f64, f64), stroke: f64, rnd: &[f64; 1
         y: (bottom + h + bottom) * 0.5,
     };
     let inner = w - short * 0.5;
-    // The inner ellipse's semi-axes: `semi` and `semi·squash`.
+    // The inner ellipse's semi-axes: `semi` and `semi * squash`.
     let (semi, squash) = (inner * 0.5, (h - short * 0.5) / inner);
     let (drift, turn) = if stroke * 5.0 < short {
         let draw = rnd[8];
@@ -133,8 +133,8 @@ fn outline_path(
     path
 }
 
-/// The raw weights: `corner + cos(9.42·i/n) + 1 + 12·rnd[(84 + i) % 100]`, the corner term
-/// being `4000·(1 − |cos|)` of the turn at each point when `corner_boost`.
+/// The raw weights: `corner + cos(9.42 * i/n) + 1 + 12 * rnd[(84 + i) % 100]`, the corner term
+/// being `4000 * (1 − |cos|)` of the turn at each point when `corner_boost`.
 fn weigh(pts: &mut [Pt], corner_boost: bool, rnd: &[f64; 100]) {
     #[expect(
         clippy::cast_precision_loss,
@@ -153,7 +153,7 @@ fn weigh(pts: &mut [Pt], corner_boost: bool, rnd: &[f64; 100]) {
     }
 }
 
-/// `4000·(1 − |cos θ|)`, θ the angle at point `i` between the ways to its neighbours: 0 on a
+/// `4000 * (1 − |cos θ|)`, θ the angle at point `i` between the ways to its neighbours: 0 on a
 /// straight run, 4000 at a right angle. An end, missing a neighbour, and a point next to a
 /// copy of itself count as straight.
 fn turn(pts: &[Pt], i: usize) -> f64 {
@@ -191,7 +191,7 @@ mod tests {
     #[test]
     fn hd_corner_value() {
         assert!((hd_corner(3.0) - 18.504).abs() < 1e-9);
-        // 6 pt: 1.1·36 − 0.004·36² = 34.416; 1 pt: 6.456, raised to 10; none: k = 12.
+        // 6 pt: 1.1 * 36 − 0.004 * 36² = 34.416; 1 pt: 6.456, raised to 10; none: k = 12.
         assert!((hd_corner(6.0) - 34.416).abs() < 1e-9);
         assert_eq!(hd_corner(1.0), 10.0);
         assert!((hd_corner(0.0) - 12.624).abs() < 1e-9);
@@ -199,8 +199,8 @@ mod tests {
 
     #[test]
     fn hand_drawn_rect_is_jittered_with_its_own_corners() {
-        // 300 × 200 at 3 pt, dpr 2: corners of min(200/3, 18.504·2) = 37.008 px, and the
-        // bottom-left corner's x draw at 1 moves the start by 200·1.3·0.5/400 = 0.325 px (the
+        // 300 × 200 at 3 pt, dpr 2: corners of min(200/3, 18.504 * 2) = 37.008 px, and the
+        // bottom-left corner's x draw at 1 moves the start by 200 * 1.3 * 0.5/400 = 0.325 px (the
         // hand-drawn rect is built with jitter 1.3, as the plain one on small shapes).
         let mut rnd = NO_DRAWS;
         rnd[56] = 1.0;
@@ -210,7 +210,7 @@ mod tests {
 
     #[test]
     fn hand_drawn_rect_shifts_all_but_its_ends() {
-        // Draws 27 and 28 at 1 and 0: the inner points move (+1, −1)·dpr/2.
+        // Draws 27 and 28 at 1 and 0: the inner points move (+1, −1) * dpr/2.
         let mut rnd = NO_DRAWS;
         (rnd[27], rnd[28]) = (1.0, 0.0);
         let rect = (10.0, 20.0, 300.0, 200.0);
@@ -227,7 +227,7 @@ mod tests {
 
     #[test]
     fn a_thick_stroke_makes_a_ring_spanning_the_rect() {
-        // 200 × 100 with a 20 px stroke (5·20 ≥ 100): no drift, a full turn from the right
+        // 200 × 100 with a 20 px stroke (5 * 20 ≥ 100): no drift, a full turn from the right
         // mid-edge (draw 37 at 0), reaching each side to within sampling error.
         let pts = spiral((10.0, 20.0, 200.0, 100.0), 20.0, &ZERO_DRAWS);
         assert_eq!(pts.len(), 1000);
@@ -250,7 +250,7 @@ mod tests {
 
     #[test]
     fn a_thin_stroke_spirals_out_past_its_start() {
-        // A 6 px stroke: the distance drifts by 2.6·6 = 15.6 px over 0.98 turns (draw 8 at 0),
+        // A 6 px stroke: the distance drifts by 2.6 * 6 = 15.6 px over 0.98 turns (draw 8 at 0),
         // starting 7.8 px inside the right mid-edge and ending 7.8 px outside.
         let pts = spiral((10.0, 20.0, 200.0, 100.0), 6.0, &ZERO_DRAWS);
         assert_near(pts[0].pos, (202.2, 70.0), 1e-9);
@@ -263,7 +263,7 @@ mod tests {
 
     #[test]
     fn weights_peak_at_turns() {
-        // 4000·(1 − |cos 90°|) at the corner, plus cos(9.42·i/3) + 1 and 12·0 from the draws.
+        // 4000 * (1 − |cos 90°|) at the corner, plus cos(9.42 * i/3) + 1 and 12 * 0 from the draws.
         let mut pts = at(&[(0.0, 0.0), (10.0, 0.0), (10.0, 10.0)]);
         weigh(&mut pts, true, &ZERO_DRAWS);
         let got: Vec<f64> = pts.iter().map(|p| p.weight).collect();

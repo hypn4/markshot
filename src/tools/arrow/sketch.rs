@@ -24,7 +24,7 @@ const SIN_0_4: f64 = 0.389_418_342_308_650_5;
 pub(super) fn paths(g: &Geometry, seed: u64) -> Vec<PathData> {
     let rnd = rnd100(seed);
     // A little wider than the line arrow's points, at most a fifteenth of the length; the head
-    // is 20·√w long, scaled like the shaped arrow's.
+    // is 20 * √w long, scaled like the shaped arrow's.
     let w = ((WIDTHS[g.size] * 0.7 + 1.3) * g.dpr).min(g.len / 15.0);
     let sketch = Sketch {
         g,
@@ -43,7 +43,7 @@ pub(super) fn paths(g: &Geometry, seed: u64) -> Vec<PathData> {
     vec![sketch.straight()]
 }
 
-/// [`EASE_PICK`]'s index for draw `r`: `2.99·r`, truncated.
+/// [`EASE_PICK`]'s index for draw `r`: `2.99 * r`, truncated.
 #[expect(
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
@@ -232,7 +232,7 @@ fn wings(rnd: &[f64; 100], closed: bool, tip: V2, aim: V2, w: f64) -> (V2, V2) {
         (f1, f2) = (1.0, 1.0);
     }
     // Intentional: a1 and a2 are radians already, yet the wings turn π times that: they spread
-    // (9 + e + 2r)·π degrees each way, about 28–35° (closed 19–23°), not 9–11°.
+    // (9 + e + 2r) * π degrees each way, about 28–35° (closed 19–23°), not 9–11°.
     let w1 = wing(tip, span, turn(a1 * PI), len * f1);
     // Intentional: the second wing turns off `aim` rebuilt from its angle and length.
     let span = V2 {
@@ -256,7 +256,7 @@ fn wing(tip: V2, span: V2, (c, s): (f64, f64), len: f64) -> V2 {
     }
 }
 
-/// `from + k·(to − from)`, computed by angle and length.
+/// `from + k * (to − from)`, computed by angle and length.
 fn toward(from: V2, to: V2, k: f64) -> V2 {
     let d = to - from;
     let (a, r) = (atan2(d.y, d.x), norm(d) * k);
@@ -296,9 +296,9 @@ mod tests {
 
     #[test]
     fn wing_spread_keeps_the_extra_pi() {
-        // With every draw 0.5 and w ≤ 4, the half-angle is (9 + 0 + 2·0.5)° = 10°, in
+        // With every draw 0.5 and w ≤ 4, the half-angle is (9 + 0 + 2 * 0.5)° = 10°, in
         // radians, then multiplied by π once more: 10π²/180 = 0.548311 rad (31.4°), not 10°.
-        // Open wings are (0.8 + 0.4·0.5) = 1× as long as the head.
+        // Open wings are (0.8 + 0.4 * 0.5) = 1× as long as the head.
         let rnd = [0.5; 100];
         let (t, b) = (V2 { x: 0.0, y: 0.0 }, V2 { x: -100.0, y: 0.0 });
         let (w1, w2) = wings(&rnd, false, t, b, 4.0);
@@ -337,7 +337,7 @@ mod tests {
     #[test]
     fn sketch_runs_from_tail_to_tip() {
         // Seed 5 draws an open head without wobble or gap. w is 6.8 px; the stroke starts
-        // with a round cap 0.6·w = 4.1 px behind the tail and the head's point is at the tip.
+        // with a round cap 0.6 * w = 4.1 px behind the tail and the head's point is at the tip.
         let mut a = resolved(ArrowStyle::Sketch, [20.0, 50.0], [280.0, 50.0]);
         a.seed = 5;
         let c = coverage(300, 100, 2.0, &a);

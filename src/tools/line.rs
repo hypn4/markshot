@@ -183,7 +183,7 @@ mod tests {
 
     #[test]
     fn line_half_angle() {
-        // The truncated π: 3.1415926 / 4 and 3.1415926 · 5 / 18, not exactly 45° and 50°.
+        // The truncated π: 3.1415926 / 4 and 3.1415926 * 5 / 18, not exactly 45° and 50°.
         assert_eq!(half_angle(19.9), 0.785_398_15);
         assert!((half_angle(20.0) - 0.872_664_611_1).abs() < 1e-10);
         assert!((half_angle(500.0) - 0.872_664_611_1).abs() < 1e-10);

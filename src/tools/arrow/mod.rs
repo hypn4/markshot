@@ -81,7 +81,7 @@ pub fn stroke_width(len: f64, size: u8, dpr: f64) -> f64 {
 
 /// `(kHead, kTail)`, the scales of the head and the tail of an arrow whose ends are `len0` px
 /// apart. Past 520 px the head grows (to 1.25×) as the tail shrinks (to 0.8×); under the
-/// size's threshold (200 px up to size 5, `112·SIZEK` above) both shrink with the length.
+/// size's threshold (200 px up to size 5, `112 * SIZEK` above) both shrink with the length.
 ///
 /// # Panics
 /// When `size` is 10 or more.
@@ -143,7 +143,7 @@ impl Geometry {
 }
 
 /// The taper: each point's length along the stroke, `t` = that over the whole length (kept as
-/// the weight), and the width `w0 + (w1 − w0)·ease(t)`. One point is left alone.
+/// the weight), and the width `w0 + (w1 − w0) * ease(t)`. One point is left alone.
 fn taper(pts: &mut [Pt], w0: f64, w1: f64, ease_kind: u8) {
     if pts.len() < 2 {
         return;

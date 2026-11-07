@@ -50,7 +50,7 @@ const LABEL_PX: f64 = 12.0;
 const LABEL_PAD: f64 = 1.0;
 
 /// The smallest of 50, 100, 200, 250, 500 and 1000 that splits the longer side of a `w` × `h`
-/// image into at most 20 intervals (`max(w, h) ≤ 20 · step`); 1000 when none does.
+/// image into at most 20 intervals (`max(w, h) ≤ 20 * step`); 1000 when none does.
 #[must_use]
 pub fn default_step(w: u32, h: u32) -> u32 {
     let long = w.max(h);
@@ -62,7 +62,7 @@ pub fn default_step(w: u32, h: u32) -> u32 {
 
 /// `src` with a 1 px `#FF00FF` α 0.6 line on every column and row that is a positive multiple
 /// of `step` (default [`default_step`]), each labeled with its coordinate in Inter Medium
-/// 12·dpr px, white on black α 0.6: columns along the top edge, rows along the left edge. The
+/// 12 * dpr px, white on black α 0.6: columns along the top edge, rows along the left edge. The
 /// dpr comes from the PNG's DPI; the output keeps its DPI and ICC profile.
 ///
 /// # Errors
@@ -104,7 +104,7 @@ pub fn grid(src: SourceImage, step: Option<u32>) -> Result<Vec<u8>, Error> {
     c.into_png()
 }
 
-/// `step`, `2·step`, … below `end`.
+/// `step`, `2 * step`, … below `end`.
 fn multiples(step: u32, end: u32) -> Vec<u32> {
     (1..)
         .map_while(|i: u32| i.checked_mul(step).filter(|&v| v < end))

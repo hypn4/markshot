@@ -24,7 +24,7 @@ const BLACK: Rgb = Rgb {
 };
 
 /// The outline of `s` in y-up px: the edge of its hole and the centre line of its border. A
-/// rect gets unjittered corners of `min(cp·dpr, md/3)` px, `cp` being 12 at size 0 and twice
+/// rect gets unjittered corners of `min(cp * dpr, md/3)` px, `cp` being 12 at size 0 and twice
 /// the border width in points otherwise; an oval is the squircle. `None` for an empty rect,
 /// which gets no hole.
 ///
@@ -62,8 +62,8 @@ pub fn draw_curtain(c: &mut Canvas, spots: &[&ResolvedSpotlight], dim: f64) {
         alpha: dim,
         blend: BlendMode::SourceOver,
     };
-    // The layer keeps 8-bit alpha, round(dim·255)/255: 55/255 for the default 0.214, so that
-    // outside the holes every value v becomes round(v·200/255).
+    // The layer keeps 8-bit alpha, round(dim * 255)/255: 55/255 for the default 0.214, so that
+    // outside the holes every value v becomes round(v * 200/255).
     curtain.fill(&whole(c), ink, FillRule::Winding);
     // Rects and squircles both run counter-clockwise, so where holes overlap they wind twice
     // and the nonzero rule cuts their union.
@@ -82,7 +82,7 @@ pub fn draw_curtain(c: &mut Canvas, spots: &[&ResolvedSpotlight], dim: f64) {
 }
 
 /// Draws the border of `s`: its outline stroked in its color with butt caps and round joins,
-/// `min(w0, md/10)·dpr` px wide like a shape's, so none at size 0.
+/// `min(w0, md/10) * dpr` px wide like a shape's, so none at size 0.
 ///
 /// # Panics
 /// When `s.size` is 10 or more; resolved sizes are 0 to 7.
@@ -171,7 +171,7 @@ mod tests {
         rgba.as_chunks::<4>().0.to_vec()
     }
 
-    /// Asserts that `px` is white under black at 0.214: round(255·(1 − 0.214)) = 200, ±1.
+    /// Asserts that `px` is white under black at 0.214: round(255 * (1 − 0.214)) = 200, ±1.
     fn assert_dimmed(px: [u8; 4], at: (usize, usize)) {
         assert!(
             px[..3].iter().all(|&v| v.abs_diff(200) <= 1) && px[3] == 255,
@@ -244,7 +244,7 @@ mod tests {
 
     #[test]
     fn rect_radius() {
-        // Corners of min(((w0 == 0) ? 12 : 2·w0)·dpr, md/3) px at dpr 2: a 200 × 100 rect at
+        // Corners of min(((w0 == 0) ? 12 : 2 * w0) * dpr, md/3) px at dpr 2: a 200 × 100 rect at
         // size 2 (w0 = 3 pt) gets min(12, 33.3) = 12, at size 0 min(24, 33.3) = 24, and a
         // 200 × 30 rect at size 2 gets 30/3 = 10. The outline starts on the bottom edge (y-up),
         // a corner in from the left.
@@ -275,13 +275,13 @@ mod tests {
     #[test]
     fn default_dim_is_stored_as_8_bit_alpha() {
         // The default dim is black at 55/255, so outside the holes every value v becomes
-        // round(v·200/255): 255 → 200, 128 → 100, 30 → 24. One column per value; the hole is
+        // round(v * 200/255): 255 → 200, 128 → 100, 30 → 24. One column per value; the hole is
         // below the image.
         let mut c = grey(256, 1, |x, _| u8::try_from(x).unwrap());
         let s = spot([0.0, 10.0, 20.0, 20.0], 2, SpotShape::Rect);
         draw_curtain(&mut c, &[&s], 0.214);
         for (v, px) in (0_u32..).zip(pixels(c)) {
-            // round(v·200/255): v·200/255 is never halfway between two integers.
+            // round(v * 200/255): v * 200/255 is never halfway between two integers.
             let want = u8::try_from((v * 200 + 127) / 255).unwrap();
             assert_eq!(px, [want, want, want, 255], "value {v}");
         }

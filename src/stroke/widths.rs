@@ -2,7 +2,7 @@
 
 use super::{Pt, clamp01, extremes};
 
-/// A running average of the weights, `w = k·w_prev + (1 − k)·w`, seeded with the first
+/// A running average of the weights, `w = k * w_prev + (1 − k) * w`, seeded with the first
 /// weight. Two points or fewer are left alone.
 pub fn ema_weight(pts: &mut [Pt], k: f64) {
     if pts.len() <= 2 {
@@ -16,7 +16,7 @@ pub fn ema_weight(pts: &mut [Pt], k: f64) {
 }
 
 /// Blends each weight with its min–max normalization onto `lo..hi`,
-/// `w = (1 − mix)·w + mix·(lo + (hi − lo)·(w − min)/(max − min))`. Equal weights all become
+/// `w = (1 − mix) * w + mix * (lo + (hi − lo) * (w − min)/(max − min))`. Equal weights all become
 /// `(lo + hi)/2`, whatever `mix`.
 #[expect(clippy::float_cmp, reason = "equal extremes are tested exactly")]
 pub fn norm_weight(pts: &mut [Pt], lo: f64, hi: f64, mix: f64) {
@@ -34,7 +34,7 @@ pub fn norm_weight(pts: &mut [Pt], lo: f64, hi: f64, mix: f64) {
     }
 }
 
-/// A circular box blur of the weights. Each becomes the mean of the `2·half + 1` weights
+/// A circular box blur of the weights. Each becomes the mean of the `2 * half + 1` weights
 /// centred on it, the window wrapping around the ends, with `half = ⌊min(n − 1, span)/2⌋`.
 pub fn blur_weight(pts: &mut [Pt], span: usize) {
     let n = pts.len();
@@ -57,8 +57,8 @@ pub fn blur_weight(pts: &mut [Pt], span: usize) {
     }
 }
 
-/// `width = w·(1 − v + 2v·weight)` for variability `v`, which is damped on strokes shorter
-/// than five widths: `v·clamp((L/w − 1)/4, 0, 1)` with `L` the last point's `cum_len`
+/// `width = w * (1 − v + 2v * weight)` for variability `v`, which is damped on strokes shorter
+/// than five widths: `v * clamp((L/w − 1)/4, 0, 1)` with `L` the last point's `cum_len`
 /// (skipped when `L` is 0 and for two points of equal weight). One point is left alone.
 #[must_use]
 #[expect(clippy::float_cmp, reason = "the two weights are compared exactly")]

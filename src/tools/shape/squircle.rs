@@ -17,7 +17,7 @@ const CUBICS: [[(f64, f64); 3]; 8] = [
 
 /// The squircle in the rect `(x, y, w, h)` (y-up px, corner `(x, y)`, sides positive) as an
 /// open path of eight cubics. It touches the rect's mid-edges. Along a long side the
-/// coefficients are pulled toward the ends by `0.75·short/long + 0.25`, so the ends stay round
+/// coefficients are pulled toward the ends by `0.75 * short/long + 0.25`, so the ends stay round
 /// while the long sides stretch.
 #[must_use]
 pub fn squircle(x: f64, y: f64, w: f64, h: f64) -> PathData {
@@ -114,8 +114,8 @@ mod tests {
 
     #[test]
     fn long_sides_stretch_and_the_ends_stay_round() {
-        // Wide: x coefficients pulled toward the sides by 0.75·(100/200) + 0.25 = 0.625:
-        // 0.22 → 0.1375, 0.78 → 1 − 0.22·0.625 = 0.8625, 0.94 → 0.9625.
+        // Wide: x coefficients pulled toward the sides by 0.75 * (100/200) + 0.25 = 0.625:
+        // 0.22 → 0.1375, 0.78 → 1 − 0.22 * 0.625 = 0.8625, 0.94 → 0.9625.
         let wide = squircle(0.0, 0.0, 200.0, 100.0);
         assert_near(start(&wide), (27.5, 6.0));
         assert_near(end(&wide, 1), (172.5, 6.0));

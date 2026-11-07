@@ -5,7 +5,7 @@ use std::ops::{Add, Mul, Neg, Sub};
 use crate::math::{atan2, cos, hypot, sin};
 
 /// Control-point distance, as a fraction of the radius, for a quarter circle as one cubic:
-/// `4/3 · (√2 − 1)`.
+/// `4/3 * (√2 − 1)`.
 const CIRCLE_KAPPA: f64 = 0.552_284_749_830_793_6;
 
 #[derive(Copy, Clone, Debug, PartialEq, Default)]

@@ -375,7 +375,7 @@ fn positive(path: &str, value: f64) -> Result<f64, Error> {
     }
 }
 
-/// Maps spec coordinates to original-image pixels: `v · numerator / denominator` per axis.
+/// Maps spec coordinates to original-image pixels: `v * numerator / denominator` per axis.
 struct CoordMap {
     x: (f64, f64),
     y: (f64, f64),

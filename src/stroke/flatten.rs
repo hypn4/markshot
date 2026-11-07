@@ -4,12 +4,12 @@ use super::{Pt, dot, norm};
 
 /// The Bézier path through the points as a polyline. Unset handles become their anchors.
 /// Each segment emits its start point, the cubic sampled at `t = k/N`
-/// (`N = ⌈1.2·chord/step⌉`, `k < N`) wherever at least `step` past the last emitted point —
-/// weight interpolated, other fields zero, handles unset — and its end point: just the start
-/// for a zero chord, both ends for a 1.2·chord under `step`. Joints therefore repeat, and the
+/// (`N = ⌈1.2 * chord/step⌉`, `k < N`) wherever at least `step` past the last emitted point
+/// (weight interpolated, other fields zero, handles unset) and its end point: just the start
+/// for a zero chord, both ends for a 1.2 * chord under `step`. Joints therefore repeat, and the
 /// last point is appended once more.
 ///
-/// `step` must be positive and finite; the output grows as `1.2·chord/step`, so callers keep
+/// `step` must be positive and finite; the output grows as `1.2 * chord/step`, so callers keep
 /// both the points and `step` bounded (the resolver bounds coordinates and dpr).
 #[must_use]
 pub fn flatten(pts: &[Pt], step: f64) -> Vec<Pt> {
@@ -77,7 +77,7 @@ mod tests {
 
     #[test]
     fn flatten_spacing() {
-        // A straight cubic (handles unset ⇒ on the anchors): ⌈1.2·100/4⌉ = 30 samples, 20 of
+        // A straight cubic (handles unset ⇒ on the anchors): ⌈1.2 * 100/4⌉ = 30 samples, 20 of
         // them at least 4 past the previous point, between the two ends; the end point is
         // then appended once more.
         let out = flatten(&points(&[(0.0, 0.0), (100.0, 0.0)]), 4.0);
@@ -101,7 +101,7 @@ mod tests {
         let out = flatten(&p, 4.0);
         let samples = &out[1..out.len() - 2];
         for s in samples {
-            // weight = t, and x(t) = 100·(3t² − 2t³) for controls on the anchors.
+            // weight = t, and x(t) = 100 * (3t² − 2t³) for controls on the anchors.
             let t = s.weight;
             assert!(t > 0.0 && t < 1.0, "{s:?}");
             assert!(

@@ -164,7 +164,7 @@ pub fn radius(size: u8, dpr: f64) -> f64 {
     DIAM[usize::from(size)] / 2.0 * dpr
 }
 
-/// The center of a counter of radius `r` whose tail marks `at` (y-up px): `1.65·r` back from
+/// The center of a counter of radius `r` whose tail marks `at` (y-up px): `1.65 * r` back from
 /// it along the tail, which points `angle_deg_screen` degrees on screen (0 right, 90 down). A
 /// circle has no tail and is centered on `at`.
 #[must_use]
@@ -178,7 +178,7 @@ pub fn center_from_at(at: V2, angle_deg_screen: f64, r: f64, style: CounterStyle
 
 /// The label's weight, size in px and ink for a counter filled `fill` showing `count` on a
 /// diameter of `d` points: white Medium on fills of luminance up to 0.6 and black Regular on
-/// lighter ones, `0.55·d·dpr` px for one digit and 10% less for more.
+/// lighter ones, `0.55 * d * dpr` px for one digit and 10% less for more.
 #[must_use]
 pub fn label_style(fill: Rgb, count: u32, d: f64, dpr: f64) -> (Weight, f64, Rgb) {
     let px = d * 0.5 * dpr * 1.1 * if count > 9 { 0.9 } else { 1.0 };
@@ -233,7 +233,7 @@ fn body(center: V2, angle: f64, r: f64, style: CounterStyle) -> PathData {
 
 /// `number` at `px` px per em on a counter of `d` points at `center` (y-up px). Its box
 /// ([`label_box`]) is centered on whole pixels, then moved right by 0.3k and up by 0.5k
-/// (k = dpr·d/28), and its baseline runs the ascender below its top. The layout takes SF Pro's
+/// (k = dpr * d/28), and its baseline runs the ascender below its top. The layout takes SF Pro's
 /// metrics at that size, tracking included; each Inter digit, scaled to SF's digit height, is
 /// centered on SF's ink.
 fn label(number: u32, weight: Weight, px: f64, center: V2, d: f64, dpr: f64) -> PathData {
@@ -344,8 +344,8 @@ mod tests {
 
     #[test]
     fn center_offset() {
-        // 1.65·R = 59.4 px back from `at` along the tail. At 135° the tail points down-left on
-        // screen, (−√½, −√½) with y up, so the center is 59.4·√½ = 42.0021428 up and right.
+        // 1.65 * R = 59.4 px back from `at` along the tail. At 135° the tail points down-left on
+        // screen, (−√½, −√½) with y up, so the center is 59.4 * √½ = 42.0021428 up and right.
         let at = V2 { x: 500.0, y: 500.0 };
         for style in [CounterStyle::Bubble, CounterStyle::Pin] {
             assert_near(
@@ -367,7 +367,7 @@ mod tests {
     #[test]
     fn label_rules() {
         // #FF0C01 has luminance 0.327: white Medium. #FFDC2C has 0.825: black Regular. One digit
-        // is 0.55·d·dpr px, two or more 10% smaller.
+        // is 0.55 * d * dpr px, two or more 10% smaller.
         let white = Rgb {
             r: 1.0,
             g: 1.0,
@@ -404,7 +404,7 @@ mod tests {
 
     #[test]
     fn tail_points_along_the_angle() {
-        // R 36: the bubble's tip is 1.5·R = 54 px from the center, the pin's 1.55·R, toward the
+        // R 36: the bubble's tip is 1.5 * R = 54 px from the center, the pin's 1.55 * R, toward the
         // screen angle: 135° is down-left, (−√½, −√½) with y up, 0° right and 90° down.
         let center = V2 { x: 100.0, y: 100.0 };
         let directions = [

@@ -1,6 +1,6 @@
 ---
 name: annotating-screenshots
-description: Use when the user wants a screenshot or other PNG annotated — arrows pointing at UI elements, boxes or ovals around them, private data blurred, erased or redacted, text highlighted, one area spotlighted, numbered step badges, or lines — or wants a previous annotation adjusted. Draws the annotations deterministically with the markshot CLI.
+description: Use when the user wants a screenshot or other PNG annotated (arrows pointing at UI elements, boxes or ovals around them, private data blurred, erased or redacted, text highlighted, one area spotlighted, numbered step badges, or lines), or wants a previous annotation adjusted. Draws the annotations deterministically with the markshot CLI.
 compatibility: Requires the markshot CLI (macOS, Linux or Windows) on PATH, a POSIX-style shell for the examples, and the ability to view PNG images.
 metadata:
   cli: markshot
@@ -54,14 +54,14 @@ Every tool's fields, behaviour and a working example: [references/tools.md](refe
 
 ## Fixing a render
 
-`render` prints `{"width", "height", "dpr", "spec", "warnings"}`. That `spec` is fully resolved — ids, seeds, numbers, dpr and pixel coordinates are filled in — so edit only the values that are off and everything else stays identical.
+`render` prints `{"width", "height", "dpr", "spec", "warnings"}`. That `spec` is fully resolved (ids, seeds, numbers, dpr and pixel coordinates are filled in), so edit only the values that are off and everything else stays identical.
 
-When the user asks for a change to an earlier render, the edit is exactly what they asked for: those values change and every other value stays as it was. If the change causes a new problem — a bigger badge now covers a label, say — render it as asked anyway, then tell the user and name the edit that would fix it (e.g. `"angle": -45`).
+When the user asks for a change to an earlier render, the edit is exactly what they asked for: those values change and every other value stays as it was. If the change causes a new problem (a bigger badge now covers a label, say), render it as asked anyway, then tell the user and name the edit that would fix it (e.g. `"angle": -45`).
 
 - Render from the original input, never from the previous `out.png`, or the old annotations stay underneath.
 - Annotations skipped with a warning are not in the stdout spec; add them back with corrected values.
 - A counter comes back as its badge's `center`. Before changing its `size` or `angle`, replace `center` with the tail tip `at`, or the tip moves off its target:
-  `at = center + 1.65·R·(cos θ, sin θ)` with θ = `angle` in degrees (0 right, 90 down), R = D[`size`] / 2 · `dpr`, D = [22, 28, 36, 48, 64, 84, 112, 150]. For `"style": "circle"`, `at` = `center`.
+  `at = center + 1.65 * R * (cos θ, sin θ)` with θ = `angle` in degrees (0 right, 90 down), R = D[`size`] / 2 * `dpr`, D = [22, 28, 36, 48, 64, 84, 112, 150]. For `"style": "circle"`, `at` = `center`.
 - `fill_alpha` is listed only if you set it, so switching a rect's `fill` gives the new fill's default opacity.
 - Give annotations an `id` so you can find them in the stdout spec.
 

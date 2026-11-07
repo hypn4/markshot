@@ -4,7 +4,7 @@
 //!
 //! Every mosaic draw comes from one [`Rng`] stream seeded by the blur's `seed`: the
 //! partition's, then one per block. A unit draw `U` is [`Rng::next_unit`], drawn again while
-//! it is 1, and a draw below `n` is `⌊n·U⌋`.
+//! it is 1, and a draw below `n` is `⌊n * U⌋`.
 
 use crate::canvas::Canvas;
 use crate::math::pow;
@@ -35,7 +35,7 @@ pub fn draw(c: &mut Canvas, b: &ResolvedBlur) {
 }
 
 /// The mosaic's block size in px for a `w` × `h` rect,
-/// `round(min(round(min(w, h)/6), 5·dpr)·1.35^size)`.
+/// `round(min(round(min(w, h)/6), 5 * dpr) * 1.35^size)`.
 #[must_use]
 pub fn block_size(w: f64, h: f64, size: u8, dpr: f64) -> u32 {
     let base = (w.min(h) / 6.0).round().min(5.0 * dpr);
@@ -43,7 +43,7 @@ pub fn block_size(w: f64, h: f64, size: u8, dpr: f64) -> u32 {
 }
 
 /// A random partition of a `w` × `h` rect (y up, from its bottom-left corner) into blocks
-/// `max(s, 2)` to `3·max(s, 2)` px a side. Sides up to twice that least are never cut, so a
+/// `max(s, 2)` to `3 * max(s, 2)` px a side. Sides up to twice that least are never cut, so a
 /// rect thinner than the least gives blocks as thin as it is.
 #[must_use]
 pub fn partition(w: u32, h: u32, s: u32, rng: &mut Rng) -> Vec<Block> {
@@ -80,7 +80,7 @@ pub fn partition(w: u32, h: u32, s: u32, rng: &mut Rng) -> Vec<Block> {
 }
 
 /// The side of the block cut from the corner of a block `len` px long: all of it up to
-/// `2·least`, else `least + round((len − 2·least)·U)`, at most `3·least`.
+/// `2 * least`, else `least + round((len − 2 * least) * U)`, at most `3 * least`.
 fn first_side(len: u32, least: u32, rng: &mut Rng) -> u32 {
     if len <= 2 * least {
         return len;
@@ -99,7 +99,7 @@ fn unit(rng: &mut Rng) -> f64 {
     }
 }
 
-/// A draw below `n`: `⌊n·U⌋`.
+/// A draw below `n`: `⌊n * U⌋`.
 fn below(n: u32, rng: &mut Rng) -> u32 {
     int((f64::from(n) * unit(rng)).floor())
 }
@@ -475,7 +475,7 @@ mod tests {
 
     #[test]
     fn partition_keeps_small_rects_whole() {
-        // Sides up to 2·max(s, 2) are not cut, however small.
+        // Sides up to 2 * max(s, 2) are not cut, however small.
         let mut rng = Rng::new(1);
         assert_eq!(partition(30, 10, 18, &mut rng), [(0, 0, 30, 10)]);
         assert_eq!(partition(1, 1, 0, &mut rng), [(0, 0, 1, 1)]);

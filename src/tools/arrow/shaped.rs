@@ -62,7 +62,7 @@ fn curved(g: &Geometry, variant: usize) -> [PathData; 2] {
     // px per half SVG unit.
     let unit = SIZEK[g.size] * g.dpr * 0.5;
     let head_len = g.k_head * h * unit;
-    // Turning `sgn·2π` per circumference: the arc angle `head_len` spans.
+    // Turning `sgn * 2π` per circumference: the arc angle `head_len` spans.
     let turn = (sgn + sgn) * PI * head_len / (radius * (2.0 * PI));
     let head_base = arc.end + turn;
     // The direction of travel at the head base.
@@ -122,7 +122,7 @@ fn head(g: &Geometry, variant: usize, tip: V2, phi: f64) -> PathData {
     PathData(segs)
 }
 
-/// Outline point `q` (SVG units from `anchor`) scaled by `sizek·k·dpr` and turned by `theta`,
+/// Outline point `q` (SVG units from `anchor`) scaled by `sizek * k * dpr` and turned by `theta`,
 /// through polar coordinates rather than a rotation, which rounds differently.
 fn place(anchor: V2, q: V2, theta: f64, sizek: f64, k: f64, dpr: f64) -> V2 {
     let r = sizek * (norm(q) * k) * dpr;
@@ -165,7 +165,7 @@ mod tests {
 
     #[test]
     fn straight_outline_is_pinned_to_tail_and_tip() {
-        // 400 px at size 2, dpr 2: 1 SVG unit is 0.7·2 = 1.4 px at both ends. Segment 0 (the
+        // 400 px at size 2, dpr 2: 1 SVG unit is 0.7 * 2 = 1.4 px at both ends. Segment 0 (the
         // head's edge, x 53.77), 1 (next to the tip, x 99.32) and 9 (the neck, x 50.79) hang off
         // the tip; segment 10 (x 1.58) off the tail.
         let g = Geometry::new(v(100.0, 100.0), v(500.0, 100.0), 2, None, 2.0);

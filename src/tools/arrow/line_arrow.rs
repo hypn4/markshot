@@ -98,7 +98,7 @@ fn add_arc(path: &mut PathData, arc: &Arc, from: f64, to: f64, clockwise: bool) 
     let sweep = (if clockwise { from - to } else { to - from }).rem_euclid(2.0 * PI);
     let n = (sweep / (0.5 * PI)).ceil().clamp(1.0, 4.0);
     let step = if clockwise { -sweep / n } else { sweep / n };
-    // Controls `k·r` along the tangents: the usual cubic fit of a circular arc.
+    // Controls `k * r` along the tangents: the usual cubic fit of a circular arc.
     let k = 4.0 / 3.0 * tan(step / 4.0);
     let at = |a: f64| c + V2::dir(a) * r;
     let tangent = |a: f64| V2::dir(a + 0.5 * PI) * (k * r);

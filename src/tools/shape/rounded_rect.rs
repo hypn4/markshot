@@ -4,9 +4,9 @@ use crate::geom::{PathData, V2};
 use crate::stroke::{Pt, bezier_path};
 
 /// The rect `(x, y, w, h)` (y-up px, corner `(x, y)`, sides ≥ 0) with corners of
-/// `R = min(min(w, h)/3, cp·dpr)` px, as an open path of eight cubics from the bottom edge's
+/// `R = min(min(w, h)/3, cp * dpr)` px, as an open path of eight cubics from the bottom edge's
 /// left end, counter-clockwise. A `jitter` strength `s` above 0 moves each corner by up to
-/// `s·h/800` sideways and `s·w/800` up or down (draws `rnd[56..64]`) and bows the edges out;
+/// `s * h/800` sideways and `s * w/800` up or down (draws `rnd[56..64]`) and bows the edges out;
 /// at 0 the edges are straight and each corner curve passes `R/8` inside the sharp corner.
 #[must_use]
 #[expect(
@@ -136,7 +136,7 @@ mod tests {
 
     #[test]
     fn rect_corner() {
-        // 200 × 100, size 2 (3 pt), dpr 2: corners of min(100/3, 2·3·2) = 12 px. Unjittered,
+        // 200 × 100, size 2 (3 pt), dpr 2: corners of min(100/3, 2 * 3 * 2) = 12 px. Unjittered,
         // both handles of a corner curve sit on the sharp corner, so its midpoint is
         // 12/8 = 1.5 px in from both edges.
         let path = rounded_rect(0.0, 0.0, 200.0, 100.0, 0.0, 2.0 * WIDTHS[2], 2.0, &NO_DRAWS);
@@ -180,9 +180,9 @@ mod tests {
 
     #[test]
     fn jitter_bows_the_edges_out() {
-        // s' = 1.3·min(200/100, 100/200) = 0.65; dX = 0.65·min(1.4/200, 100/2/80000) and
-        // dY = 0.65·min(200/2/80000, 1.4/100): both bow 0.08125 px. The corner handles then
-        // move by ey = 0.12·dX/0.19 and ex = 0.06·dY/0.22.
+        // s' = 1.3 * min(200/100, 100/200) = 0.65; dX = 0.65 * min(1.4/200, 100/2/80000) and
+        // dY = 0.65 * min(200/2/80000, 1.4/100): both bow 0.08125 px. The corner handles then
+        // move by ey = 0.12 * dX/0.19 and ex = 0.06 * dY/0.22.
         let path = rounded_rect(0.0, 0.0, 200.0, 100.0, 1.3, 6.0, 2.0, &NO_DRAWS);
         let [c1, c2, _] = cubic(&path, 1);
         assert_near(c1, (56.0, -0.08125));
@@ -195,8 +195,8 @@ mod tests {
 
     #[test]
     fn jitter_moves_corners_by_the_other_side() {
-        // Each corner's draws at an extreme: x moves by ±h·1.3·0.5/400 = ±0.1625 and y by
-        // ±w·1.3·0.5/400 = ±0.325. Draws 56–57 move the bottom-left corner (y up), 58–59 the
+        // Each corner's draws at an extreme: x moves by ±h * 1.3 * 0.5/400 = ±0.1625 and y by
+        // ±w * 1.3 * 0.5/400 = ±0.325. Draws 56–57 move the bottom-left corner (y up), 58–59 the
         // top-left, 60–61 the top-right and 62–63 the bottom-right.
         let mut rnd = NO_DRAWS;
         rnd[56..64].copy_from_slice(&[1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0]);

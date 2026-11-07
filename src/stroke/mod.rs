@@ -106,7 +106,7 @@ pub fn metrics(pts: &mut [Pt]) {
 /// Shape correction "h": pulls each point's y toward the first point's row by
 /// `w = clamp(1 − angle/10°, 0, 1)`, `angle` being its direction from the first point folded
 /// into 0–90°. The walk ends after the first point outside the window (`w` = 0) at least
-/// `10·res` along the stroke, so `cum_len` must be set ([`metrics`]). Two points or fewer pass
+/// `10 * res` along the stroke, so `cum_len` must be set ([`metrics`]). Two points or fewer pass
 /// through.
 #[must_use]
 pub fn h_snap(pts: &[Pt], res: f64) -> Vec<Pt> {

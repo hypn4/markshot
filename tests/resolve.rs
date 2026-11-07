@@ -369,15 +369,15 @@ fn counter_at_places_the_center_opposite_the_tail() {
         };
         counter.center
     };
-    // Bubble, size 2 (36 pt, R = 18·dpr), 135°: the center sits 1.65·R up-right of `at`;
-    // 1.65 · 18 · cos 45° = 21.0011.
+    // Bubble, size 2 (36 pt, R = 18 * dpr), 135°: the center sits 1.65 * R up-right of `at`;
+    // 1.65 * 18 * cos 45° = 21.0011.
     assert_eq!(center("", 1.0), [121.0, 79.0]);
     assert_eq!(center("", 2.0), [142.0, 58.0]);
     assert_eq!(center(r#", "style": "pin""#, 1.0), [121.0, 79.0]);
     assert_eq!(center(r#", "style": "circle""#, 1.0), [100.0, 100.0]);
-    // 0° points the tail right, so the center is 1.65 · 18 = 29.7 left of `at`.
+    // 0° points the tail right, so the center is 1.65 * 18 = 29.7 left of `at`.
     assert_eq!(center(r#", "angle": 0"#, 1.0), [70.0, 100.0]);
-    // Size 0 is 22 pt: 1.65 · 11 · cos 45° = 12.8339.
+    // Size 0 is 22 pt: 1.65 * 11 * cos 45° = 12.8339.
     assert_eq!(center(r#", "size": 0"#, 1.0), [113.0, 87.0]);
 }
 
