@@ -1,40 +1,10 @@
 # markshot
 
-A single-binary CLI that draws annotations on a PNG screenshot: arrows, rectangles, ovals, blur, highlighter strokes, spotlights, numbered counters and lines. It is built for AI coding agents. The agent writes a JSON spec, renders it, looks at the result, then fixes values in the resolved spec it gets back and renders again.
+markshot draws annotations on a PNG screenshot from a JSON spec (arrows, rectangles, ovals, blur, highlighter strokes, spotlights, numbered counters and lines), so an AI coding agent can mark up a screenshot for you in one command.
 
-- Made for screenshots. Thicknesses are in points and scale with the PNG's DPI, so annotations look the same size on a Retina capture as on a standard one. Rectangles, ovals and arrows can look hand-drawn, the highlighter blends by the brightness of what is under it, and badge digits switch between white and black to stay legible.
-- Deterministic. The same input, spec and binary give the same PNG bytes, and randomness such as hand-drawn jitter and mosaic blocks is seeded from each annotation's id.
-- Runs on macOS and Linux (arm64 and x86_64) as one self-contained binary; the Linux builds need glibc 2.34 or later. It keeps the input's DPI and ICC profile.
+## What does it do?
 
-## Install
-
-**Release binaries.** Each `v*` tag publishes one archive per platform on the repository's GitHub Releases page, with a SHA-256 checksum next to it:
-
-| Platform | Asset |
-|---|---|
-| macOS, Apple silicon | `markshot-aarch64-apple-darwin.tar.gz` |
-| macOS, Intel | `markshot-x86_64-apple-darwin.tar.gz` |
-| Linux x86_64 (glibc) | `markshot-x86_64-unknown-linux-gnu.tar.gz` |
-| Linux arm64 (glibc) | `markshot-aarch64-unknown-linux-gnu.tar.gz` |
-
-```sh
-shasum -a 256 -c markshot-aarch64-apple-darwin.tar.gz.sha256
-tar -xzf markshot-aarch64-apple-darwin.tar.gz
-install markshot-aarch64-apple-darwin/markshot ~/.local/bin/
-```
-
-Each archive holds the binary, this README, the agent skill (`skills/annotating-screenshots/`) and the font license (`OFL.txt`).
-
-**From source.** You need Rust 1.99, which `rust-toolchain.toml` selects. From a clone:
-
-```sh
-cargo install --path . --locked   # installs markshot into ~/.cargo/bin
-cargo build --release --locked    # or build target/release/markshot
-```
-
-The release binary is 3,243,072 bytes (3.1 MiB), measured on aarch64-apple-darwin with `cargo build --release`.
-
-## Example
+You (or your agent) describe the annotations as JSON and render them onto the original screenshot:
 
 ```sh
 cat > spec.json <<'EOF'
@@ -48,36 +18,95 @@ EOF
 markshot render screenshot.png --spec spec.json -o annotated.png
 ```
 
-`render` writes `annotated.png` and prints JSON to stdout: the image size, the dpr used, the fully resolved `spec` (ids, seeds, counter numbers and pixel coordinates filled in) and any `warnings`. If you feed that `spec` back in, you get the same image. Invalid specs exit with code 1 and print `error: <path>: <message>`, e.g. `error: annotations[0].size: must be 0 to 7, got 9`.
-
-The other commands:
+`render` writes `annotated.png` and prints JSON to stdout: the image size, the dpr used, the fully resolved `spec` (ids, seeds, counter numbers and pixel coordinates filled in) and any `warnings`. Two more commands help along the way:
 
 - `markshot grid screenshot.png -o grid.png` overlays a labeled pixel grid, for reading coordinates.
 - `markshot schema` prints the JSON schema of the spec, with every field documented.
 
-## Agent skill
+## Why use it instead of drawing on the image another way?
 
-[`skills/annotating-screenshots/`](skills/annotating-screenshots/SKILL.md) is an [Agent Skills](https://agentskills.io/specification) skill. `SKILL.md` holds the workflow, coordinates, a tool picker, how to fix a render and common mistakes; `references/` holds every tool with an example, the spec details and defaults, and what each warning means. Agents load the references only when they need them.
+Because an agent can't drag a mouse, but it can write JSON, look at the result and fix one value:
 
-Install it by copying the whole directory into a skills folder your agent reads, for example:
+- **Fix-by-editing.** The resolved `spec` in the output is complete, so changing one value and rendering again from the original changes only that annotation. Feeding the `spec` back unchanged gives the same image.
+- **Deterministic.** The same input, spec and binary give the same PNG bytes on every supported platform; randomness such as hand-drawn jitter and mosaic blocks is seeded from each annotation's id.
+- **Made for screenshots.** Thicknesses are in points and scale with the PNG's DPI, so annotations look the same size on a Retina capture as on a standard one. Rectangles, ovals and arrows can look hand-drawn, the highlighter blends by the brightness of what is under it, and badge digits switch between white and black to stay legible. The input's DPI and ICC profile are kept.
+- **Clear failures.** An invalid spec exits with code 1, writes nothing, and prints `error: <path>: <message>`, e.g. `error: annotations[0].size: must be 0 to 7, got 9`.
+
+## How do I install it?
+
+**Download a release binary.** Each `v*` tag publishes one self-contained executable per platform on [GitHub Releases](https://github.com/hypn4/markshot/releases), with a `SHA256SUMS` file and a build provenance attestation:
+
+| Platform | Asset |
+|---|---|
+| macOS, Apple silicon | `markshot-aarch64-apple-darwin` |
+| Linux x86_64 (glibc 2.34+) | `markshot-x86_64-unknown-linux-gnu` |
+| Linux arm64 (glibc 2.34+) | `markshot-aarch64-unknown-linux-gnu` |
+| Windows x86_64 | `markshot-x86_64-pc-windows-msvc.exe` |
+| Windows arm64 | `markshot-aarch64-pc-windows-msvc.exe` |
+
+Save it as `markshot` (`markshot.exe` on Windows) in a directory on your PATH. On macOS and Linux, also make it executable. For example, on an Apple silicon Mac:
 
 ```sh
-mkdir -p ~/.claude/skills && cp -R skills/annotating-screenshots ~/.claude/skills/   # Claude Code, all projects
-mkdir -p .claude/skills && cp -R skills/annotating-screenshots .claude/skills/       # Claude Code, one project
-mkdir -p ~/.agents/skills && cp -R skills/annotating-screenshots ~/.agents/skills/   # Codex, Gemini CLI, Copilot CLI
+curl -fL -o ~/.local/bin/markshot \
+  https://github.com/hypn4/markshot/releases/latest/download/markshot-aarch64-apple-darwin
+chmod +x ~/.local/bin/markshot
 ```
 
-The skill needs `markshot` on the agent's PATH. Validate it against the specification with `uvx --from skills-ref agentskills validate skills/annotating-screenshots`; `cargo test` checks its frontmatter, links and examples too. [`evals/annotating-screenshots/`](evals/annotating-screenshots/README.md) holds the agent scenarios it was tested with; rerun them after changing the skill.
+Replace the asset name for other platforms. The Windows builds link the C runtime statically, so they need no Visual C++ redistributable. To check a download, compare `shasum -a 256 ~/.local/bin/markshot` with its line in [`SHA256SUMS`](https://github.com/hypn4/markshot/releases/latest/download/SHA256SUMS), or run `gh attestation verify ~/.local/bin/markshot --repo hypn4/markshot` to confirm that GitHub Actions built it from this repository.
 
-## Development
+**Or build from source.** You need Rust 1.99 or later:
+
+```sh
+cargo install --git https://github.com/hypn4/markshot --locked   # installs markshot into ~/.cargo/bin
+```
+
+In a clone, `rust-toolchain.toml` selects Rust 1.99; `cargo build --release --locked` builds `target/release/markshot`.
+
+The release binary is about 3 MB (fat LTO, one codegen unit, stripped).
+
+## How do I teach my AI agent to use it?
+
+Install the bundled skill. [`skills/annotating-screenshots/`](skills/annotating-screenshots/SKILL.md) follows the [Agent Skills](https://agentskills.io/specification) standard, which Claude Code, Codex, GitHub Copilot, VS Code, Cursor, Gemini CLI and [other agents](https://agentskills.io/clients) load. Once installed, the agent picks it up whenever you ask it to annotate a screenshot; `markshot` itself must be on the agent's PATH.
+
+**With the `skills` CLI** (needs Node.js 22.20+). Run it in your project, or add `-g` to install it for all your projects:
+
+```sh
+npx skills add hypn4/markshot --skill annotating-screenshots           # pick the agents interactively
+npx skills add hypn4/markshot --skill annotating-screenshots -a claude-code -a codex -y
+```
+
+It copies the skill into `.agents/skills/`, the location agents share, and links it into the folders of agents that use their own (such as `.claude/skills/`). `npx skills update` and `npx skills remove annotating-screenshots` keep it current or take it out. From a local clone, use the clone's path instead of `hypn4/markshot`.
+
+**Manually.** Copy the whole directory, `SKILL.md` and its `references/`, into a skills folder your agent scans:
+
+| Scope | Shared location (most agents) | Claude Code |
+|---|---|---|
+| One project | `.agents/skills/annotating-screenshots/` | `.claude/skills/annotating-screenshots/` |
+| All your projects | `~/.agents/skills/annotating-screenshots/` | `~/.claude/skills/annotating-screenshots/` |
+
+```sh
+mkdir -p ~/.agents/skills && cp -R skills/annotating-screenshots ~/.agents/skills/
+```
+
+Project skills take precedence over user skills with the same name. To confirm the agent sees it, list its skills (for example `/skills` in Claude Code or VS Code) or ask it which skills it has.
+
+The skill holds the render-and-fix workflow, coordinates, a tool picker and common mistakes; its `references/` hold every tool with an example, the spec details and defaults, and what each warning means, which the agent reads only when it needs them.
+
+## How is it developed and released?
+
+Run the same checks CI runs:
 
 ```sh
 cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test
 ```
 
-[`docs/design.md`](docs/design.md) describes the design: the CLI, coordinates, defaults, every tool, the draw order, determinism and colour handling. The golden images in `tests/golden/` pin the rendering byte for byte.
+- **CI** runs fmt, clippy and rustdoc once, then the whole test suite natively on all five release platforms. The golden images in `tests/golden/` pin the rendering byte for byte, so every platform must draw the same bytes.
+- **Releases** start when a `v*` tag is pushed. Each platform builds natively and runs the tests with the shipped release profile; then one job publishes the binaries, `SHA256SUMS`, the attestation and release notes generated from the commits by git-cliff's GitHub template. No changelog file is kept in the repository.
+- **The skill** is validated with `uvx --from skills-ref agentskills validate skills/annotating-screenshots`, and `cargo test` checks its frontmatter, links and examples. [`evals/annotating-screenshots/`](evals/annotating-screenshots/README.md) holds the agent scenarios it was tested with; rerun them after changing the skill.
+
+[`docs/design.md`](docs/design.md) describes the design: the CLI, coordinates, defaults, every tool, the draw order, determinism and colour handling.
 
 ## Notices
 
 - Counter labels are laid out with SF Pro's numeric metrics (ascender, descender, digit height and tracking). No SF Pro outlines are included. The digits are drawn with Inter.
-- The embedded Inter fonts (`assets/fonts/Inter-Regular.ttf`, `assets/fonts/Inter-Medium.ttf`) are © The Inter Project Authors and licensed under the SIL Open Font License 1.1. See [`assets/fonts/OFL.txt`](assets/fonts/OFL.txt).
+- The embedded Inter fonts (`assets/fonts/Inter-Regular.ttf`, `assets/fonts/Inter-Medium.ttf`) are © The Inter Project Authors and licensed under the SIL Open Font License 1.1. See [`assets/fonts/OFL.txt`](assets/fonts/OFL.txt). The fonts inside the binary carry the same copyright and license notice.

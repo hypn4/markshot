@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 rust-version = "1.99"
 description = "Render deterministic screenshot annotations for AI coding agents"
+repository = "https://github.com/hypn4/markshot"
 readme = "README.md"
 keywords = ["screenshot", "annotation", "png", "cli", "ai-agents"]
 publish = false
