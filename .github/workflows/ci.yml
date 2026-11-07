@@ -36,6 +36,14 @@ jobs:
             echo "::error::Replace the em dashes and middle dots listed above (see AGENTS.md)."
             exit 1
           fi
+      - name: Lint the shell install script
+        run: shellcheck -s sh scripts/install.sh
+      - name: Lint the PowerShell install script
+        shell: pwsh
+        run: |
+          $found = Invoke-ScriptAnalyzer -Path scripts/install.ps1 -Severity Warning, Error
+          $found | Format-Table -AutoSize
+          if ($found) { exit 1 }
       # Installs the toolchain and components pinned in rust-toolchain.toml, with a dependency cache.
       - uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30 # v2.0.1
         with:
@@ -74,3 +82,27 @@ jobs:
         shell: bash
         env:
           TARGET: ${{ matrix.target }}
+      # The install script for this platform picks its asset by the release's naming, checks it
+      # against SHA256SUMS and installs it; a local directory holding the binary just tested
+      # stands in for the release.
+      - name: Install script
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          case "$TARGET" in *windows*) exe=.exe ;; *) exe= ;; esac
+          release="$RUNNER_TEMP/release"
+          mkdir -p "$release"
+          cp "target/$TARGET/debug/markshot$exe" "$release/markshot-$TARGET$exe"
+          if command -v sha256sum >/dev/null; then sum=(sha256sum); else sum=(shasum -a 256); fi
+          (cd "$release" && "${sum[@]}" -- * > SHA256SUMS)
+          export MARKSHOT_INSTALL_DIR="$RUNNER_TEMP/bin"
+          case "$TARGET" in
+            *windows*)
+              MARKSHOT_DOWNLOAD_URL="$(cygpath -w "$release")" pwsh -NoProfile -File scripts/install.ps1
+              ;;
+            *)
+              MARKSHOT_DOWNLOAD_URL="file://$release" sh scripts/install.sh
+              ;;
+          esac
+          "$MARKSHOT_INSTALL_DIR/markshot$exe" --version

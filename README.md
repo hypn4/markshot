@@ -45,7 +45,23 @@ Because an agent can't drag a mouse, but it can write JSON, look at the result a
 
 ## How do I install it?
 
-**Download a release binary.** Each `v*` tag publishes one self-contained executable per platform on [GitHub Releases](https://github.com/hypn4/markshot/releases), with a `SHA256SUMS` file and a build provenance attestation:
+One command installs the latest release for your machine and checks it against the release's `SHA256SUMS`.
+
+On macOS (Apple silicon) or Linux (x86_64 or arm64, glibc 2.34+), into `~/.local/bin`:
+
+```sh
+curl -fsSL https://github.com/hypn4/markshot/releases/latest/download/install.sh | sh
+```
+
+On Windows (x86_64 or arm64), into `%LOCALAPPDATA%\Programs\markshot`, which it adds to your user PATH:
+
+```powershell
+powershell -ExecutionPolicy Bypass -c "irm https://github.com/hypn4/markshot/releases/latest/download/install.ps1 | iex"
+```
+
+Set `MARKSHOT_VERSION=v0.1.0` to install a particular release, or `MARKSHOT_INSTALL_DIR` to put it elsewhere. Running the command again upgrades in place. Then check with `markshot --version`.
+
+**Or download a binary yourself.** Each release on [GitHub Releases](https://github.com/hypn4/markshot/releases) has one self-contained executable per platform, a `SHA256SUMS` file and a build provenance attestation:
 
 | Platform | Asset |
 |---|---|
@@ -55,25 +71,11 @@ Because an agent can't drag a mouse, but it can write JSON, look at the result a
 | Windows x86_64 | `markshot-x86_64-pc-windows-msvc.exe` |
 | Windows arm64 | `markshot-aarch64-pc-windows-msvc.exe` |
 
-Save it as `markshot` (`markshot.exe` on Windows) in a directory on your PATH. On macOS and Linux, also make it executable. For example, on an Apple silicon Mac:
-
-```sh
-curl -fL -o ~/.local/bin/markshot \
-  https://github.com/hypn4/markshot/releases/latest/download/markshot-aarch64-apple-darwin
-chmod +x ~/.local/bin/markshot
-```
-
-Replace the asset name for other platforms. A binary downloaded with a browser on macOS is quarantined and blocked as unsigned; clear that with `xattr -d com.apple.quarantine ~/.local/bin/markshot` (`curl` downloads are not quarantined). The Windows builds link the C runtime statically, so they need no Visual C++ redistributable. To check a download, compare `shasum -a 256 ~/.local/bin/markshot` with its line in [`SHA256SUMS`](https://github.com/hypn4/markshot/releases/latest/download/SHA256SUMS), or run `gh attestation verify ~/.local/bin/markshot --repo hypn4/markshot` to confirm that GitHub Actions built it from this repository.
+Save it as `markshot` (`markshot.exe` on Windows) in a directory on your PATH, and on macOS and Linux make it executable (`chmod +x`). A binary downloaded with a browser on macOS is quarantined and blocked as unsigned; clear that with `xattr -d com.apple.quarantine markshot`. The Windows builds link the C runtime statically, so they need no Visual C++ redistributable. `gh attestation verify markshot --repo hypn4/markshot` confirms that GitHub Actions built a file from this repository.
 
 **Or use `cargo binstall`**, which downloads the same release binary: `cargo binstall --git https://github.com/hypn4/markshot markshot`.
 
-**Or build from source.** You need Rust 1.99 or later:
-
-```sh
-cargo install --git https://github.com/hypn4/markshot --locked   # installs markshot into ~/.cargo/bin
-```
-
-In a clone, `rust-toolchain.toml` selects Rust 1.99; `cargo build --release --locked` builds `target/release/markshot`.
+**Or build from source** with Rust 1.99 or later: `cargo install --git https://github.com/hypn4/markshot --locked` installs it into `~/.cargo/bin`. In a clone, `rust-toolchain.toml` selects Rust 1.99 and `cargo build --release --locked` builds `target/release/markshot`.
 
 The release binary is about 3 MB (fat LTO, one codegen unit, stripped).
 
