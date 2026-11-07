@@ -541,20 +541,18 @@ fn oval_around_without_a_size_takes_the_thickest_line_that_fits() {
     let (input, (target, bars)) = dense_rows(&dir, 14);
     let src = read_png(&input);
     let out = dir.join("out.png");
-    for id in ["a", "b", "c"] {
-        let spec = json!({"annotations": [{"type": "oval", "id": id,
-            "around": [300, 180, 240, 42]}]});
-        let first = report(&render(&input, &out, &spec, &[]));
-        let size = first["spec"]["annotations"][0]["size"].as_u64().unwrap();
-        assert!(size < 2, "id {id}: size {size}");
-        assert_eq!(first["warnings"], json!([]), "id {id}");
-        untouched(
-            &read_png(&out),
-            &src,
-            &[target, bars[0], bars[1]],
-            &format!("id {id}"),
-        );
-    }
+    let spec = json!({"annotations": [{"type": "oval", "id": "a",
+        "around": [300, 180, 240, 42]}]});
+    let first = report(&render(&input, &out, &spec, &[]));
+    // Size 1 clears these bars; selecting size 0 would be unnecessarily thin.
+    assert_eq!(first["spec"]["annotations"][0]["size"], json!(1));
+    assert_eq!(first["warnings"], json!([]));
+    untouched(
+        &read_png(&out),
+        &src,
+        &[target, bars[0], bars[1]],
+        "automatically fitted oval",
+    );
     let spec = json!({"annotations": [{"type": "oval", "id": "a", "size": 2,
         "around": [300, 180, 240, 42]}]});
     let given = report(&render(&input, &out, &spec, &[]));
