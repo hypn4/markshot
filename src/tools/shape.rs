@@ -555,6 +555,7 @@ mod tests {
             spotlight: false,
             around: None,
             pick_seed: false,
+            pick_size: false,
         }
     }
 

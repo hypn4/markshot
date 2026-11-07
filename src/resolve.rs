@@ -77,6 +77,8 @@ pub struct ResolvedShape {
     pub around: Option<Rect>,
     /// Whether fitting may also pick the seed: `around` without a `seed` in the spec.
     pub pick_seed: bool,
+    /// Whether fitting may also pick a thinner size: `around` without a `size` in the spec.
+    pub pick_size: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -417,7 +419,7 @@ fn resolve_with(
         [0.0, 0.0, f64::from(width), f64::from(height)],
         |[x, y, w, h]| [x, y, x + w, y + h],
     );
-    fit_ovals(&mut all, dpr, width, height, rgba, area);
+    warnings.extend(fit_ovals(&mut all, dpr, width, height, rgba, area));
     place_auto_counters(&mut all, dpr, width, height, rgba, area);
     let mut items = Vec::with_capacity(all.len());
     for item in all {
@@ -456,7 +458,9 @@ fn resolve_with(
 /// Gives each oval with `around` its `rect` ([`shape::fit_oval`]), in spec order, keeping its
 /// line in `area` and off the other annotations: their extents, an oval still to be fitted
 /// standing for its target box, and counters still to be placed left out. An oval whose spec
-/// gives no `seed` may also take one of the [`SEED_TRIES`] seeds from its own on.
+/// gives no `seed` may also take one of the [`SEED_TRIES`] seeds from its own on, and one whose
+/// spec gives no `size` any size from the default down to 0. The first size and seed whose
+/// line keeps clear of everything win, else the cheapest, and then the oval gets a warning.
 fn fit_ovals(
     items: &mut [Resolved],
     dpr: f64,
@@ -464,7 +468,8 @@ fn fit_ovals(
     height: u32,
     rgba: Option<&[u8]>,
     area: [f64; 4],
-) {
+) -> Vec<Warning> {
+    let mut warnings = Vec::new();
     let image = crate::tools::Pixels {
         width,
         height,
@@ -481,7 +486,7 @@ fn fit_ovals(
         else {
             continue;
         };
-        let (oval, target) = (oval.clone(), *target);
+        let (mut oval, target) = (oval.clone(), *target);
         let obstacles: Vec<[f64; 4]> = items
             .iter()
             .enumerate()
@@ -497,37 +502,57 @@ fn fit_ovals(
             })
             .filter_map(|(_, item)| item.extent(dpr).ok())
             .collect();
-        // Without a seed in the spec, the next seeds may give a wobble that fits cleanly; the
-        // first that keeps the line clear of everything wins, else the cheapest.
+        // Without a size or seed in the spec, a thinner line or another wobble may fit
+        // cleanly: thicker lines first, then the next seeds.
+        let sizes = if oval.pick_size {
+            0..=oval.size
+        } else {
+            oval.size..=oval.size
+        };
         let tries = if oval.pick_seed { SEED_TRIES } else { 1 };
-        let mut best: Option<(u32, u64, Rect)> = None;
-        for k in 0..tries {
-            let seed = (oval.seed + k) % (MAX_SEED + 1);
-            let (rect, cost) = shape::fit_oval(
-                target,
-                &ResolvedShape {
-                    seed,
-                    ..oval.clone()
-                },
-                dpr,
-                &image,
-                &obstacles,
-            );
-
-            if best.is_none_or(|(c, _, _)| cost < c) {
-                best = Some((cost, seed, rect));
-            }
-            if cost == 0 {
-                break;
+        let base_seed = oval.seed;
+        let mut best: Option<(u32, u8, u64, Rect)> = None;
+        'fit: for size in sizes.rev() {
+            for k in 0..tries {
+                let seed = (base_seed + k) % (MAX_SEED + 1);
+                oval.size = size;
+                oval.seed = seed;
+                let (rect, cost) = shape::fit_oval(target, &oval, dpr, &image, &obstacles);
+                if best.is_none_or(|(c, ..)| cost < c) {
+                    best = Some((cost, size, seed, rect));
+                }
+                if cost == 0 {
+                    break 'fit;
+                }
             }
         }
-        if let (Resolved::Oval(s), Some((_, seed, rect))) = (&mut items[i], best) {
+        let Some((cost, size, seed, rect)) = best else {
+            continue;
+        };
+        if cost > 0 {
+            let advice = if oval.pick_size || size == 0 {
+                "frame it with a hand-sized `rect` or `oval` instead".to_owned()
+            } else {
+                format!("try `size` {} or leave `size` out", size - 1)
+            };
+            warnings.push(Warning {
+                id: oval.id.clone(),
+                message: format!(
+                    "could not fit an oval `around` its target without nearby or enclosed \
+                     ink, overlapping annotations, or leaving the image or crop; {advice}"
+                ),
+            });
+        }
+        if let Resolved::Oval(s) = &mut items[i] {
             s.rect = rect;
+            s.size = size;
             s.seed = seed;
             s.around = None;
             s.pick_seed = false;
+            s.pick_size = false;
         }
     }
+    warnings
 }
 
 /// Gives each counter with `"angle": "auto"` its angle and center, in spec order: the first of
@@ -830,6 +855,7 @@ impl Resolver<'_> {
             rect,
             around,
             pick_seed: around.is_some() && s.seed.is_none(),
+            pick_size: around.is_some() && s.size.is_none(),
             fill: s.fill.unwrap_or_default(),
             fill_alpha: s.fill_alpha,
             spotlight: s.spotlight.unwrap_or(false),

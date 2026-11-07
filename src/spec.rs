@@ -162,7 +162,8 @@ pub struct ShapeSpec {
     pub id: Option<String>,
     /// `#RRGGBB`. Default `#FF0C01`.
     pub color: Option<String>,
-    /// Border thickness step, 0 to 7. Default 2.
+    /// Border thickness step, 0 to 7. Default 2; with an oval's `around`, tries 2, 1, then 0
+    /// and takes the thickest line that fits. An explicit size stays unchanged.
     pub size: Option<u8>,
     /// Seed of the hand-drawn randomness of `sketch`, 0 to 2^53 − 1. Default: derived from `id`.
     pub seed: Option<u64>,
@@ -170,8 +171,10 @@ pub struct ShapeSpec {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rect: Option<Rect>,
     /// Ovals only, instead of `rect`: the box `[x, y, width, height]` of the thing to circle.
-    /// markshot sizes the oval so that its line clears the box and crosses as little of the
-    /// image's ink (neighbouring text, borders) as it can; the resolved spec gives that `rect`.
+    /// markshot sizes the oval to clear the box and avoid nearby or enclosed ink, other
+    /// annotations and image or crop edges. With no `size` it tries thinner lines too, and
+    /// warns if no candidate fits cleanly. The resolved spec gives the chosen `rect`, `size`
+    /// and `seed`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub around: Option<Rect>,
     /// Default `sketch`.

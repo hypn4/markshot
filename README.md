@@ -41,7 +41,7 @@ Each image below is one `markshot render` of a real admin-console screenshot, cr
 |---|---|
 | **Numbered steps.** Outline boxes with `"spotlight": true` dim everything else, and each badge uses `"angle": "auto"` to find a free side. `crop` keeps only this part of the page. ([spec](assets/examples/steps.json)) | <img src="assets/examples/steps.png" alt="Settings page with three boxed, numbered steps and the rest dimmed" width="480"> |
 | **Badges on the corners.** Each `circle` counter sits on its box's corner, and `"ring": true` gives it a white ring so it stands apart from the frame line. ([spec](assets/examples/badges.json)) | <img src="assets/examples/badges.png" alt="Settings dialog with three boxed controls, each numbered by a ringed badge on the box's top-left corner" width="480"> |
-| **Hand-drawn ovals sized by markshot.** Each `sketch` oval gives only `around`, the toggle and its label, and markshot sizes it so the line stays off the description lines above and below. A box frames a button group, and a `text` label says what to do. ([spec](assets/examples/ovals.json)) | <img src="assets/examples/ovals.png" alt="Security settings panel with a boxed button group, two hand-drawn ovals around toggles, numbered badges and a label" width="480"> |
+| **Hand-drawn ovals sized by markshot.** Each `sketch` oval gives `around`, the toggle's and label's box. With `size` omitted, markshot also picks the thickest line that fits between the description lines. A box frames a button group, and a `text` label says what to do. ([spec](assets/examples/ovals.json)) | <img src="assets/examples/ovals.png" alt="Security settings panel with a boxed button group, two hand-drawn ovals around toggles, numbered badges and a label" width="480"> |
 | **Redact before sharing.** `blur` pixelates the project ID while boxes and an oval number the steps. ([spec](assets/examples/redact.json)) | <img src="assets/examples/redact.png" alt="Billing dialog with the project ID pixelated and three numbered steps" width="360"> |
 | **Highlight and point.** A `highlight` marks a setting, and a curved `arrow` with a `text` label points at a button. ([spec](assets/examples/highlight-arrow.json)) | <img src="assets/examples/highlight-arrow.png" alt="A highlighted checkbox label and a blue curved arrow labeled Invite people here pointing at Add users" width="480"> |
 
@@ -53,7 +53,7 @@ Nine annotation types, all in one spec:
 |---|---|---|
 | `arrow` | An arrow from `from` to `to` | `style`: `shaped`, `sketch` (hand-drawn), `line`, `double`; `via` curves it |
 | `rect` | A frame around `rect` | `fill`: `sketch`, `outline`, `semi`, `solid`; `"spotlight": true` dims everything else |
-| `oval` | A rounded frame around `rect` | `around`, instead of `rect`, takes the target's box and sizes the oval so its line clears nearby text |
+| `oval` | A rounded frame around `rect` | `around`, instead of `rect`, takes the target's box; omit `size` to let the line thin down to fit |
 | `blur` | Hides `rect` | `mode`: `pixelate` or `erase` (repaints flat backgrounds) |
 | `highlight` | A highlighter stroke | Blends by the brightness of what is under it |
 | `spotlight` | Dims everything but `rect` | `shape`: `rect` or `oval`; strength set by the top-level `spotlight_dim` |
@@ -62,6 +62,8 @@ Nine annotation types, all in one spec:
 | `line` | A straight line | `dash`, and `start_cap` / `end_cap`: `none`, `arrow`, `bullet` |
 
 `size` is a step from 0 to 7 that maps to points, and points scale with the PNG's DPI, so an annotation looks the same on a Retina capture as on a standard one. A counter's diameter, for example, runs 22, 28, 36, 48, 64, 84, 112 and 150 points. [`docs/design.md`](docs/design.md) gives every field and default.
+
+For an oval with `around`, an omitted `size` tries 2, 1, then 0; a size you give stays unchanged. If no candidate fits cleanly, the report warns rather than silently treating it as a clean fit. The resolved spec records the chosen size, rectangle and seed.
 
 ## Why use it instead of drawing on the image another way?
 

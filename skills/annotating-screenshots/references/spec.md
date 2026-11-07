@@ -28,7 +28,7 @@
 
 ## Size and dpr
 
-`size` is a step from 0 to 7 (default 2) that picks a thickness in points. Each point is `dpr` pixels. dpr comes from the PNG's DPI (144 dpi, the macOS Retina capture default, gives 2), so a Retina screenshot gets strokes twice as wide in pixels, and they look the same size on screen. Override it with `--dpr` or a top-level `"dpr"` (0.5–4) when the PNG's DPI is wrong.
+`size` is a step from 0 to 7 (default 2) that picks a thickness in points. An oval with `around` tries 2, 1, then 0 when `size` is left out, keeping the thickest line that fits; an explicit `size` stays unchanged. Each point is `dpr` pixels. dpr comes from the PNG's DPI (144 dpi, the macOS Retina capture default, gives 2), so a Retina screenshot gets strokes twice as wide in pixels, and they look the same size on screen. Override it with `--dpr` or a top-level `"dpr"` (0.5–4) when the PNG's DPI is wrong.
 
 A PNG without DPI gets dpr 1 and a warning, because many tools save Retina captures that way. Decide from the pixels and set `"dpr"`: ordinary UI text (menu items, button labels) with capital letters about 9–12 px tall is dpr 1, about 18–24 px is dpr 2. A full-window capture wider than about 2000 px is usually dpr 2.
 
@@ -37,7 +37,7 @@ A PNG without DPI gets dpr 1 and a warning, because many tools save Retina captu
 | Field | Applies to | Default |
 |---|---|---|
 | `color` (`#RRGGBB`) | all but blur | `#FF0C01`; highlight `#FFF68D` |
-| `size` (0–7) | all | 2 |
+| `size` (0–7) | all | 2; an oval with `around` tries 2, 1, then 0 |
 | `id` | all | `<type>-<n>`, e.g. `arrow-1` |
 | `seed` (0 to 2^53 − 1) | arrow, rect, oval, blur | derived from `id` |
 | `style` | arrow / counter / text | `shaped` / `bubble` / `label` |

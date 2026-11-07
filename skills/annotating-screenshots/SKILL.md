@@ -1,10 +1,10 @@
 ---
 name: annotating-screenshots
 description: Use when the user wants a screenshot or other PNG annotated (arrows pointing at UI elements, boxes or ovals around them, private data blurred, erased or redacted, text highlighted, one area spotlighted, numbered step badges, short text labels, or lines), or wants a previous annotation adjusted. Draws the annotations deterministically with the markshot CLI.
-compatibility: Requires the markshot CLI 0.3.0 or later (macOS, Linux or Windows) on PATH, a POSIX-style shell for the examples, and the ability to view PNG images.
+compatibility: Requires the markshot CLI 0.4.0 or later (macOS, Linux or Windows) on PATH, a POSIX-style shell for the examples, and the ability to view PNG images.
 metadata:
   cli: markshot
-  version: "1.4"
+  version: "1.5"
 ---
 
 # Annotating screenshots
@@ -17,7 +17,7 @@ markshot grid   <in.png> -o <grid.png> [--step N] [--region X,Y,W,H]
 markshot schema        # every spec field, its range and default
 ```
 
-If `markshot` is not on PATH, ask the user where it is installed, or offer to install it (https://github.com/hypn4/markshot#how-do-i-install-it); don't draw the annotations some other way. `markshot --version` must print 0.3.0 or later.
+If `markshot` is not on PATH, ask the user where it is installed, or offer to install it (https://github.com/hypn4/markshot#how-do-i-install-it); don't draw the annotations some other way. `markshot --version` must print 0.4.0 or later.
 
 ## Workflow
 
@@ -43,7 +43,7 @@ Copy this checklist and tick it off:
 | The user wants to… | `type` | Key fields |
 |---|---|---|
 | point at something | `arrow` | `from`, `to`; `via` to curve; `style` |
-| frame or circle something | `rect`, `oval` | `rect`, or for an oval `around` (the target's box; markshot sizes the oval); `fill`: `sketch`, `outline`, `semi`, `solid` |
+| frame or circle something | `rect`, `oval` | `rect`, or for an oval `around` (the target's box; markshot sizes the oval and, with `size` left out, its line); `fill`: `sketch`, `outline`, `semi`, `solid` |
 | hide private data | `blur` | `rect`; `mode`: `pixelate`, `erase` (an opaque box: `rect` with `"fill": "solid"`) |
 | mark text like a highlighter | `highlight` | `from`/`to`, or `points` |
 | focus on one area, dim the rest | `spotlight` | `rect`; `shape`; top-level `spotlight_dim` |
