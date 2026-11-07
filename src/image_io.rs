@@ -3,7 +3,7 @@
 use std::borrow::Cow;
 use std::io::Cursor;
 
-use png::{BitDepth, ColorType, PixelDimensions, Transformations, Unit};
+use png::{BitDepth, ColorType, InterlaceInfo, PixelDimensions, Transformations, Unit};
 
 use crate::error::Error;
 
@@ -39,19 +39,14 @@ pub fn decode_png(bytes: &[u8]) -> Result<SourceImage, Error> {
     let mut decoder = png::Decoder::new(Cursor::new(bytes));
     decoder.set_transformations(Transformations::EXPAND | Transformations::STRIP_16);
     let mut reader = decoder.read_info()?;
-    let size = reader
-        .output_buffer_size()
-        .ok_or_else(|| Error::Png("image too large to decode".to_owned()))?;
-    let mut buf = vec![0; size];
-    let frame = reader.next_frame(&mut buf)?;
-    buf.truncate(frame.buffer_size());
-    if frame.bit_depth != BitDepth::Eight {
+    let buf = read_pixels(&mut reader)?;
+    let (color_type, bit_depth) = reader.output_color_type();
+    if bit_depth != BitDepth::Eight {
         return Err(Error::Unsupported(format!(
-            "PNG decoded to {:?}-bit samples",
-            frame.bit_depth
+            "PNG decoded to {bit_depth:?}-bit samples"
         )));
     }
-    let rgba = match frame.color_type {
+    let rgba = match color_type {
         ColorType::Rgba => buf,
         ColorType::Rgb => buf
             .as_chunks::<3>()
@@ -75,8 +70,8 @@ pub fn decode_png(bytes: &[u8]) -> Result<SourceImage, Error> {
     let info = reader.info();
     let icc = info.icc_profile.as_ref().map(|p| p.to_vec());
     Ok(SourceImage {
-        width: frame.width,
-        height: frame.height,
+        width: info.width,
+        height: info.height,
         rgba,
         dpi: info.pixel_dims.and_then(dpi_from_pixel_dims),
         color_space: color_space_of(icc.as_deref()),
@@ -96,6 +91,37 @@ pub fn crop_rgba(rgba: &[u8], stride_px: u32, [x, y, width, height]: [u32; 4]) -
         })
         .copied()
         .collect()
+}
+
+/// Reads the default image as packed rows, top down. The buffer grows with the rows actually
+/// decoded, so a header claiming a huge image fails on its missing data instead of first
+/// allocating the size it claims. An interlaced image is put together once all its passes are in.
+fn read_pixels(reader: &mut png::Reader<Cursor<&[u8]>>) -> Result<Vec<u8>, Error> {
+    let mut rows = Vec::new();
+    let mut passes = Vec::new();
+    while let Some(row) = reader.next_interlaced_row()? {
+        rows.extend_from_slice(row.data());
+        if let InterlaceInfo::Adam7(pass) = row.interlace() {
+            passes.push((*pass, row.data().len()));
+        }
+    }
+    if passes.is_empty() {
+        return Ok(rows);
+    }
+    let too_large = || Error::Png("image too large to decode".to_owned());
+    let stride = reader
+        .output_line_size(reader.info().width)
+        .ok_or_else(too_large)?;
+    let mut image = vec![0; reader.output_buffer_size().ok_or_else(too_large)?];
+    let samples = u8::try_from(reader.output_color_type().0.samples())
+        .expect("a PNG pixel has 1 to 4 samples");
+    let mut rest = rows.as_slice();
+    for (pass, len) in passes {
+        let (row, tail) = rest.split_at(len);
+        png::expand_interlaced_row(&mut image, stride, row, &pass, samples * 8);
+        rest = tail;
+    }
+    Ok(image)
 }
 
 /// Encodes straight-alpha RGBA8 rows, writing `dpi` as pHYs (pixels per meter) and `icc` as iCCP.
@@ -420,6 +446,25 @@ mod tests {
             encode_png(2, 2, &[0; 4], None, None),
             Err(Error::Png(_))
         ));
+    }
+
+    #[test]
+    fn huge_header_without_its_data_is_an_error() {
+        // The header claims 2^20 * (2^31 - 1) RGBA pixels, 8 PiB, which no allocator can provide;
+        // the IDAT holds 17 bytes of the first row.
+        let mut bytes = Vec::new();
+        let mut info = png::Info::with_size(1 << 20, (1 << 31) - 1);
+        info.color_type = png::ColorType::Rgba;
+        info.bit_depth = png::BitDepth::Eight;
+        let mut writer = png::Encoder::with_info(&mut bytes, info)
+            .unwrap()
+            .write_header()
+            .unwrap();
+        writer
+            .write_chunk(png::chunk::IDAT, &zlib_stored(&[0; 17]))
+            .unwrap();
+        writer.finish().unwrap();
+        assert!(matches!(decode_png(&bytes), Err(Error::Png(_))));
     }
 
     /// A minimal ICC profile whose tag table holds a single `desc` tag with the given data.
