@@ -13,7 +13,7 @@ metadata:
 
 ```
 markshot render <in.png> --spec <spec.json | -> -o <out.png> [--dpr N]
-markshot grid   <in.png> -o <grid.png> [--step N]
+markshot grid   <in.png> -o <grid.png> [--step N] [--region X,Y,W,H]
 markshot schema        # every spec field, its range and default
 ```
 
@@ -25,9 +25,9 @@ Copy this checklist and tick it off:
 
 ```
 - [ ] 1. Image size: echo '{"annotations": []}' | markshot render in.png --spec - -o /tmp/size.png   (prints width, height, dpr; a "no DPI" warning means you set "dpr", see references/spec.md)
-- [ ] 2. Locate each target. Unsure? markshot grid in.png -o grid.png, then read the labels.
+- [ ] 2. Locate each target. Unsure? markshot grid in.png -o grid.png, then read the labels; on a large screenshot add --region X,Y,W,H around the target to read it at full size.
 - [ ] 3. Write the spec (Pick a tool, below) and render it from the ORIGINAL input.
-- [ ] 4. View out.png at every target (crop or zoom if needed) and read every warning.
+- [ ] 4. View out.png at every target and read every warning. Zoom in with markshot grid out.png --region X,Y,W,H -o check.png: the lines show how much room is left.
 - [ ] 5. Something off? Edit the stdout spec (Fixing a render, below) and render again from the original.
 ```
 

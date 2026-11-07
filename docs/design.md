@@ -35,12 +35,12 @@ markshot is written in Rust (edition 2024) on tiny-skia, with ttf-parser for gly
 
 ```
 markshot render <input.png> --spec <spec.json | -> -o <out.png> [--dpr N]
-markshot grid   <input.png> -o <grid.png> [--step N]
+markshot grid   <input.png> -o <grid.png> [--step N] [--region X,Y,W,H]
 markshot schema
 ```
 
 - `render` draws the spec on the input, writes the PNG and prints a JSON report to stdout: `width`, `height`, the `dpr` used, the resolved `spec` and `warnings`. The resolved spec has every default filled in (ids, seeds, counter numbers, dpr) and every coordinate in image pixels; rendering it again draws the same bytes. Only alternatives not taken stay out: counters come back as `center`, highlights as `points`, straight arrows without `via`, and a `fill_alpha` the spec left out stays out, so switching `fill` gives the new fill its own default opacity.
-- `grid` draws a 1 px `#FF00FF` line at α 0.6 on every column and row that is a positive multiple of `step`, labelled with its coordinate in Inter Medium `12 * dpr` px, white on black at α 0.6: columns along the top edge, rows along the left edge, each label just past its line and pulled back inside the image at the far end. The default step is the smallest of 50, 100, 200, 250, 500 and 1000 that splits the longer side into at most 20 intervals, else 1000. `--step 0` is an error.
+- `grid` draws a 1 px `#FF00FF` line at α 0.6 on every column and row that is a positive multiple of `step`, labelled with its coordinate in Inter Medium `12 * dpr` px, white on black at α 0.6: columns along the top edge, rows along the left edge, each label just past its line and pulled back inside the image at the far end. The default step is the smallest of 50, 100, 200, 250, 500 and 1000 that splits the longer side into at most 20 intervals and is at least as wide as the last column label, so labels never overlap, else 1000. `--step 0` is an error. `--region X,Y,W,H` draws only that part of the image, clipped to it, with the whole image's lines and labels, so a small area can be read at full size on a large screenshot; the default step then follows the region's size. A region without area, outside the image or not four whole numbers is an error at `--region`.
 - `schema` prints the spec's JSON schema. Its descriptions are the doc comments in `src/spec.rs`.
 - Exit status 0 on success. Invalid input exits 1 and writes no PNG: a bad spec or an unreadable file prints one `error: <path>: <message>` line on stderr (e.g. `error: annotations[0].size: must be 0 to 7, got 9`), and a malformed command line prints the usage message. Coordinates off the image are not errors (see [Input bounds](#input-bounds)).
 

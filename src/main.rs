@@ -43,6 +43,10 @@ enum Cmd {
         /// 500 and 1000 that gives at most 20 intervals along the longer side.
         #[arg(long)]
         step: Option<u32>,
+        /// Draw only this part of the image, `X,Y,W,H` in image pixels, with the grid of the
+        /// whole image: for reading a small area at full size.
+        #[arg(long, value_name = "X,Y,W,H")]
+        region: Option<String>,
     },
     /// Print the JSON schema of the annotation spec.
     Schema,
@@ -80,7 +84,12 @@ fn run(cmd: &Cmd) -> Result<(), Error> {
             out,
             dpr,
         } => render(input, spec, out, *dpr),
-        Cmd::Grid { input, out, step } => grid(input, out, *step),
+        Cmd::Grid {
+            input,
+            out,
+            step,
+            region,
+        } => grid(input, out, *step, region.as_deref()),
         Cmd::Schema => print_json(&schemars::schema_for!(Spec)),
     }
 }
@@ -94,11 +103,28 @@ fn render(input: &Path, spec: &Path, out: &Path, dpr: Option<f64>) -> Result<(),
     print_json(&report)
 }
 
-/// Draws the grid on the input and writes the PNG.
-fn grid(input: &Path, out: &Path, step: Option<u32>) -> Result<(), Error> {
+/// Draws the grid on the input, or on the part `region` gives, and writes the PNG.
+fn grid(input: &Path, out: &Path, step: Option<u32>, region: Option<&str>) -> Result<(), Error> {
+    let region = region.map(parse_region).transpose()?;
     let src = decode_png(&fs::read(input).map_err(file_error(input))?)?;
-    let png = markshot::grid::grid(src, step)?;
+    let png = markshot::grid::grid(src, step, region)?;
     fs::write(out, png).map_err(file_error(out))
+}
+
+/// `X,Y,W,H` as four whole numbers.
+///
+/// # Errors
+/// [`Error::Spec`] at `--region` otherwise.
+fn parse_region(text: &str) -> Result<[u32; 4], Error> {
+    let error = || Error::Spec {
+        path: "--region".to_owned(),
+        message: format!("must be X,Y,W,H in whole pixels, got `{text}`"),
+    };
+    let values: Vec<u32> = text
+        .split(',')
+        .map(|v| v.trim().parse().map_err(|_| error()))
+        .collect::<Result<_, _>>()?;
+    <[u32; 4]>::try_from(values).map_err(|_| error())
 }
 
 /// The spec text from `path`, or from stdin when `path` is `-`.
