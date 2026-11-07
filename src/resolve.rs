@@ -180,7 +180,8 @@ impl Resolved {
         }
     }
 
-    /// The bounds `[x0, y0, x1, y1]` of the geometry (a counter's circle), or why it has none.
+    /// The bounds `[x0, y0, x1, y1]` of the geometry, including a counter's tail and ring,
+    /// or why it has none.
     #[expect(
         clippy::float_cmp,
         reason = "coordinates are whole pixels, so equal means the same pixel"
@@ -205,11 +206,13 @@ impl Resolved {
                 [x, y, w, h] => Ok([x, y, x + w, y + h]),
             },
             Self::Highlight(h) => Ok(bounds(&h.points)),
-            Self::Counter(c) => {
-                let r = counter::radius(c.size, dpr) + counter::ring_width(c.size, dpr, c.ring);
-                let [x, y] = c.center;
-                Ok([x - r, y - r, x + r, y + r])
-            }
+            Self::Counter(c) => Ok(counter::bounds(
+                c.center,
+                c.angle,
+                counter::radius(c.size, dpr),
+                c.style,
+                counter::ring_width(c.size, dpr, c.ring),
+            )),
             Self::Text(t) => {
                 let l = label::layout(&t.text, t.size, t.style, dpr);
                 let [x, y] = t.at;
@@ -420,7 +423,9 @@ fn resolve_with(
         |[x, y, w, h]| [x, y, x + w, y + h],
     );
     warnings.extend(fit_ovals(&mut all, dpr, width, height, rgba, area));
-    place_auto_counters(&mut all, dpr, width, height, rgba, area);
+    warnings.extend(place_auto_counters(
+        &mut all, dpr, width, height, rgba, area,
+    ));
     let mut items = Vec::with_capacity(all.len());
     for item in all {
         let warning = |message| Warning {
@@ -558,10 +563,11 @@ fn fit_ovals(
     warnings
 }
 
-/// Gives each counter with `"angle": "auto"` its angle and center, in spec order: the first of
-/// [`counter::AUTO_ANGLES`] with the lowest [`counter::placement_cost`], the obstacles being
-/// every other annotation's extent except counters still to be placed, and the badge kept in
-/// `area` (`[x0, y0, x1, y1]`: the crop, or the whole image).
+/// Gives each counter with `"angle": "auto"` its angle and center, in spec order. Candidates
+/// fitting within `area` (`[x0, y0, x1, y1]`: the crop, or the whole image) and clear of every
+/// other annotation's extent, except counters still to be placed, rank before non-fitting
+/// ones. Lowest placement cost wins within that class; ties keep [`counter::AUTO_ANGLES`]
+/// order. If none fits, keeps the best-effort placement and warns without changing its size.
 fn place_auto_counters(
     items: &mut [Resolved],
     dpr: f64,
@@ -569,7 +575,8 @@ fn place_auto_counters(
     height: u32,
     rgba: Option<&[u8]>,
     area: [f64; 4],
-) {
+) -> Vec<Warning> {
+    let mut warnings = Vec::new();
     for i in 0..items.len() {
         let Resolved::Counter(ResolvedCounter {
             auto_at: Some(at),
@@ -603,42 +610,36 @@ fn place_auto_counters(
             rgba,
             area,
         };
-        let angle = counter::AUTO_ANGLES
-            .into_iter()
-            .map(|angle| {
-                (
-                    angle,
-                    counter::placement_cost(
-                        at,
-                        angle,
-                        r,
-                        counter::ring_width(size, dpr, ring),
-                        &image,
-                        &obstacles,
-                    ),
-                )
-            })
-            .fold(None, |best: Option<(f64, f64)>, (angle, cost)| match best {
-                Some((_, best_cost)) if best_cost <= cost => best,
-                _ => Some((angle, cost)),
-            })
-            .map_or(DEFAULT_COUNTER_ANGLE, |(angle, _)| angle);
-        let h = f64::from(height);
-        let center = counter::center_from_at(
-            V2 {
-                x: at[0],
-                y: h - at[1],
-            },
-            angle,
-            r,
-            style,
-        );
+        let ring = counter::ring_width(size, dpr, ring);
+        let mut best: Option<(f64, counter::Placement)> = None;
+        for angle in counter::AUTO_ANGLES {
+            let placement = counter::placement(at, angle, r, style, ring, &image, &obstacles);
+            if best.as_ref().is_none_or(|(_, best)| {
+                (placement.fits && !best.fits)
+                    || (placement.fits == best.fits && placement.cost < best.cost)
+            }) {
+                best = Some((angle, placement));
+            }
+        }
+        let Some((angle, placement)) = best else {
+            continue;
+        };
         if let Resolved::Counter(c) = &mut items[i] {
             c.angle = angle;
-            c.center = [round_pixel(center.x), round_pixel(h - center.y)];
+            c.center = placement.center;
             c.auto_at = None;
+            if !placement.fits {
+                warnings.push(Warning {
+                    id: c.id.clone(),
+                    message: "could not fit a counter within the image or crop bounds without \
+                              overlapping another annotation; keeping the best-effort placement; \
+                              try a smaller `size` or move `at`"
+                        .to_owned(),
+                });
+            }
         }
     }
+    warnings
 }
 
 /// The spec's `crop` in whole pixels, rounded like a rect's corners and clipped to the
@@ -1090,7 +1091,7 @@ impl Resolver<'_> {
 }
 
 /// Rounds half away from zero, giving 0 rather than −0.
-fn round_pixel(v: f64) -> f64 {
+pub(crate) fn round_pixel(v: f64) -> f64 {
     let rounded = v.round();
     if rounded == 0.0 { 0.0 } else { rounded }
 }

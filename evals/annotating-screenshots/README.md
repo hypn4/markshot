@@ -58,7 +58,7 @@ Chrome writes the PNG without a pHYs chunk, which the scenarios need; check that
 
 ## What did they show?
 
-Skill 1.0 was measured when the skill was restructured, on an earlier screenshot with the same layout; skills 1.1 to 1.5 use `shot.png` and `console.png`. Skill 1.1 added frames with `spotlight`, the dpr rule, `grid --region` and oval room guidance; 1.2 added `crop`, `"angle": "auto"`, `text` and dense-row guidance; 1.3 added `around`; 1.4 added an optional white `ring` on counters; 1.5 lets markshot pick an oval's line thickness when `size` is omitted and documents no-fit warnings. No skill 1.4 run needed a ring, so that row checks that the new option changes nothing else. Earlier rows used Claude Opus; skill 1.5 used fresh agents in the current harness. One run per cell unless noted:
+Skill 1.0 was measured when the skill was restructured, on an earlier screenshot with the same layout; skills 1.1 to 1.6 use `shot.png` and `console.png`. Skill 1.1 added frames with `spotlight`, the dpr rule, `grid --region` and oval room guidance; 1.2 added `crop`, `"angle": "auto"`, `text` and dense-row guidance; 1.3 added `around`; 1.4 added an optional white `ring` on counters; 1.5 lets markshot pick an oval's line thickness when `size` is omitted and documents no-fit warnings; 1.6 documents complete counter bounds, no-fit recovery and report-only target rounding. No skill 1.4 run needed a ring, so that row checks that the new option changes nothing else. Earlier rows used Claude Opus; skills 1.5 and 1.6 used fresh agents in the current harness. One run per cell unless noted:
 
 | Variant | s1 | s2 | s3 | s4 | s5 | s6 | s7 | s8 |
 |---|---|---|---|---|---|---|---|---|
@@ -71,6 +71,7 @@ Skill 1.0 was measured when the skill was restructured, on an earlier screenshot
 | skill 1.3 (CLI 0.2.0) | pass | pass, overlap reported with a fix | pass | pass, tip exact; suggested `"auto"` or size 4 | pass, switched to a hue, explained | pass, with `around` | 3 of 3, with `around`; ovals kept clear of target and text | pass: size 0 badges |
 | skill 1.4 (CLI 0.3.0) | pass | pass, overlap reported with a fix | pass | pass, tip exact; tried `"auto"` and another angle as fixes | pass, switched to a hue, explained | pass, with `around` | 3 of 3, with `around` | pass: size 1 badges |
 | skill 1.5 (CLI 0.4.0) | FAIL: checker requires blur; used an opaque black box | pass, overlap reported with a fix | pass | pass, tip exact; overlap reported with a fix | pass, switched to yellow, explained | pass, automatic oval thickness | 3 of 3, automatic thickness from size 0 to 2 | pass: size 0 badges |
+| skill 1.6 (unreleased counter-fix worktree, final text) | FAIL: checker requires blur; used an opaque black box | pass, overlap reported with a fix | pass | pass, report-only rounding disclosed | pass, switched to yellow, explained | pass, automatic oval thickness | FAIL: one target pixel changed outside the supplied `around` box | pass: size 0 circle badges |
 
 The two skill 1.1 runs bracket its last wording changes (colour names, room for badges, `--region` without `--step`); both passed every check.
 
@@ -92,4 +93,13 @@ Two targeted skill 1.5 checks start with a warned render report and its original
 | Explicit `9007199254740991` | Size 0, no warnings; explicit seed preserved |
 
 Both outputs leave the target and both bars unchanged. A CLI control that removed only `size` from the resolved `rect` produced the same obstructed size-2 image with no warning: warning disappearance alone is not proof of repair. The skill and warning now direct refitting through the original `around` target.
+
+## What did the counter-fix checks reveal?
+
+Two rounds of fresh agents ran all eight scenarios, before and after clarifying report-only counter rounding. Both rounds failed only `blur_covers_secret` in s1 and `targets_untouched` in s7. The table records the final round. The checker and failed agent outputs were not changed.
+
+- **s1:** all 4104 pixels of the measured secret-text region were opaque black. The checker accepts only `blur`, not the solid black `rect` that the agent used.
+- **s7:** both agents supplied 40 px-high toggle targets, while the measured targets are 42 px high. Every pixel inside the supplied `around` boxes stayed unchanged, but the email target's pixel `(1954, 1241)`, outside those boxes, changed. Complete counter bounds can change the neighbouring oval fit; the first agent's same undersized input happened to leave that pixel unchanged with CLI 0.4.0. A separate control with exact target boxes and 20 px more badge clearance left all measured targets unchanged with no warnings. That control did not replace either scored agent run.
+
+Separate CLI controls recovered a counter no-fit warning both from the original `at` spec and from the report's reconstructed target, by widening the crop. Both kept the explicit size 2 and the logical target within 1 px. Reconstruction is not exact: at size 7 and dpr 2, an original `at` of `[500, 500]` can resolve to `center: [253, 500]` at angle 0; inversion gives `[500.5, 500]`, which rounds to `[501, 500]`. The skill now prefers the original `at` for exact preservation and discloses the report-only estimate.
 
