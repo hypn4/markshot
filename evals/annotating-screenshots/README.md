@@ -29,19 +29,23 @@ Every scenario starts from `shot.png`, a 1602×1002 PNG at 144 dpi (dpr 2): a wh
 |---|---|---|
 | s1 | redact a label, box another, number two targets | blur covers the text, box frames the text, badges sit at their targets, no warnings, rendered from the original |
 | s2 | turn a box into a black redaction and enlarge a badge, the previous spec file is available | opaque box, badge size 5 with its tail tip unchanged, rendered from the original |
-| s3 | spotlight one label and point an arrow at it from the left | spotlight covers the label tightly, arrow comes from the left |
+| s3 | spotlight one label and point an arrow at it from the left | spotlight (or a frame with `"spotlight": true`) covers the label tightly, arrow comes from the left |
 | s4 | enlarge a badge when only the previous stdout report survives | badge size 5, tail tip unchanged within 3 px (needs `center` → `at`), nothing else changed |
 | s5 | grey highlighter on a dark background | covers the line; the reply must tell the user that grey renders navy there |
+| s6 | circle a label with a hand-drawn oval and dim the rest, on a Retina capture saved without DPI (`shot-nodpi.png`, made by `setup.sh`) | dpr 2, one oval with `"spotlight": true` and no separate spotlight, the label's pixels untouched, no warnings, rendered from the original |
 
 ## What did they show?
 
-Measured when the skill was restructured, on an earlier screenshot with the same layout (Claude Opus, one run per cell unless noted):
+Skill 1.0 was measured when the skill was restructured, on an earlier screenshot with the same layout; skill 1.1 (frames with `spotlight`, the dpr rule, `grid --region`, oval room) on `shot.png`. Claude Opus, one run per cell unless noted:
 
-| Variant | s1 | s2 | s3 | s4 | s5 |
-|---|---|---|---|---|---|
-| control (no skill) | pass | pass | pass | 1 of 2 (tail 3 px off) | grey shipped as navy, explained |
-| previous skill | pass | pass | pass | 2 of 2, but the tail tip was found by test renders or estimated | switched to a hue, explained |
-| this skill, first draft | pass | pass, but changed `angle` unasked | pass | 2 of 3; all three changed `angle` unasked | switched to a hue, explained |
-| this skill | pass | 2 of 2, nothing changed unasked | not run | 3 of 3 with one render, tip exact; nothing changed unasked | not run |
+| Variant | s1 | s2 | s3 | s4 | s5 | s6 |
+|---|---|---|---|---|---|---|
+| control (no skill) | pass | pass | pass | 1 of 2 (tail 3 px off) | grey shipped as navy, explained | not run |
+| skill before 1.0 | pass | pass | pass | 2 of 2, but the tail tip was found by test renders or estimated | switched to a hue, explained | not run |
+| skill 1.0, first draft | pass | pass, but changed `angle` unasked | pass | 2 of 3; all three changed `angle` unasked | switched to a hue, explained | not run |
+| skill 1.0 | pass | 2 of 2, nothing changed unasked | not run | 3 of 3 with one render, tip exact; nothing changed unasked | not run | not run |
+| skill 1.1 | 2 of 2 | 2 of 2, overlap reported with a fix | 2 of 2 | 2 of 2, tip exact | 2 of 2, switched to a hue, explained | 2 of 2: dpr 2 chosen, one render, label untouched |
+
+The two skill 1.1 runs bracket its last wording changes (colour names, room for badges, `--region` without `--step`); both passed every check.
 
 The first draft's "badge covering a label → change `angle`" row read as an instruction during edits; the rule "an edit is exactly what the user asked for; name a fix instead" replaced it.

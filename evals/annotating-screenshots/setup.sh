@@ -15,9 +15,21 @@ cargo build --release --locked --quiet --manifest-path "$repo/Cargo.toml"
 mkdir -p "$eval_dir/bin" "$eval_dir/runs"
 ln -sf "$repo/target/release/markshot" "$eval_dir/bin/markshot"
 cp "$here/shot.png" "$eval_dir/shot.png"
+# The same screenshot without its pHYs chunk, as some tools save Retina captures.
+python3 - "$here/shot.png" "$eval_dir/shot-nodpi.png" <<'PY'
+import struct, sys
+data = open(sys.argv[1], "rb").read()
+out, i = bytearray(data[:8]), 8
+while i < len(data):
+    n = struct.unpack(">I", data[i:i + 4])[0]
+    if data[i + 4:i + 8] != b"pHYs":
+        out += data[i:i + 12 + n]
+    i += 12 + n
+open(sys.argv[2], "wb").write(out)
+PY
 cp -R "$repo/skills/annotating-screenshots" "$eval_dir/skill"
 
-for f in common.md s1.md s2.md s3.md s4.md s5.md; do
+for f in common.md s1.md s2.md s3.md s4.md s5.md s6.md; do
   sed "s#\$EVAL_DIR#$eval_dir#g" "$here/$f" > "$eval_dir/$f"
 done
 cp "$here/s2-prev-spec.json" "$here/s2-prev-report.json" "$here/s4-prev-report.json" "$eval_dir/"

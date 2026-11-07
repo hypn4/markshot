@@ -27,9 +27,9 @@ Each example is a complete spec for an 800×600 screenshot. `markshot schema` li
 
 ## rect / oval: frame something
 
-`fill`: `sketch` (default, a hand-drawn border), `outline`, `semi` (a border plus a fill at `fill_alpha`, default 0.4) and `solid` (an opaque box: use it with `"color": "#000000"` to redact). Shapes whose shorter side is 40 px or less get a plain border even with `sketch`. An oval is a squircle that touches the middle of each side of `rect`, fuller than a true ellipse.
+`fill`: `sketch` (default, a hand-drawn border; use it when the user asks for a hand-drawn look), `outline` (a clean border; use it for a plain "box"), `semi` (a border plus a fill at `fill_alpha`, default 0.4) and `solid` (an opaque box: use it with `"color": "#000000"` to redact). Shapes whose shorter side is 40 px or less get a plain border even with `sketch`. An oval is a squircle that touches the middle of each side of `rect`, fuller than a true ellipse.
 
-A `sketch` oval is a hand-drawn spiral: its line wanders up to 1.3 line widths inside and outside that curve and may stop short of or run past its start. To clear the target's corners, make the oval's `rect` the target's box grown on every side by half the target's height plus two line widths (a line width is the size's points times dpr: 3 × 2 = 6 px at the default size on a Retina capture). If the line still crosses the target, grow `rect` or try another `seed`.
+A `sketch` oval is a hand-drawn spiral: its line wanders up to 1.3 line widths inside and outside that curve and may stop short of or run past its start. To clear the target's corners, make the oval's `rect` the target's box grown on every side by half the target's height plus two line widths (a line width is the size's points times dpr: 3 × 2 = 6 px at the default size on a Retina capture). If the line still crosses the target, grow `rect` or try another `seed`. Where neighbours above or below leave less room, keep at least two and a half line widths above and below the target and grow the oval sideways instead, about three times the height you gave up; with no room for that either, frame the target with a `rect`, which needs none.
 
 ```json
 {"annotations": [
@@ -39,7 +39,7 @@ A `sketch` oval is a hand-drawn spiral: its line wanders up to 1.3 line widths i
 ]}
 ```
 
-`"spotlight": true` frames the target and dims everything else, the dimming ending exactly under the frame's line, hand-drawn or not. Use it instead of a separate spotlight on the same area, which would leave a bright rim beside a hand-drawn line. Several frames with `spotlight` cut one hole each in the same dimming.
+`"spotlight": true` frames the target and dims everything else, the dimming ending exactly under the frame's line, hand-drawn or not. Use it instead of a separate spotlight on the same area, which would leave a bright rim beside a hand-drawn line. Several frames with `spotlight` cut one hole each in the same dimming. Where a `sketch` oval's spiral stops short of its start, the gap shows a small undimmed wedge; try another `seed` if it matters.
 
 ```json
 {"annotations": [
@@ -85,7 +85,7 @@ The whole image is dimmed with black at the top-level `spotlight_dim` (default 0
 
 `at` is the point the badge's tail marks; the badge sits 1.65 radii away, opposite the tail. `angle` is the tail's direction in degrees: 0 right, 90 down, 135 down-left (the default). `style` is `bubble` (default), `pin` or `circle`; a `circle` has no tail and is centred on `at`. `center` places the badge itself instead of `at`. `number` defaults to one more than the largest so far. The badge diameter for `size` 0–7 is 22, 28, 36, 48, 64, 84, 112, 150 points.
 
-To keep a badge off the thing it points at, aim the tail from the empty side: a badge left of a box points right with `"angle": 0`.
+To keep a badge off the thing it points at, aim the tail from the empty side: a badge left of a box points right with `"angle": 0`. The badge needs about 2.65 radii of free space on that side (around 95 px at size 2 on a dpr 2 capture); where no side has that much, aim diagonally (e.g. `45`, `135`) or use a smaller `size`.
 
 ```json
 {"annotations": [

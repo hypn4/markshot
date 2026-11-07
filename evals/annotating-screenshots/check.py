@@ -12,8 +12,8 @@ def tip(c,dpr):
     return [c['center'][0]+1.65*R*math.cos(a), c['center'][1]+1.65*R*math.sin(a)]
 def load(run):
     rep=json.load(open(f'{run}/report.json')); return rep, rep['spec']['annotations'], rep['spec']['dpr']
-def rerender_matches(run):
-    subprocess.run([BIN,'render',SHOT,'--spec','-','-o',f'{run}/_re.png'],input=json.dumps(json.load(open(f'{run}/report.json'))['spec']).encode(),capture_output=True,check=True)
+def rerender_matches(run,shot=SHOT):
+    subprocess.run([BIN,'render',shot,'--spec','-','-o',f'{run}/_re.png'],input=json.dumps(json.load(open(f'{run}/report.json'))['spec']).encode(),capture_output=True,check=True)
     return open(f'{run}/_re.png','rb').read()==open(f'{run}/out.png','rb').read()
 def s1(run):
     rep,A,dpr=load(run); res={}
@@ -39,7 +39,7 @@ def s2(run):
 def s3(run):
     rep,A,dpr=load(run); res={}
     orange=(1375,479,1513,506); oblock=(1340,400,1600,598)
-    sp=[a for a in A if a['type']=='spotlight']; ar=[a for a in A if a['type']=='arrow']
+    sp=[a for a in A if a['type']=='spotlight' or a.get('spotlight')]; ar=[a for a in A if a['type']=='arrow']
     res['spot_covers_text']=any(contains(s['rect'],orange) for s in sp)
     res['spot_tight']=any(s['rect'][2]<=420 and s['rect'][3]<=300 for s in sp)
     res['arrow_left_points_at']=any(a['from'][0]<a['to'][0] and dist_pt_box(a['to'],oblock)<60 for a in ar)
@@ -63,7 +63,20 @@ def s5(run):
     res['covers_line']=bool(h) and 840<=y<=880
     res['color']=h[0]['color'] if h else None  # grey/white/black renders navy here: the reply must say so
     return res
+def s6(run):
+    rep,A,dpr=load(run); res={}
+    green=(1375,80,1519,105); shot=f'{EVAL_DIR}/shot-nodpi.png'
+    ov=[a for a in A if a['type']=='oval' and a.get('spotlight') and contains(a['rect'],green)]
+    sp=[a for a in A if a['type']=='spotlight']
+    res['dpr_2']=dpr==2
+    res['oval_dims_the_rest']=bool(ov)
+    res['no_second_spotlight']=not sp
+    a=Image.open(f'{run}/out.png').convert('RGB').crop(green); b=Image.open(shot).convert('RGB').crop(green)
+    res['text_untouched']=a.tobytes()==b.tobytes()
+    res['no_warnings']=rep['warnings']==[]
+    res['out_from_original']=rerender_matches(run,shot)
+    return res
 run=sys.argv[2]
-try: r={'s1':s1,'s2':s2,'s3':s3,'s4':s4,'s5':s5}[sys.argv[1]](run)
+try: r={'s1':s1,'s2':s2,'s3':s3,'s4':s4,'s5':s5,'s6':s6}[sys.argv[1]](run)
 except Exception as e: r={'error':repr(e)}
 print(json.dumps(r)); 

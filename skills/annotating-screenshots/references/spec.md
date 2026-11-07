@@ -8,6 +8,7 @@
 - [Draw order](#draw-order)
 - [Size and dpr](#size-and-dpr)
 - [Defaults](#defaults)
+- [Colours](#colours)
 
 ## Coordinates
 
@@ -42,6 +43,7 @@ A PNG without DPI gets dpr 1 and a warning, because many tools save Retina captu
 | `variant` (0–3) | arrow | 0 |
 | `fill` | rect, oval | `sketch` |
 | `fill_alpha` (0.1–1) | rect, oval | 0.4 for `semi`, 1 for `solid` |
+| `spotlight` | rect, oval | `false` |
 | `mode` | blur | `pixelate` |
 | `cap` (0–3) | highlight | 3 |
 | `shape` | spotlight | `rect` |
@@ -53,3 +55,21 @@ A PNG without DPI gets dpr 1 and a warning, because many tools save Retina captu
 | `dpr` (0.5–4) | spec | from the PNG's DPI (144 → 2), else 1 |
 
 Unknown fields are errors.
+
+## Colours
+
+`color` takes `#RRGGBB` only. When the user names a colour, use the same value for it every time:
+
+| Asked for | `color` |
+|---|---|
+| red (the default) | `#FF0C01` |
+| red-orange, orange-red | `#FF4500` |
+| orange | `#FF9500` |
+| yellow | `#FFDC2C` |
+| green | `#34C759` |
+| blue | `#2E7CF6` |
+| purple | `#AF52DE` |
+| black (also for redaction) | `#000000` |
+| white | `#FFFFFF` |
+
+For a highlighter, pass the plain colour; the blend darkens it on light backgrounds.

@@ -4,7 +4,7 @@ description: Use when the user wants a screenshot or other PNG annotated (arrows
 compatibility: Requires the markshot CLI (macOS, Linux or Windows) on PATH, a POSIX-style shell for the examples, and the ability to view PNG images.
 metadata:
   cli: markshot
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Annotating screenshots
@@ -34,7 +34,7 @@ Copy this checklist and tick it off:
 ## Coordinates
 
 - Pixels of the input image; origin top-left, y grows down. A point is `[x, y]`, a rect `[x, y, width, height]`.
-- Numbers read off `grid` labels are already image pixels: use them as they are.
+- Numbers read off `grid` labels are already image pixels: use them as they are. With `--region`, leave out `--step`: the default keeps the labels apart.
 - Coordinates estimated on a downscaled view (many image viewers shrink large screenshots; compare the width you saw with step 1): add `"coords": {"space": "scaled", "width": W, "height": H}` with the size you saw.
 - Clipping, normalized coordinates, limits, draw order and dpr: [references/spec.md](references/spec.md).
 
@@ -61,7 +61,7 @@ When the user asks for a change to an earlier render, the edit is exactly what t
 
 - Render from the original input, never from the previous `out.png`, or the old annotations stay underneath.
 - Annotations skipped with a warning are not in the stdout spec; add them back with corrected values.
-- A counter comes back as its badge's `center`. Before changing its `size` or `angle`, replace `center` with the tail tip `at`, or the tip moves off its target:
+- A counter comes back as its badge's `center`. Before changing its `size` or `angle`, replace `center` with the tail tip `at`, computed from the stdout values, or the tip moves off its target:
   `at = center + 1.65 * R * (cos θ, sin θ)` with θ = `angle` in degrees (0 right, 90 down), R = D[`size`] / 2 * `dpr`, D = [22, 28, 36, 48, 64, 84, 112, 150]. For `"style": "circle"`, `at` = `center`.
 - `fill_alpha` is listed only if you set it, so switching a rect's `fill` gives the new fill's default opacity.
 - Give annotations an `id` so you can find them in the stdout spec.
@@ -77,3 +77,6 @@ An invalid spec exits with code 1, writes nothing, and prints `error: <path>: <m
 | A blur rect cut tight to the text | Leave a few pixels around it; use `erase` on flat backgrounds |
 | A grey, white or black highlighter on a mid or dark background renders navy | Pick a hue, and tell the user why |
 | Putting a blur last to draw it on top | Blurs are always drawn first, under everything |
+| A spotlight on the same area as a frame: a bright rim shows beside a hand-drawn line | One frame with `"spotlight": true` |
+| A `sketch` oval cut to the target's box: its line crosses the target's corners | Grow the oval's `rect` by half the target's height plus two line widths on each side (rect / oval in [references/tools.md](references/tools.md)) |
+| Leaving dpr at 1 on a Retina capture without DPI: thin lines, small badges | Set `"dpr": 2` when the report warns about a missing DPI and the UI text is double size |
