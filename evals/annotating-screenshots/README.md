@@ -4,22 +4,34 @@ Application scenarios for `skills/annotating-screenshots/`. Run them whenever th
 
 ## How do I run them?
 
-```sh
-bash evals/annotating-screenshots/setup.sh /tmp/skill-eval
-```
+`eval.sh` prepares a scratch directory, writes the prompts and scores the results. It can't start the agents: whoever runs the eval does that in their AI harness. Use a new eval directory for each round, so that `score` never reads an earlier round's runs. `setup` needs cargo, Python 3 and jq; `score` needs uv.
 
-For each scenario `sN`, start a fresh agent with no other context and give it `common.md` + `sN.md` from the eval directory, with `RUN_DIR=/tmp/skill-eval/runs/<variant>-sN` and `SKILL_LINE` replaced by either:
+1. Build markshot and copy the screenshots, the skill and the scenarios into the directory:
 
-- skill: `Before starting, read the agent skill /tmp/skill-eval/skill/SKILL.md and follow it.`
-- control: `No usage guide is provided; use the CLI's --help and schema.`
+   ```sh
+   bash evals/annotating-screenshots/eval.sh setup /tmp/skill-eval
+   ```
 
-Then score each run:
+2. Write one prompt per scenario for each variant you want to measure: `skill` tells the agent to read the copied skill first, `control` gives it no guide.
 
-```sh
-EVAL_DIR=/tmp/skill-eval uv run --with pillow python evals/annotating-screenshots/check.py s4 /tmp/skill-eval/runs/skill-s4
-```
+   ```sh
+   bash evals/annotating-screenshots/eval.sh prompts /tmp/skill-eval skill
+   bash evals/annotating-screenshots/eval.sh prompts /tmp/skill-eval control
+   ```
 
-Every key must be `true`. Also read the agent's reply: the checker can't judge what it told the user.
+   Each `/tmp/skill-eval/prompt-<variant>-sN.md` is `common.md` with its `SKILL_LINE` filled in, then `RUN_DIR=/tmp/skill-eval/runs/<variant>-sN`, then the request from `sN.md`.
+
+3. Start one fresh agent per prompt file, with no other context and the file's whole text as its only message; one subagent per file, all in parallel, works. Each agent leaves `out.png`, `spec.json` and `report.json` in its `RUN_DIR` and ends with a short reply to the user. Keep the replies. For a second run of the same cell, change the `RUN_DIR` line to end in `-sN-2`.
+
+4. Score the runs (leave out the variant to score them all):
+
+   ```sh
+   bash evals/annotating-screenshots/eval.sh score /tmp/skill-eval skill
+   ```
+
+   `score` runs `check.py` on every run directory and prints one row per run: `pass` when every key is `true`, else `FAIL` and the keys that are `false`. Values in parentheses are for you to judge (s5's colour). It exits with 1 when any run fails.
+
+Then read each agent's reply: the checker can't judge what it told the user. To score a single run by hand: `EVAL_DIR=/tmp/skill-eval uv run --with pillow python evals/annotating-screenshots/check.py s4 /tmp/skill-eval/runs/skill-s4`.
 
 ## What does each scenario test?
 

@@ -17,6 +17,7 @@ cargo test --locked
 - One test file or test: `cargo test --test golden`, `cargo test --test resolve counter_`.
 - Skill changes: `uvx --from skills-ref agentskills validate skills/annotating-screenshots`.
 - Fuzzing (nightly and `cargo install cargo-fuzz --locked`): `mkdir -p fuzz/corpus/decode_png && cargo +nightly fuzz run decode_png fuzz/corpus/decode_png fuzz/seeds/decode_png -- -max_total_time=180 -timeout=10` (or `render`). A crash or timeout gets a regression test in the main crate before its fix.
+- Skill evals: `bash evals/annotating-screenshots/eval.sh` with `setup`, `prompts` and `score`; you start one fresh agent per prompt in between ([steps](evals/annotating-screenshots/README.md#how-do-i-run-them)).
 - Try the CLI: `cargo run -- schema`, `cargo run -- grid in.png -o grid.png`, `cargo run -- render in.png --spec spec.json -o out.png`.
 
 ## Where things live

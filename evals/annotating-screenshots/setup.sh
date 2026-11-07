@@ -27,10 +27,11 @@ while i < len(data):
     i += 12 + n
 open(sys.argv[2], "wb").write(out)
 PY
+rm -rf "$eval_dir/skill"
 cp -R "$repo/skills/annotating-screenshots" "$eval_dir/skill"
 
-for f in common.md s1.md s2.md s3.md s4.md s5.md s6.md; do
-  sed "s#\$EVAL_DIR#$eval_dir#g" "$here/$f" > "$eval_dir/$f"
+for f in "$here"/common.md "$here"/s[0-9]*.md; do
+  sed "s#\$EVAL_DIR#$eval_dir#g" "$f" > "$eval_dir/$(basename "$f")"
 done
 cp "$here/s2-prev-spec.json" "$here/s2-prev-report.json" "$here/s4-prev-report.json" "$eval_dir/"
 
