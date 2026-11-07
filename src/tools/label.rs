@@ -6,11 +6,10 @@ use tiny_skia::{BlendMode, FillRule, LineCap, LineJoin};
 
 use crate::canvas::{Canvas, Ink, StrokeStyle};
 use crate::color::Rgb;
-use crate::geom::V2;
+use crate::geom::{PathData, V2};
 use crate::resolve::ResolvedText;
 use crate::spec::TextStyle;
 use crate::text::{Weight, line_box, text_path};
-use crate::tools::shape::rounded_rect;
 
 /// Text sizes in points per em, by size.
 pub const POINTS: [f64; 8] = [10.0, 12.0, 14.0, 16.0, 20.0, 24.0, 32.0, 40.0];
@@ -77,7 +76,8 @@ pub fn layout(text: &str, size: u8, style: TextStyle, dpr: f64) -> Layout {
     }
 }
 
-/// Draws `t` on the main surface: the plate, a rounded rect with corners of a third of an em,
+/// Draws `t` on the main surface: the plate, a rect with quarter-circle corners a quarter of an
+/// em in radius,
 /// then the lines; or, plain, each line's outline stroked a fifth of an em wide in the halo
 /// color with round joins under the line in the text's color.
 ///
@@ -98,8 +98,8 @@ pub fn draw(c: &mut Canvas, t: &ResolvedText) {
     };
     let (text_ink, halo) = match t.style {
         TextStyle::Label => {
-            let corner = l.px / 3.0 / c.dpr;
-            let plate = rounded_rect(left, bottom, width, height, 0.0, corner, c.dpr, &[0.0; 100]);
+            let mut plate = PathData::default();
+            plate.add_rounded_rect(left, bottom, width, height, l.px / 4.0);
             c.main().fill(&plate, ink(t.color), FillRule::Winding);
             (contrast, None)
         }

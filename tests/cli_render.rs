@@ -556,3 +556,24 @@ fn a_ringed_counter_has_a_white_ring_outside_its_body() {
         "the PNGs differ"
     );
 }
+
+#[test]
+fn a_label_plate_has_circular_corners_a_quarter_em_wide() {
+    // Size 7 at dpr 4 sets 40 pt text, a 160 px em, so the plate's corners are circles of
+    // radius 40 px centred 40 px in from each side. A black plate at (20, 20) on white leaves
+    // the pixel 8 px in from its top-left corner (centre 8.5 px in, 44.5 px from the corner
+    // circle's centre) white, and fills the one 20 px in (27.6 px from it).
+    let dir = work_dir("a_label_plate_has_circular_corners_a_quarter_em_wide");
+    let (w, h) = (900_u32, 400_u32);
+    let rgba: Vec<u8> = (0..w * h).flat_map(|_| [255, 255, 255, 255]).collect();
+    let input = dir.join("input.png");
+    fs::write(&input, encode_png(w, h, &rgba, Some(72.0), None).unwrap()).unwrap();
+    let out = dir.join("out.png");
+    let spec = json!({"dpr": 4, "annotations": [
+        {"type": "text", "at": [20, 20], "text": "Hi", "size": 7, "color": "#000000"}
+    ]});
+    report(&render(&input, &out, &spec, &[]));
+    let image = read_png(&out);
+    assert_eq!(pixel(&image, 28, 28), [255, 255, 255, 255]);
+    assert_eq!(pixel(&image, 40, 40), [0, 0, 0, 255]);
+}
