@@ -1,6 +1,6 @@
 # AGENTS.md
 
-markshot is a Rust CLI that draws screenshot annotations (arrows, boxes, ovals, blur, highlights, spotlights, counters, lines) from a JSON spec, byte for byte the same on every platform, for AI coding agents. This file holds the rules for everyone who changes the repository, agents and people alike. [`CONTRIBUTING.md`](CONTRIBUTING.md) covers the human process (issues, pull requests, review). [`docs/design.md`](docs/design.md) is the behaviour reference.
+markshot is a Rust CLI that draws screenshot annotations (arrows, boxes, ovals, blur, highlights, spotlights, counters, text labels, lines) from a JSON spec, byte for byte the same on every platform, for AI coding agents. This file holds the rules for everyone who changes the repository, agents and people alike. [`CONTRIBUTING.md`](CONTRIBUTING.md) covers the human process (issues, pull requests, review). [`docs/design.md`](docs/design.md) is the behaviour reference.
 
 ## Commands
 

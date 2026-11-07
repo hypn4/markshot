@@ -11,6 +11,7 @@ Each example is a complete spec for an 800×600 screenshot. `markshot schema` li
 - [spotlight: dim everything except an area](#spotlight-dim-everything-except-an-area)
 - [counter: numbered step badges](#counter-numbered-step-badges)
 - [line: a straight line](#line-a-straight-line)
+- [text: a short label](#text-a-short-label)
 - [Combining tools: hide private data, then number the steps](#combining-tools-hide-private-data-then-number-the-steps)
 
 ## arrow: point at something
@@ -104,6 +105,17 @@ To keep a badge off the thing it points at, aim the tail from the empty side: a 
 {"annotations": [
   {"type": "line", "from": [100, 300], "to": [700, 300], "dash": true},
   {"type": "line", "from": [100, 400], "to": [700, 400], "start_cap": "bullet", "end_cap": "arrow"}
+]}
+```
+
+## text: a short label
+
+`at` is the top-left corner of the text's box; `\n` starts a new line. `style` is `label` (default: white or black text on a rounded plate in `color`) or `plain` (text in `color` with a contrasting halo). `size` 0–7 picks 10, 12, 14, 16, 20, 24, 32 or 40 points. Only Latin, Greek and Cyrillic characters can be drawn; text in other scripts, such as Korean, is an error, so write the label in English or leave it to the surrounding document. Keep labels to a few words, and pair one with a counter or arrow rather than covering the target.
+
+```json
+{"annotations": [
+  {"type": "text", "at": [100, 100], "text": "Select Allow"},
+  {"type": "text", "at": [100, 200], "text": "Then press Save", "style": "plain", "color": "#2E7CF6"}
 ]}
 ```
 

@@ -1,6 +1,6 @@
 # markshot
 
-markshot draws annotations on a PNG screenshot from a JSON spec (arrows, rectangles, ovals, blur, highlighter strokes, spotlights, numbered counters and lines), so an AI coding agent can mark up a screenshot for you in one command.
+markshot draws annotations on a PNG screenshot from a JSON spec (arrows, rectangles, ovals, blur, highlighter strokes, spotlights, numbered counters, text labels and lines), so an AI coding agent can mark up a screenshot for you in one command.
 
 ## What does it do?
 

@@ -981,3 +981,49 @@ fn auto_angle_resolves_to_a_number_and_needs_a_tail() {
         assert!(message.contains("`at`"), "{counter}: {message}");
     }
 }
+
+#[test]
+fn text_needs_characters_the_font_has() {
+    // Inter covers Latin, Greek and Cyrillic; anything else would draw as empty boxes, so it is
+    // an input error naming the first such character. Empty text has nothing to draw.
+    for (text, message) in [
+        ("설정", "U+C124"),
+        ("Tab\there", "U+0009"),
+        ("", "must not be empty"),
+    ] {
+        let json = format!(
+            r#"{{"annotations": [{{"type": "text", "at": [10, 10], "text": {}}}]}}"#,
+            json!(text)
+        );
+        let (path, got) = spec_error(resolve(&parse(&json), 400, 300, 1.0, None));
+        assert_eq!(path, "annotations[0].text", "{text:?}");
+        assert!(got.contains(message), "{text:?}: {got}");
+    }
+}
+
+#[test]
+fn text_resolves_with_its_defaults_and_its_box_bounds_it() {
+    // Defaults: label style, size 2, the default red. Far right, the label runs off the
+    // image and is drawn clipped, with a warning, like any annotation.
+    let r = resolve_json(
+        r#"{"annotations": [
+            {"type": "text", "at": [10, 10], "text": "Select Allow"},
+            {"type": "text", "at": [390, 10], "text": "Then Save"}
+        ]}"#,
+        400,
+        300,
+    );
+    let spec = serde_json::to_value(r.to_spec()).expect("spec serializes");
+    let first = &spec["annotations"][0];
+    assert_eq!(
+        (&first["style"], &first["size"], &first["color"]),
+        (&json!("label"), &json!(2), &json!("#FF0C01"))
+    );
+    assert_eq!(
+        r.warnings,
+        [Warning {
+            id: "text-2".to_owned(),
+            message: "partly outside the 400×300 image; drawn clipped".to_owned(),
+        }]
+    );
+}

@@ -181,6 +181,7 @@ fn skill_json_examples_render() {
             Annotation::Spotlight(_) => "spotlight",
             Annotation::Counter(_) => "counter",
             Annotation::Line(_) => "line",
+            Annotation::Text(_) => "text",
         }));
     }
     for kind in [
@@ -192,6 +193,7 @@ fn skill_json_examples_render() {
         "spotlight",
         "counter",
         "line",
+        "text",
     ] {
         assert!(kinds.contains(&kind), "no example uses `{kind}`");
     }

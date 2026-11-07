@@ -96,6 +96,7 @@ pub fn render(
             Resolved::Highlight(h) => tools::highlight::draw(&mut canvas, h),
             Resolved::Spotlight(s) => tools::spotlight::draw_border(&mut canvas, s),
             Resolved::Counter(k) => tools::counter::draw(&mut canvas, k),
+            Resolved::Text(t) => tools::label::draw(&mut canvas, t),
         }
     }
     let resolved = resolution.to_spec();
