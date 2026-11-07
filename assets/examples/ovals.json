@@ -1,9 +1,9 @@
 {"dpr": 2, "crop": [1640, 0, 1158, 1000], "annotations": [
   {"type": "rect", "rect": [1688, 396, 442, 79], "fill": "outline", "spotlight": true, "color": "#FF4500"},
   {"type": "counter", "at": [2130, 435], "angle": "auto", "color": "#FF4500"},
-  {"type": "oval", "rect": [1648, 686, 376, 74], "seed": 11, "spotlight": true, "color": "#FF4500"},
-  {"type": "counter", "at": [2024, 723], "angle": "auto", "color": "#FF4500"},
-  {"type": "oval", "rect": [1650, 832, 404, 88], "spotlight": true, "color": "#FF4500"},
-  {"type": "counter", "at": [2054, 876], "angle": "auto", "color": "#FF4500"},
+  {"type": "oval", "around": [1692, 705, 274, 46], "spotlight": true, "color": "#FF4500", "size": 1},
+  {"type": "counter", "at": [2007, 728], "angle": "auto", "color": "#FF4500"},
+  {"type": "oval", "around": [1692, 858, 282, 46], "spotlight": true, "color": "#FF4500", "size": 1},
+  {"type": "counter", "at": [2023, 876], "angle": "auto", "color": "#FF4500"},
   {"type": "text", "at": [2280, 405], "text": "Pick a policy", "color": "#FF4500"}
 ]}
