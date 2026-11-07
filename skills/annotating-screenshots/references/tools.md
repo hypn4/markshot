@@ -30,7 +30,16 @@ Each example is a complete spec for an 800×600 screenshot. `markshot schema` li
 
 `fill`: `sketch` (default, a hand-drawn border; use it when the user asks for a hand-drawn look), `outline` (a clean border; use it for a plain "box"), `semi` (a border plus a fill at `fill_alpha`, default 0.4) and `solid` (an opaque box: use it with `"color": "#000000"` to redact). Shapes whose shorter side is 40 px or less get a plain border even with `sketch`. An oval is a squircle that touches the middle of each side of `rect`, fuller than a true ellipse.
 
-A `sketch` oval is a hand-drawn spiral: its line wanders up to 1.3 line widths inside and outside that curve and may stop short of or run past its start (with `spotlight` it always runs past). To clear the target's corners, make the oval's `rect` the target's box grown on every side by half the target's height plus two line widths (a line width is the size's points times dpr: 3 × 2 = 6 px at the default size on a Retina capture). If the line still crosses the target, grow `rect` or try another `seed`. Where neighbours above or below leave less room, keep at least two and a half line widths above and below the target and grow the oval sideways instead, about three times the height you gave up; with no room for that either, frame the target with a `rect`, which needs none.
+A `sketch` oval is a hand-drawn spiral: its line wanders up to 1.3 line widths inside and outside that curve and may stop short of or run past its start (with `spotlight` it always runs past). To clear the target's corners, make the oval's `rect` the target's box grown on every side by half the target's height plus two line widths (a line width is the size's points times dpr: 3 × 2 = 6 px at the default size on a Retina capture). If the line still crosses the target, grow `rect` or try another `seed`. Where neighbours above or below leave less room (a description line right under a toggle, say), use `size` 1 (a 4 px line on a dpr 2 capture) and grow the oval sideways instead. For a target about 40 px tall, the oval's `rect` needs this much room on each side of the target box:
+
+| Room above and below | Room left and right |
+|---|---|
+| 20 px | 32 px |
+| 16 px | 44 px |
+| 12 px | 84 px |
+| 10 px | 144 px |
+
+Measure the free space on all four sides first (a panel edge or another control counts as a neighbour). If any side has less room than the table asks for, an oval crosses the target's corners whatever its `seed`: use a `rect` with the default `sketch` fill instead, which looks hand-drawn too and needs no corner room, and tell the user why. Check the result zoomed in: the line must not touch the target or the neighbouring text.
 
 ```json
 {"annotations": [
