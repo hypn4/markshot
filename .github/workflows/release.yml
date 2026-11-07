@@ -48,8 +48,7 @@ jobs:
         run: |
           mkdir "$NAME"
           cp "target/${{ matrix.target }}/release/markshot" README.md assets/fonts/OFL.txt "$NAME/"
-          mkdir -p "$NAME/skills/annotating-screenshots"
-          cp skills/annotating-screenshots/SKILL.md "$NAME/skills/annotating-screenshots/"
+          cp -R skills "$NAME/"
           tar -czf "$NAME.tar.gz" "$NAME"
           shasum -a 256 "$NAME.tar.gz" > "$NAME.tar.gz.sha256"
       - run: >

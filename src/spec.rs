@@ -64,7 +64,7 @@ pub enum Annotation {
     Arrow(ArrowSpec),
     /// A rectangle.
     Rect(ShapeSpec),
-    /// An ellipse inside `rect`.
+    /// the reference app's oval inside `rect`: a squircle-like rounded shape, fuller than an ellipse.
     Oval(ShapeSpec),
     /// Hides what is under `rect`.
     Blur(BlurSpec),
@@ -252,7 +252,7 @@ pub enum SpotShape {
     /// A rounded rectangle.
     #[default]
     Rect,
-    /// An ellipse.
+    /// the reference app's oval: a squircle-like rounded shape, fuller than an ellipse.
     Oval,
 }
 
@@ -266,6 +266,7 @@ pub struct CounterSpec {
     /// Diameter step, 0 to 7. Default 2.
     pub size: Option<u8>,
     /// The point `[x, y]` the tail marks; the badge sits 1.65 radii away, opposite the tail.
+    /// A `circle` has no tail and is centered on `at`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub at: Option<Point>,
     /// The badge center `[x, y]`, instead of `at`.

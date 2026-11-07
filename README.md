@@ -4,7 +4,7 @@ A single-binary CLI that draws [the reference app](https://reference.cc)-style a
 
 - Matches the reference app's rendering: stroke widths, hand-drawn jitter, arrow outlines, highlighter blending, spotlight dimming and counter badges.
 - Deterministic. The same input, spec and binary give the same PNG bytes, and randomness such as hand-drawn jitter and mosaic blocks is seeded from each annotation's id.
-- Runs on macOS and Linux (arm64 and x86_64) with no runtime dependencies. It keeps the input's DPI and ICC profile.
+- Runs on macOS and Linux (arm64 and x86_64) as one self-contained binary; the Linux builds need glibc 2.34 or later. It keeps the input's DPI and ICC profile.
 
 ## Install
 
@@ -23,13 +23,13 @@ tar -xzf markshot-aarch64-apple-darwin.tar.gz
 install markshot-aarch64-apple-darwin/markshot ~/.local/bin/
 ```
 
-Each archive holds the binary, this README, the agent skill (`skills/annotating-screenshots/SKILL.md`) and the font license (`OFL.txt`).
+Each archive holds the binary, this README, the agent skill (`skills/annotating-screenshots/`) and the font license (`OFL.txt`).
 
 **From source.** You need Rust 1.99, which `rust-toolchain.toml` selects. From a clone:
 
 ```sh
-cargo install --path .        # installs markshot into ~/.cargo/bin
-cargo build --release         # or build target/release/markshot
+cargo install --path . --locked   # installs markshot into ~/.cargo/bin
+cargo build --release --locked    # or build target/release/markshot
 ```
 
 The release binary is 3,226,432 bytes (3.1 MiB), measured on aarch64-apple-darwin with `cargo build --release`.
@@ -57,14 +57,17 @@ The other commands:
 
 ## Agent skill
 
-[`skills/annotating-screenshots/SKILL.md`](skills/annotating-screenshots/SKILL.md) teaches an agent the render-and-fix loop, coordinate spaces, every tool with an example, the defaults and what each warning means. For Claude Code, copy the directory into your personal or project skills:
+[`skills/annotating-screenshots/`](skills/annotating-screenshots/SKILL.md) is an [Agent Skills](https://agentskills.io/specification) skill. `SKILL.md` holds the workflow, coordinates, a tool picker, how to fix a render and common mistakes; `references/` holds every tool with an example, the spec details and defaults, and what each warning means. Agents load the references only when they need them.
+
+Install it by copying the whole directory into a skills folder your agent reads, for example:
 
 ```sh
-mkdir -p ~/.claude/skills && cp -R skills/annotating-screenshots ~/.claude/skills/
-# or, for one project: mkdir -p .claude/skills && cp -R skills/annotating-screenshots .claude/skills/
+mkdir -p ~/.claude/skills && cp -R skills/annotating-screenshots ~/.claude/skills/   # Claude Code, all projects
+mkdir -p .claude/skills && cp -R skills/annotating-screenshots .claude/skills/       # Claude Code, one project
+mkdir -p ~/.agents/skills && cp -R skills/annotating-screenshots ~/.agents/skills/   # Codex, Gemini CLI, Copilot CLI
 ```
 
-For other agents, put `SKILL.md` wherever they load skills from, or reference it from their instructions file (e.g. `AGENTS.md`).
+The skill needs `markshot` on the agent's PATH. Validate it against the specification with `uvx --from skills-ref agentskills validate skills/annotating-screenshots`; `cargo test` checks its frontmatter, links and examples too. [`evals/annotating-screenshots/`](evals/annotating-screenshots/README.md) holds the agent scenarios it was tested with; rerun them after changing the skill.
 
 ## Development
 

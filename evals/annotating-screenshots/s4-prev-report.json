@@ -1,0 +1,42 @@
+{
+  "width": 1602,
+  "height": 1002,
+  "dpr": 2.0,
+  "spec": {
+    "coords": {
+      "space": "pixels"
+    },
+    "dpr": 2.0,
+    "spotlight_dim": 0.214,
+    "annotations": [
+      {
+        "type": "rect",
+        "id": "box",
+        "color": "#FF0C01",
+        "size": 2,
+        "seed": 3709859929908466,
+        "rect": [
+          1362.0,
+          68.0,
+          172.0,
+          54.0
+        ],
+        "fill": "outline"
+      },
+      {
+        "type": "counter",
+        "id": "badge",
+        "color": "#FF0C01",
+        "size": 2,
+        "center": [
+          1299.0,
+          95.0
+        ],
+        "angle": 0.0,
+        "style": "bubble",
+        "number": 1
+      }
+    ]
+  },
+  "warnings": []
+}

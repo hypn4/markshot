@@ -1,0 +1,4 @@
+{"annotations":[
+ {"type":"rect","id":"box","rect":[1100,465,160,60],"fill":"outline"},
+ {"type":"counter","id":"badge","at":[1096,495],"angle":0}
+]}
