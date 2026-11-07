@@ -140,6 +140,7 @@ Blur and highlight read the input image's pixels, never another annotation's.
 
 ## Input bounds
 
+- An input PNG may have at most 2^27 (134,217,728) pixels, 16384 × 8192 or the same area in another shape. A larger one is rejected from its header before any pixel data is decompressed (exit 1, `error: PNG: image is W×H, over the 134217728-pixel limit`), so a small file claiming a huge image cannot make markshot inflate it into gigabytes.
 - `--dpr` and the spec's `dpr` must be 0.5–4, and every coordinate, once mapped to pixels, must lie within 16× the image's longer side of the origin. Otherwise the spec is rejected (exit 1). Far-off coordinates or a tiny dpr would otherwise make curve sampling run practically forever.
 - A counter's `center` may lie up to 1.65R + 0.5 px past that limit, R being the badge radius in pixels, since an `at` inside the limit can resolve to such a centre and the resolved spec must render again.
 - An annotation partly off the image is clipped, with a warning. One entirely off the image, a zero-length arrow or line, or a `rect` with zero width or height after rounding is skipped with a warning and left out of the resolved spec. A spotlight that is skipped cuts no hole; with no spotlight left, nothing is dimmed.
