@@ -271,6 +271,8 @@ pub struct Warning {
 pub struct Resolution {
     pub dpr: f64,
     pub spotlight_dim: f64,
+    /// The part of the image to write, in whole pixels within the image; `None` for all of it.
+    pub crop: Option<Rect>,
     /// The annotations to draw, in spec order; skipped ones are left out.
     pub items: Vec<Resolved>,
     pub warnings: Vec<Warning>,
@@ -288,6 +290,7 @@ impl Resolution {
             coords: Coords::Pixels {},
             dpr: Some(self.dpr),
             spotlight_dim: Some(self.spotlight_dim),
+            crop: self.crop,
             annotations: self.items.iter().map(Resolved::to_annotation).collect(),
         }
     }
@@ -321,6 +324,10 @@ pub fn resolve(
     }
     let mut warnings = Vec::new();
     let coords = CoordMap::new(spec.coords, width, height, &mut warnings)?;
+    let crop = spec
+        .crop
+        .map(|rect| crop_rect(&coords, rect, width, height))
+        .transpose()?;
     let ids = assign_ids(&spec.annotations)?;
     let mut max_number = 0;
     let mut items = Vec::with_capacity(spec.annotations.len());
@@ -337,22 +344,64 @@ pub fn resolve(
             message,
         };
         match visibility(&item, dpr, width, height) {
-            Visibility::Full => items.push(item),
-            Visibility::Clipped => {
-                warnings.push(warning(format!(
-                    "partly outside the {width}×{height} image; drawn clipped"
-                )));
-                items.push(item);
+            Visibility::Full => {}
+            Visibility::Clipped => warnings.push(warning(format!(
+                "partly outside the {width}×{height} image; drawn clipped"
+            ))),
+            Visibility::Hidden(reason) => {
+                warnings.push(warning(format!("{reason}; skipped")));
+                continue;
             }
-            Visibility::Hidden(reason) => warnings.push(warning(format!("{reason}; skipped"))),
         }
+        if let (Some([cx, cy, cw, ch]), Ok([x0, y0, x1, y1])) = (crop, item.extent(dpr))
+            && (x1 <= cx || y1 <= cy || x0 >= cx + cw || y0 >= cy + ch)
+        {
+            warnings.push(warning(
+                "entirely outside the crop; drawn but not in the output".to_owned(),
+            ));
+        }
+        items.push(item);
     }
     Ok(Resolution {
         dpr,
         spotlight_dim,
+        crop,
         items,
         warnings,
     })
+}
+
+/// The spec's `crop` in whole pixels, rounded like a rect's corners and clipped to the
+/// `width` × `height` image.
+///
+/// # Errors
+/// [`Error::Spec`] at `crop` when it has no area or lies outside the image.
+fn crop_rect(
+    coords: &CoordMap,
+    [x, y, w, h]: Rect,
+    width: u32,
+    height: u32,
+) -> Result<Rect, Error> {
+    let error = |message: String| Error::Spec {
+        path: "crop".to_owned(),
+        message,
+    };
+    let [ax, ay] = coords.map([x, y]).map(round_pixel);
+    let [bx, by] = coords.map([x + w, y + h]).map(round_pixel);
+    let (x0, y0, x1, y1) = (ax.min(bx), ay.min(by), ax.max(bx), ay.max(by));
+    if x1 - x0 < 1.0 || y1 - y0 < 1.0 {
+        return Err(error(format!(
+            "must have a positive width and height, got {}×{} px",
+            x1 - x0,
+            y1 - y0
+        )));
+    }
+    let (image_w, image_h) = (f64::from(width), f64::from(height));
+    let (x0, y0, x1, y1) = (x0.max(0.0), y0.max(0.0), x1.min(image_w), y1.min(image_h));
+    if x0 >= x1 || y0 >= y1 {
+        return Err(error(format!("outside the {width}×{height} image")));
+    }
+    Ok([x0, y0, x1 - x0, y1 - y0])
 }
 
 /// `value` if it is a dpr within [`DPR_RANGE`].

@@ -7,7 +7,7 @@ use crate::canvas::{Canvas, Ink};
 use crate::color::Rgb;
 use crate::error::Error;
 use crate::geom::{PathData, Seg, V2};
-use crate::image_io::{SourceImage, dpr_from_dpi};
+use crate::image_io::{SourceImage, crop_rgba, dpr_from_dpi};
 use crate::text::{Weight, line_box, text_path};
 
 /// The steps [`default_step`] picks from.
@@ -156,16 +156,7 @@ fn crop(
             src.width, src.height
         )));
     }
-    let (stride, left, len) = (
-        src.width as usize * 4,
-        x as usize * 4,
-        (x1 - x) as usize * 4,
-    );
-    let row = |r: u32| {
-        let start = r as usize * stride + left;
-        &src.rgba[start..start + len]
-    };
-    let rgba = (y..y1).flat_map(row).copied().collect();
+    let rgba = crop_rgba(&src.rgba, src.width, [x, y, x1 - x, y1 - y]);
     let cropped = SourceImage {
         width: x1 - x,
         height: y1 - y,

@@ -18,7 +18,7 @@ EOF
 markshot render screenshot.png --spec spec.json -o annotated.png
 ```
 
-`render` writes `annotated.png` and prints JSON to stdout: the image size, the dpr used, the fully resolved `spec` (ids, seeds, counter numbers and pixel coordinates filled in) and any `warnings`. Two more commands help along the way:
+`render` writes `annotated.png` (or just the part a top-level `crop` names) and prints JSON to stdout: the image size, the dpr used, the fully resolved `spec` (ids, seeds, counter numbers and pixel coordinates filled in) and any `warnings`. Two more commands help along the way:
 
 - `markshot grid screenshot.png -o grid.png` overlays a labeled pixel grid, for reading coordinates. `--region X,Y,W,H` draws just that part at full size, still labeled in whole-image pixels, for a close look at a large screenshot or a rendered result.
 - `markshot schema` prints the JSON schema of the spec, with every field documented.
