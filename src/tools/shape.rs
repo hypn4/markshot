@@ -13,9 +13,11 @@ use tiny_skia::{BlendMode, FillRule, LineCap, LineJoin};
 
 use crate::canvas::{Canvas, Ink, StrokeStyle};
 use crate::geom::{PathData, Seg, V2};
+use crate::image_io::luma;
 use crate::resolve::ResolvedShape;
 use crate::rng::rnd100;
-use crate::spec::Fill;
+use crate::spec::{Fill, Rect};
+use crate::tools::Pixels;
 
 pub use handdrawn::hd_corner;
 pub use rounded_rect::rounded_rect;
@@ -152,6 +154,352 @@ impl Geometry {
     }
 }
 
+/// How many vertical paddings [`fit_oval`] tries at most on a target taller than that in px.
+const FIT_STEPS: u32 = 24;
+
+/// The shares by which [`fit_oval`] moves an oval up (positive) or down off its target's centre,
+/// as a share of the average padding above and below; centred first.
+const FIT_SHIFTS: [f64; 7] = [0.0, 0.25, -0.25, 0.5, -0.5, 0.75, -0.75];
+
+/// What [`fit_oval`] charges for each stretch of its line that runs onto ink.
+const INK_RUN: u32 = 40;
+
+/// The `rect` (y-down px) for `oval` (its size, seed, fill and `spotlight`) at `dpr` that
+/// circles `target` (y-down px) on `image`. Each vertical padding in whole px from half the
+/// line width to the target's height plus six line widths (at most 24 of them, evenly spaced,
+/// on a huge target), split evenly above and below or moved up or down by `FIT_SHIFTS`, gets
+/// the least horizontal padding (whole px, by bisection) whose actual centre line clears the
+/// target by its reach: half its width, a quarter more for a hand-drawn line's swell and
+/// 1.5 px for its anti-aliased edge. Of those, the oval that costs least wins: `ink_cost`
+/// for the ink its line comes near, the `obstacles` it runs through and the points outside
+/// `image.area`, plus `enclosed_ink` for anything else it would circle. Ties go to the smaller
+/// rect, then to the smaller vertical padding. Returns the rect and its cost (0: the line keeps
+/// clear of all ink, obstacles and edges). A target without area is returned as it is.
+#[must_use]
+pub fn fit_oval(
+    target: Rect,
+    oval: &ResolvedShape,
+    dpr: f64,
+    image: &Pixels<'_>,
+    obstacles: &[[f64; 4]],
+) -> (Rect, u32) {
+    let [tx, ty, tw, th] = target;
+    if tw <= 0.0 || th <= 0.0 {
+        return (target, 0);
+    }
+    let (fill, spotlight) = (oval.fill, oval.spotlight);
+    let rnd = rnd100(oval.seed);
+    let wpt = WIDTHS[usize::from(oval.size)];
+    let height = f64::from(image.height);
+    // The oval's centre line (y-down px) on `rect` and the clearance it needs.
+    let line = |rect: Rect| -> (Vec<V2>, f64) {
+        let [x, y, w, h] = rect;
+        let up = (x, height - y - h, w, h);
+        let stroke = stroke_px(w, h, wpt, dpr);
+        let handdrawn = fill == Fill::Sketch && w.min(h) > MIN_HANDDRAWN_SIDE;
+        let points: Vec<V2> = if handdrawn {
+            handdrawn::oval_line(up, stroke, dpr, spotlight, &rnd)
+                .iter()
+                .map(|p| p.pos)
+                .collect()
+        } else {
+            sample_path(&squircle(up.0, up.1, up.2, up.3))
+        };
+        let swell = if handdrawn { 0.625 } else { 0.5 };
+        let down = points
+            .into_iter()
+            .map(|p| V2 {
+                x: p.x,
+                y: height - p.y,
+            })
+            .collect();
+        (down, stroke * swell + 1.5)
+    };
+    let clears = |points: &[V2], need: f64| {
+        points.iter().all(|p| {
+            let dx = (tx - p.x).max(p.x - (tx + tw)).max(0.0);
+            let dy = (ty - p.y).max(p.y - (ty + th)).max(0.0);
+            dx * dx + dy * dy >= need * need
+        })
+    };
+    // `pv` px above and below on average, shifted up (`shift` > 0) or down by a share of it.
+    let padded = |pv: f64, shift: f64, ph: f64| {
+        let top = (pv * (1.0 + shift)).round();
+        [tx - ph, ty - top, tw + 2.0 * ph, th + 2.0 * pv]
+    };
+    let line_px = wpt * dpr;
+    let (least_pad, most_pad) = ((0.5 * line_px).round(), (th + 6.0 * line_px).round());
+    let widest = (8.0 * th + tw + 8.0 * line_px).ceil();
+    // Every whole px of vertical padding, or FIT_STEPS evenly spaced ones on a huge target.
+    let step = ((most_pad - least_pad) / f64::from(FIT_STEPS - 1)).max(1.0);
+    // Ink anywhere the widest, tallest candidate's line could reach.
+    let margin = widest + most_pad * 2.0 + 4.0 * line_px + 8.0;
+    let ink = InkMap::new(
+        [tx - margin, ty - margin, tx + tw + margin, ty + th + margin],
+        target,
+        image,
+    );
+    let mut best: Option<(u32, f64, Rect)> = None;
+    let mut pv = least_pad;
+    while pv <= most_pad {
+        for shift in FIT_SHIFTS {
+            let (outer, need) = line(padded(pv, shift, widest));
+            if !clears(&outer, need) {
+                continue;
+            }
+            let (mut short, mut enough) = (0.0_f64, widest);
+            while enough - short > 1.0 {
+                let mid = short.midpoint(enough).floor();
+                let (points, need) = line(padded(pv, shift, mid));
+                if clears(&points, need) {
+                    enough = mid;
+                } else {
+                    short = mid;
+                }
+            }
+            let rect = padded(pv, shift, enough);
+            let (points, reach) = line(rect);
+            let cost = ink_cost(&points, reach, image, ink.as_ref(), obstacles)
+                + enclosed_ink(rect, dpr, ink.as_ref());
+            let better = match best {
+                None => true,
+                Some((c, area, _)) => cost < c || (cost == c && rect[2] * rect[3] < area),
+            };
+            if better {
+                best = Some((cost, rect[2] * rect[3], rect));
+            }
+        }
+        pv = (pv + step).round();
+    }
+    best.map_or_else(
+        || (padded(most_pad, 0.0, widest), u32::MAX),
+        |(cost, _, rect)| (rect, cost),
+    )
+}
+
+/// Distances to the nearest ink pixel over part of an image, for [`fit_oval`]. Ink is a pixel
+/// outside the target whose luma differs from the region's median by over 0.15; distances are
+/// chamfer distances (1 across, 1.4 diagonally) in px, capped at [`InkMap::FAR`].
+struct InkMap {
+    left: f64,
+    top: f64,
+    width: usize,
+    height: usize,
+    dist: Vec<f64>,
+}
+
+impl InkMap {
+    /// Farther than any line reach; the cap of every distance.
+    const FAR: f64 = 1.0e6;
+
+    /// The map of `region` (`[x0, y0, x1, y1]`, y-down px, clipped to the image), ignoring the
+    /// pixels inside `target`; `None` without pixels or area.
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "the region is clipped to the image, so its corners are small non-negative pixels"
+    )]
+    fn new(region: [f64; 4], target: Rect, image: &Pixels<'_>) -> Option<Self> {
+        let rgba = image.rgba?;
+        let (w, h) = (f64::from(image.width), f64::from(image.height));
+        let left = region[0].clamp(0.0, w).floor();
+        let top = region[1].clamp(0.0, h).floor();
+        let right = region[2].clamp(0.0, w).ceil();
+        let bottom = region[3].clamp(0.0, h).ceil();
+        if right <= left || bottom <= top {
+            return None;
+        }
+        let (width, height) = ((right - left) as usize, (bottom - top) as usize);
+        let [tx, ty, tw, th] = target;
+        let mut lumas = Vec::with_capacity(width * height);
+        let mut in_target = Vec::with_capacity(width * height);
+        let mut y = top;
+        while y < bottom {
+            let mut x = left;
+            while x < right {
+                lumas.push(luma(rgba, image.width, [x, y]));
+                in_target.push((tx..tx + tw).contains(&x) && (ty..ty + th).contains(&y));
+                x += 1.0;
+            }
+            y += 1.0;
+        }
+        let mut sorted = lumas.clone();
+        sorted.sort_by(f64::total_cmp);
+        let median = sorted[sorted.len() / 2];
+        let mut dist: Vec<f64> = lumas
+            .iter()
+            .zip(&in_target)
+            .map(|(&l, &inside)| {
+                if !inside && (l - median).abs() > 0.15 {
+                    0.0
+                } else {
+                    Self::FAR
+                }
+            })
+            .collect();
+        // Two chamfer passes: down and right, then up and left.
+        let at = |row: usize, col: usize| row * width + col;
+        for row in 0..height {
+            for col in 0..width {
+                let mut d = dist[at(row, col)];
+                if col > 0 {
+                    d = d.min(dist[at(row, col - 1)] + 1.0);
+                }
+                if row > 0 {
+                    d = d.min(dist[at(row - 1, col)] + 1.0);
+                    if col > 0 {
+                        d = d.min(dist[at(row - 1, col - 1)] + 1.4);
+                    }
+                    if col + 1 < width {
+                        d = d.min(dist[at(row - 1, col + 1)] + 1.4);
+                    }
+                }
+                dist[at(row, col)] = d;
+            }
+        }
+        for row in (0..height).rev() {
+            for col in (0..width).rev() {
+                let mut d = dist[at(row, col)];
+                if col + 1 < width {
+                    d = d.min(dist[at(row, col + 1)] + 1.0);
+                }
+                if row + 1 < height {
+                    d = d.min(dist[at(row + 1, col)] + 1.0);
+                    if col + 1 < width {
+                        d = d.min(dist[at(row + 1, col + 1)] + 1.4);
+                    }
+                    if col > 0 {
+                        d = d.min(dist[at(row + 1, col - 1)] + 1.4);
+                    }
+                }
+                dist[at(row, col)] = d;
+            }
+        }
+        Some(Self {
+            left,
+            top,
+            width,
+            height,
+            dist,
+        })
+    }
+
+    /// The distance from `p` (y-down px) to the nearest ink; [`InkMap::FAR`] off the map.
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "checked to lie on the map first"
+    )]
+    fn distance(&self, p: V2) -> f64 {
+        let (col, row) = ((p.x - self.left).floor(), (p.y - self.top).floor());
+        if col < 0.0 || row < 0.0 || col as usize >= self.width || row as usize >= self.height {
+            return Self::FAR;
+        }
+        self.dist[row as usize * self.width + col as usize]
+    }
+}
+
+/// What it costs to draw a line through `points` (y-down px, in order) that reaches `reach` px
+/// to either side of them; see [`fit_oval`]. A point outside `image.area` costs 10, one inside
+/// any of `obstacles` (`[x0, y0, x1, y1]`, y-down px) 5, one whose line would come within 3 px
+/// of ink 1, and every stretch of line that runs that close to ink [`INK_RUN`] more, so that a
+/// line cutting across a row of text costs about as much as one running along it. Points are
+/// checked every pixel along the line.
+fn ink_cost(
+    points: &[V2],
+    reach: f64,
+    image: &Pixels<'_>,
+    ink: Option<&InkMap>,
+    obstacles: &[[f64; 4]],
+) -> u32 {
+    let [x0, y0, x1, y1] = image.area;
+    // Keep 3 px of air between ink and the line's reach.
+    let near = reach + 3.0;
+    let mut cost = 0;
+    let mut on_ink = false;
+    for pair in points.windows(2) {
+        let (a, b) = (pair[0], pair[1]);
+        let steps = (b - a).len().ceil().max(1.0);
+        let mut i = 0.0;
+        while i < steps {
+            let p = a + (b - a) * (i / steps);
+            i += 1.0;
+            if !(x0..x1).contains(&p.x) || !(y0..y1).contains(&p.y) {
+                cost += 10;
+            }
+            if obstacles.iter().any(|&[ox0, oy0, ox1, oy1]| {
+                (ox0..=ox1).contains(&p.x) && (oy0..=oy1).contains(&p.y)
+            }) {
+                cost += 5;
+            }
+            let inked = ink.is_some_and(|map| map.distance(p) < near);
+            if inked {
+                cost += 1;
+                if !on_ink {
+                    cost += INK_RUN;
+                }
+            }
+            on_ink = inked;
+        }
+    }
+    cost
+}
+
+/// The ink an oval on `rect` would circle besides its target: samples every `2 * dpr` px
+/// inside the ellipse inscribed in `rect` (y-down px) that lie on ink.
+fn enclosed_ink(rect: Rect, dpr: f64, ink: Option<&InkMap>) -> u32 {
+    let Some(map) = ink else {
+        return 0;
+    };
+    let [x, y, w, h] = rect;
+    let (cx, cy, rx, ry) = (x + w / 2.0, y + h / 2.0, w / 2.0, h / 2.0);
+    let step = 2.0 * dpr;
+    let mut count = 0;
+    let mut sy = y + step / 2.0;
+    while sy < y + h {
+        let mut sx = x + step / 2.0;
+        while sx < x + w {
+            let (dx, dy) = ((sx - cx) / rx, (sy - cy) / ry);
+            if dx * dx + dy * dy <= 1.0 && map.distance(V2 { x: sx, y: sy }) == 0.0 {
+                count += 1;
+            }
+            sx += step;
+        }
+        sy += step;
+    }
+    count
+}
+
+/// Points along `path`'s lines and cubics, each cubic sampled at 16 even steps of its
+/// parameter.
+fn sample_path(path: &PathData) -> Vec<V2> {
+    let mut points = Vec::new();
+    let mut last = V2::default();
+    for seg in &path.0 {
+        match *seg {
+            Seg::Move(p) | Seg::Line(p) => {
+                points.push(p);
+                last = p;
+            }
+            Seg::Cubic(a, b, end) => {
+                for i in 1..=16_u8 {
+                    let t = f64::from(i) / 16.0;
+                    let u = 1.0 - t;
+                    points.push(
+                        last * (u * u * u)
+                            + a * (3.0 * u * u * t)
+                            + b * (3.0 * u * t * t)
+                            + end * (t * t * t),
+                    );
+                }
+                last = end;
+            }
+            Seg::Close => {}
+        }
+    }
+    points
+}
+
 /// Twice the signed area of the polygon `pts` (y-up): positive when it runs
 /// counter-clockwise.
 fn signed_area(pts: &[V2]) -> f64 {
@@ -205,6 +553,8 @@ mod tests {
             fill,
             fill_alpha: None,
             spotlight: false,
+            around: None,
+            pick_seed: false,
         }
     }
 

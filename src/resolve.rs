@@ -19,7 +19,7 @@ use crate::spec::{
     SpotShape, SpotlightSpec, TextSpec, TextStyle,
 };
 use crate::text::{Weight, unsupported_char};
-use crate::tools::{counter, label};
+use crate::tools::{counter, label, shape};
 
 const DEFAULT_COLOR: &str = "#FF0C01";
 const DEFAULT_HIGHLIGHT_COLOR: &str = "#FFF68D";
@@ -32,6 +32,8 @@ const MAX_ARROW_VARIANT: u8 = 3;
 const MAX_HIGHLIGHT_CAP: u8 = 3;
 const DEFAULT_HIGHLIGHT_CAP: u8 = 3;
 const DEFAULT_SPOTLIGHT_DIM: f64 = 0.214;
+/// How many seeds, from an oval's own on, fitting `around` tries when the spec gives none.
+const SEED_TRIES: u64 = 8;
 /// The default tail direction, −3π/4 with y up, in screen degrees.
 const DEFAULT_COUNTER_ANGLE: f64 = 135.0;
 /// Scaled coordinates whose aspect ratio is off the image's by more than this get a warning.
@@ -70,6 +72,11 @@ pub struct ResolvedShape {
     pub fill_alpha: Option<f64>,
     /// Dims everything outside the shape, with a hole along its line.
     pub spotlight: bool,
+    /// An oval's target box while its `rect` is still to be fitted around it; `None` once
+    /// `rect` is final.
+    pub around: Option<Rect>,
+    /// Whether fitting may also pick the seed: `around` without a `seed` in the spec.
+    pub pick_seed: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -288,6 +295,7 @@ fn shape_spec(s: &ResolvedShape) -> ShapeSpec {
         fill: Some(s.fill),
         fill_alpha: s.fill_alpha,
         spotlight: s.spotlight.then_some(true),
+        around: None,
     }
 }
 
@@ -406,6 +414,7 @@ fn resolve_with(
         [0.0, 0.0, f64::from(width), f64::from(height)],
         |[x, y, w, h]| [x, y, x + w, y + h],
     );
+    fit_ovals(&mut all, dpr, width, height, rgba, area);
     place_auto_counters(&mut all, dpr, width, height, rgba, area);
     let mut items = Vec::with_capacity(all.len());
     for item in all {
@@ -439,6 +448,83 @@ fn resolve_with(
         items,
         warnings,
     })
+}
+
+/// Gives each oval with `around` its `rect` ([`shape::fit_oval`]), in spec order, keeping its
+/// line in `area` and off the other annotations: their extents, an oval still to be fitted
+/// standing for its target box, and counters still to be placed left out. An oval whose spec
+/// gives no `seed` may also take one of the [`SEED_TRIES`] seeds from its own on.
+fn fit_ovals(
+    items: &mut [Resolved],
+    dpr: f64,
+    width: u32,
+    height: u32,
+    rgba: Option<&[u8]>,
+    area: [f64; 4],
+) {
+    let image = crate::tools::Pixels {
+        width,
+        height,
+        rgba,
+        area,
+    };
+    for i in 0..items.len() {
+        let Resolved::Oval(
+            oval @ ResolvedShape {
+                around: Some(target),
+                ..
+            },
+        ) = &items[i]
+        else {
+            continue;
+        };
+        let (oval, target) = (oval.clone(), *target);
+        let obstacles: Vec<[f64; 4]> = items
+            .iter()
+            .enumerate()
+            .filter(|&(j, item)| {
+                j != i
+                    && !matches!(
+                        item,
+                        Resolved::Counter(ResolvedCounter {
+                            auto_at: Some(_),
+                            ..
+                        })
+                    )
+            })
+            .filter_map(|(_, item)| item.extent(dpr).ok())
+            .collect();
+        // Without a seed in the spec, the next seeds may give a wobble that fits cleanly; the
+        // first that keeps the line clear of everything wins, else the cheapest.
+        let tries = if oval.pick_seed { SEED_TRIES } else { 1 };
+        let mut best: Option<(u32, u64, Rect)> = None;
+        for k in 0..tries {
+            let seed = (oval.seed + k) % (MAX_SEED + 1);
+            let (rect, cost) = shape::fit_oval(
+                target,
+                &ResolvedShape {
+                    seed,
+                    ..oval.clone()
+                },
+                dpr,
+                &image,
+                &obstacles,
+            );
+
+            if best.is_none_or(|(c, _, _)| cost < c) {
+                best = Some((cost, seed, rect));
+            }
+            if cost == 0 {
+                break;
+            }
+        }
+        if let (Resolved::Oval(s), Some((_, seed, rect))) = (&mut items[i], best) {
+            s.rect = rect;
+            s.seed = seed;
+            s.around = None;
+            s.pick_seed = false;
+        }
+    }
 }
 
 /// Gives each counter with `"angle": "auto"` its angle and center, in spec order: the first of
@@ -479,7 +565,7 @@ fn place_auto_counters(
             .filter_map(|(_, item)| item.extent(dpr).ok())
             .collect();
         let r = counter::radius(size, dpr);
-        let image = counter::Pixels {
+        let image = crate::tools::Pixels {
             width,
             height,
             rgba,
@@ -678,8 +764,8 @@ impl Resolver<'_> {
     ) -> Result<Resolved, Error> {
         Ok(match annotation {
             Annotation::Arrow(a) => Resolved::Arrow(self.arrow(a, id)?),
-            Annotation::Rect(s) => Resolved::Rect(self.shape(s, id)?),
-            Annotation::Oval(s) => Resolved::Oval(self.shape(s, id)?),
+            Annotation::Rect(s) => Resolved::Rect(self.shape(s, id, false)?),
+            Annotation::Oval(s) => Resolved::Oval(self.shape(s, id, true)?),
             Annotation::Blur(b) => Resolved::Blur(self.blur(b, id)?),
             Annotation::Highlight(h) => Resolved::Highlight(self.highlight(h, id)?),
             Annotation::Spotlight(s) => Resolved::Spotlight(self.spotlight(s, id)?),
@@ -707,17 +793,32 @@ impl Resolver<'_> {
         })
     }
 
-    fn shape(&self, s: &ShapeSpec, id: String) -> Result<ResolvedShape, Error> {
+    fn shape(&self, s: &ShapeSpec, id: String, oval: bool) -> Result<ResolvedShape, Error> {
         if let Some(alpha) = s.fill_alpha
             && !(0.1..=1.0).contains(&alpha)
         {
             return Err(self.error("fill_alpha", format!("must be 0.1 to 1, got {alpha}")));
         }
+        let (rect, around) = match (s.rect, s.around) {
+            (_, Some(_)) if !oval => {
+                return Err(self.error("around", "`around` is for ovals; give a rect its `rect`"));
+            }
+            (Some(_), Some(_)) => {
+                return Err(self.whole_error("give `rect` or `around`, not both"));
+            }
+            (None, Some(around)) => {
+                let target = self.rect_field("around", around)?;
+                (target, Some(target))
+            }
+            (rect, None) => (self.rect(rect)?, None),
+        };
         Ok(ResolvedShape {
             color: self.color(s.color.as_deref(), DEFAULT_COLOR)?,
             size: self.size(s.size)?,
             seed: self.seed(s.seed, &id)?,
-            rect: self.rect(s.rect)?,
+            rect,
+            around,
+            pick_seed: around.is_some() && s.seed.is_none(),
             fill: s.fill.unwrap_or_default(),
             fill_alpha: s.fill_alpha,
             spotlight: s.spotlight.unwrap_or(false),
@@ -933,10 +1034,16 @@ impl Resolver<'_> {
 
     /// The rect with positive or zero width and height, from its rounded corners.
     fn rect(&self, rect: Option<Rect>) -> Result<Rect, Error> {
-        let [x, y, w, h] =
+        let rect =
             rect.ok_or_else(|| self.error("rect", "missing; expected [x, y, width, height]"))?;
-        let [x0, y0] = self.point("rect", [x, y])?;
-        let [x1, y1] = self.point("rect", [x + w, y + h])?;
+        self.rect_field("rect", rect)
+    }
+
+    /// `[x, y, w, h]` given as `field`, with positive or zero width and height, from its
+    /// rounded corners.
+    fn rect_field(&self, field: &str, [x, y, w, h]: Rect) -> Result<Rect, Error> {
+        let [x0, y0] = self.point(field, [x, y])?;
+        let [x1, y1] = self.point(field, [x + w, y + h])?;
         Ok([x0.min(x1), y0.min(y1), (x1 - x0).abs(), (y1 - y0).abs()])
     }
 }
