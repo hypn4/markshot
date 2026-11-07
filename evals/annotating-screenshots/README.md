@@ -58,7 +58,7 @@ Chrome writes the PNG without a pHYs chunk, which the scenarios need; check that
 
 ## What did they show?
 
-Skill 1.0 was measured when the skill was restructured, on an earlier screenshot with the same layout; skill 1.1 (frames with `spotlight`, the dpr rule, `grid --region`, oval room) and skill 1.2 (`crop`, `"angle": "auto"`, `text`, room for ovals in dense rows) and skill 1.3 (ovals sized by markshot with `around`) on `shot.png` and `console.png`. Claude Opus, one run per cell unless noted:
+Skill 1.0 was measured when the skill was restructured, on an earlier screenshot with the same layout; skill 1.1 (frames with `spotlight`, the dpr rule, `grid --region`, oval room), skill 1.2 (`crop`, `"angle": "auto"`, `text`, room for ovals in dense rows), skill 1.3 (ovals sized by markshot with `around`) and skill 1.4 (an optional white `ring` on counters) on `shot.png` and `console.png`. No skill 1.4 run needed a ring, so that row checks that the new option changes nothing else. Claude Opus, one run per cell unless noted:
 
 | Variant | s1 | s2 | s3 | s4 | s5 | s6 | s7 | s8 |
 |---|---|---|---|---|---|---|---|---|
@@ -69,6 +69,7 @@ Skill 1.0 was measured when the skill was restructured, on an earlier screenshot
 | skill 1.1 | 2 of 2 | 2 of 2, overlap reported with a fix | 2 of 2 | 2 of 2, tip exact | 2 of 2, switched to a hue, explained | 2 of 2: dpr 2 chosen, one render, label untouched | not run | not run |
 | skill 1.2 | pass | pass, overlap reported with a fix | pass | pass, tip exact; reported that no angle clears the label | pass, switched to a hue, explained | pass | 0 of 7 (see below) | pass: size 1 badges after "auto" crowded the rows |
 | skill 1.3 (CLI 0.2.0) | pass | pass, overlap reported with a fix | pass | pass, tip exact; suggested `"auto"` or size 4 | pass, switched to a hue, explained | pass, with `around` | 3 of 3, with `around`; ovals kept clear of target and text | pass: size 0 badges |
+| skill 1.4 (CLI 0.3.0) | pass | pass, overlap reported with a fix | pass | pass, tip exact; tried `"auto"` and another angle as fixes | pass, switched to a hue, explained | pass, with `around` | 3 of 3, with `around` | pass: size 1 badges |
 
 The two skill 1.1 runs bracket its last wording changes (colour names, room for badges, `--region` without `--step`); both passed every check.
 

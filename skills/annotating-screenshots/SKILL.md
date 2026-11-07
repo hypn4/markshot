@@ -1,10 +1,10 @@
 ---
 name: annotating-screenshots
 description: Use when the user wants a screenshot or other PNG annotated (arrows pointing at UI elements, boxes or ovals around them, private data blurred, erased or redacted, text highlighted, one area spotlighted, numbered step badges, short text labels, or lines), or wants a previous annotation adjusted. Draws the annotations deterministically with the markshot CLI.
-compatibility: Requires the markshot CLI 0.2.0 or later (macOS, Linux or Windows) on PATH, a POSIX-style shell for the examples, and the ability to view PNG images.
+compatibility: Requires the markshot CLI 0.3.0 or later (macOS, Linux or Windows) on PATH, a POSIX-style shell for the examples, and the ability to view PNG images.
 metadata:
   cli: markshot
-  version: "1.3"
+  version: "1.4"
 ---
 
 # Annotating screenshots
@@ -17,7 +17,7 @@ markshot grid   <in.png> -o <grid.png> [--step N] [--region X,Y,W,H]
 markshot schema        # every spec field, its range and default
 ```
 
-If `markshot` is not on PATH, ask the user where it is installed, or offer to install it (https://github.com/hypn4/markshot#how-do-i-install-it); don't draw the annotations some other way. `markshot --version` must print 0.2.0 or later.
+If `markshot` is not on PATH, ask the user where it is installed, or offer to install it (https://github.com/hypn4/markshot#how-do-i-install-it); don't draw the annotations some other way. `markshot --version` must print 0.3.0 or later.
 
 ## Workflow
 
@@ -48,7 +48,7 @@ Copy this checklist and tick it off:
 | mark text like a highlighter | `highlight` | `from`/`to`, or `points` |
 | focus on one area, dim the rest | `spotlight` | `rect`; `shape`; top-level `spotlight_dim` |
 | frame something and dim the rest | `rect`, `oval` | `"spotlight": true` on the frame, not a second spotlight |
-| number the steps | `counter` | `at` (where the tail points), `angle` (`"auto"` finds a free side); `style`; `number` |
+| number the steps | `counter` | `at` (where the tail points), `angle` (`"auto"` finds a free side); `style`; `number`; `ring` (a white ring, for a badge on a frame line) |
 | draw a line or divider | `line` | `from`, `to`; `dash`; `start_cap`, `end_cap` |
 | add a few words of explanation | `text` | `at` (top-left), `text`; `style`: `label`, `plain` (Latin, Greek and Cyrillic only) |
 | show only part of the screenshot | top-level `crop` | `[x, y, width, height]`, in the same coordinates ([references/spec.md](references/spec.md)) |
