@@ -30,21 +30,13 @@ Each example is a complete spec for an 800×600 screenshot. `markshot schema` li
 
 `fill`: `sketch` (default, a hand-drawn border; use it when the user asks for a hand-drawn look), `outline` (a clean border; use it for a plain "box"), `semi` (a border plus a fill at `fill_alpha`, default 0.4) and `solid` (an opaque box: use it with `"color": "#000000"` to redact). Shapes whose shorter side is 40 px or less get a plain border even with `sketch`. An oval is a squircle that touches the middle of each side of `rect`, fuller than a true ellipse.
 
-A `sketch` oval is a hand-drawn spiral: its line wanders up to 1.3 line widths inside and outside that curve and may stop short of or run past its start (with `spotlight` it always runs past). To clear the target's corners, make the oval's `rect` the target's box grown on every side by half the target's height plus two line widths (a line width is the size's points times dpr: 3 × 2 = 6 px at the default size on a Retina capture). If the line still crosses the target, grow `rect` or try another `seed`. Where neighbours above or below leave less room (a description line right under a toggle, say), use `size` 1 (a 4 px line on a dpr 2 capture) and grow the oval sideways instead. For a target about 40 px tall, the oval's `rect` needs this much room on each side of the target box:
-
-| Room above and below | Room left and right |
-|---|---|
-| 20 px | 32 px |
-| 16 px | 44 px |
-| 12 px | 84 px |
-| 10 px | 144 px |
-
-Measure the free space on all four sides first (a panel edge or another control counts as a neighbour). If any side has less room than the table asks for, an oval crosses the target's corners whatever its `seed`: use a `rect` with the default `sketch` fill instead, which looks hand-drawn too and needs no corner room, and tell the user why. Check the result zoomed in: the line must not touch the target or the neighbouring text.
+To circle something, give the oval `around`: the target's box `[x, y, width, height]`, instead of `rect`. markshot then sizes the oval itself, so that its line, hand-drawn wobble included, clears the box and crosses as little nearby text and as few borders as it can; the stdout spec gives the `rect` it chose. Use `around` whenever the oval circles a target, and above all in dense lists, where a description line sits right under a toggle: there the thinner `size` 1 line leaves the most room. In such a list the oval it picks can be long and run past a panel's edge; that is the room it found between the lines of text, so keep it rather than resizing the oval by hand, which brings the line back onto the text. Leave `seed` out: markshot then also picks the hand-drawn wobble that fits best, and the stdout spec records it. Aim a badge at the oval's end, the left or right edge of the `rect` in the stdout spec, not at the target inside it. Give `rect` only to place an oval exactly, for example when editing an earlier render's stdout spec.
 
 ```json
 {"annotations": [
   {"type": "rect", "rect": [80, 60, 260, 120]},
   {"type": "oval", "rect": [420, 60, 260, 120], "fill": "outline"},
+  {"type": "oval", "around": [440, 330, 200, 40], "size": 1},
   {"type": "rect", "rect": [80, 300, 260, 120], "fill": "semi", "color": "#2E7CF6"}
 ]}
 ```

@@ -45,6 +45,7 @@ A PNG without DPI gets dpr 1 and a warning, because many tools save Retina captu
 | `fill` | rect, oval | `sketch` |
 | `fill_alpha` (0.1–1) | rect, oval | 0.4 for `semi`, 1 for `solid` |
 | `spotlight` | rect, oval | `false` |
+| `around` (instead of `rect`) | oval | none: give `rect` or `around` |
 | `mode` | blur | `pixelate` |
 | `cap` (0–3) | highlight | 3 |
 | `shape` | spotlight | `rect` |
