@@ -63,6 +63,7 @@ When the user asks for a change to an earlier render, the edit is exactly what t
 
 - Render from the original input, never from the previous `out.png`, or the old annotations stay underneath.
 - Annotations skipped with a warning are not in the stdout spec; add them back with corrected values.
+- An oval fitted with `around` comes back as a fixed `rect`, `size` and `seed`. To refit after an oval-fit warning, use the original `around` spec with `size` omitted. If editing the stdout spec, replace `rect` with the ORIGINAL target's `around`, then remove `size`; the fitted `rect` is not the target box. Restore the original seed choice too: leave `seed` out if the original omitted it, but keep a seed the original specified. Removing only `size` from a resolved `rect` does not run fitting again.
 - A counter comes back as its badge's `center`. Before changing its `size` or `angle`, replace `center` with the tail tip `at`, computed from the stdout values, or the tip moves off its target:
   `at = center + 1.65 * R * (cos θ, sin θ)` with θ = `angle` in degrees (0 right, 90 down), R = D[`size`] / 2 * `dpr`, D = [22, 28, 36, 48, 64, 84, 112, 150]. For `"style": "circle"`, `at` = `center`.
 - `fill_alpha` is listed only if you set it, so switching a rect's `fill` gives the new fill's default opacity.

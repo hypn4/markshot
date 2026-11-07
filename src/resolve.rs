@@ -533,7 +533,10 @@ fn fit_ovals(
             let advice = if oval.pick_size || size == 0 {
                 "frame it with a hand-sized `rect` or `oval` instead".to_owned()
             } else {
-                format!("try `size` {} or leave `size` out", size - 1)
+                format!(
+                    "retry the original `around` spec with `size` {} or with `size` omitted",
+                    size - 1
+                )
             };
             warnings.push(Warning {
                 id: oval.id.clone(),

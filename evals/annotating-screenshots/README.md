@@ -80,6 +80,16 @@ For skill 1.5, all three s7 runs passed with no warnings; the final resolved spe
 
 The skill 1.5 s1 run failed `blur_covers_secret`: the agent chose a solid black `rect`, while the checker accepts only `blur`. All 4104 pixels of the measured secret-text region were opaque black, so the target was fully redacted. The checker was not changed to turn this into a pass; the other nine scored runs passed.
 
-The two skill 1.1 runs bracket its last wording changes (colour names, room for badges, `--region` without `--step`); both passed every check.
-
 The first draft's "badge covering a label → change `angle`" row read as an instruction during edits; the rule "an edit is exactly what the user asked for; name a fix instead" replaced it.
+
+## Can an agent recover from an oval-fit warning?
+
+Two targeted skill 1.5 checks start with a warned render report and its original `around` spec, on a synthetic dpr 2 image with black description bars 14 px from the target. The agent must refit automatically without changing the target or the original seed policy.
+
+| Original seed choice | Recovered fit |
+|---|---|
+| Omitted (automatic) | Size 1, no warnings; input keeps `seed` omitted |
+| Explicit `9007199254740991` | Size 0, no warnings; explicit seed preserved |
+
+Both outputs leave the target and both bars unchanged. A CLI control that removed only `size` from the resolved `rect` produced the same obstructed size-2 image with no warning: warning disappearance alone is not proof of repair. The skill and warning now direct refitting through the original `around` target.
+

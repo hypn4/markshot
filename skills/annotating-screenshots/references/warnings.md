@@ -10,7 +10,7 @@ Warnings don't stop the render. Each names an annotation `id`, or `coords` or `i
 | `entirely outside the W×H image; skipped` | Wrong coordinates: check for a downscaled view (use `scaled`), swapped x and y, or y measured from the bottom. |
 | `zero length: ...; skipped` | `from` and `to` are the same pixel. |
 | `zero width or height after rounding to pixels; skipped` | A rect with no area. |
-| ``could not fit an oval `around` its target ...; try `size` N or leave `size` out`` | The best candidate approaches or encloses other ink, overlaps annotations, or leaves the image or crop. Leave `size` out, or try the suggested thinner `size`. |
+| ``could not fit an oval `around` its target ...; retry the original `around` spec ...`` | The best candidate approaches or encloses other ink, overlaps annotations, or leaves the image or crop. [Refit from the original target](../SKILL.md#fixing-a-render), omitting `size` or trying the suggested thinner size. Deleting `size` from the resolved `rect` alone does not refit it. |
 | ``could not fit an oval `around` its target ...; frame it with a hand-sized `rect` or `oval` instead`` | No clean candidate was found, even at size 0 if size was automatic. Frame the target with a `rect`, or give the oval a hand-sized `rect`, and check it zoomed in. |
 | `entirely outside the crop; drawn but not in the output` | The annotation misses the top-level `crop`: widen the crop or fix the coordinates. |
 | `the scaled size ... does not have the aspect ratio ...` (id `coords`) | `coords.width`/`height` isn't the size you actually viewed; correct it. |
