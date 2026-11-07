@@ -15,11 +15,47 @@ env:
   CARGO_INCREMENTAL: 0
 
 jobs:
+  # Refuses tags that would publish something other than what they name: the tag must be
+  # `v` + the `version` in Cargo.toml (pre-releases included, e.g. v0.2.0-rc.1), Cargo.lock
+  # must agree, and the tagged commit must already be on main.
+  verify:
+    name: verify tag
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check the tag against Cargo.toml, Cargo.lock and main
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n 1)
+          locked=$(awk '/^name = "markshot"$/ { getline; print; exit }' Cargo.lock \
+            | sed -n 's/^version = "\(.*\)"$/\1/p')
+          if [ "$TAG" != "v$version" ]; then
+            echo "::error::tag $TAG does not match Cargo.toml version $version (expected v$version)"
+            exit 1
+          fi
+          if [ "$locked" != "$version" ]; then
+            echo "::error::Cargo.lock has markshot $locked, Cargo.toml $version; run cargo check"
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::$TAG points at a commit that is not on main; merge first, then tag"
+            exit 1
+          fi
+          echo "$TAG: Cargo.toml and Cargo.lock agree, and the commit is on main"
+
   # Each platform builds natively and tests the release profile it ships. Build jobs only read
   # the repository and hand the binary over as an artifact; no build cache is used, so a release
   # never depends on cache contents.
   build:
     name: build (${{ matrix.target }})
+    needs: verify
     permissions:
       contents: read
     strategy:

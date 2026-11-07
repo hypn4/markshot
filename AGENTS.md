@@ -82,9 +82,11 @@ Breaking one of these is a bug even when every test passes.
 
 Maintainers only. Versions follow SemVer; before 1.0, a breaking spec or CLI change bumps the minor version.
 
-1. Bump `version` in `Cargo.toml`, run `cargo check` to update `Cargo.lock`, and commit `chore: release vX.Y.Z`.
-2. Tag the commit `vX.Y.Z` and push the tag. `release.yml` tests and builds the five binaries natively, then publishes them with `SHA256SUMS`, a build provenance attestation and git-cliff release notes.
-3. A new platform goes into the matrices of both `ci.yml` and `release.yml` and the README's asset table together.
+1. Open a pull request `chore: release vX.Y.Z` that bumps `version` in `Cargo.toml` and updates `Cargo.lock` (`cargo check`), and merge it once CI passes.
+2. Pull `main` and tag the merged commit: `git tag -a vX.Y.Z -m vX.Y.Z && git push origin vX.Y.Z`. `release.yml` first checks that the tag is `v` + the `Cargo.toml` version, that `Cargo.lock` agrees and that the commit is on `main`; then it tests and builds the five binaries natively and publishes them with `SHA256SUMS`, a build provenance attestation and git-cliff release notes.
+3. A pre-release carries its suffix in both places: `version = "X.Y.Z-rc.N"` and the tag `vX.Y.Z-rc.N`. It is published as a pre-release, never as the latest release, and stable release notes skip it.
+4. `v*` tags cannot be moved or deleted (a repository ruleset); a broken release is fixed by the next version, not by re-tagging.
+5. A new platform goes into the matrices of both `ci.yml` and `release.yml`, the README's asset table and the install scripts together.
 
 ## CI and supply chain
 
