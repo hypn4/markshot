@@ -39,6 +39,16 @@ pub fn decode_png(bytes: &[u8]) -> Result<SourceImage, Error> {
     let mut decoder = png::Decoder::new(Cursor::new(bytes));
     decoder.set_transformations(Transformations::EXPAND | Transformations::STRIP_16);
     let mut reader = decoder.read_info()?;
+    // The png crate panics expanding a palette with a partial entry, which the PNG spec forbids.
+    let info = reader.info();
+    if let (ColorType::Indexed, Some(palette)) = (info.color_type, &info.palette)
+        && palette.len() % 3 != 0
+    {
+        return Err(Error::Png(format!(
+            "PLTE holds {} bytes, not a multiple of 3",
+            palette.len()
+        )));
+    }
     let buf = read_pixels(&mut reader)?;
     let (color_type, bit_depth) = reader.output_color_type();
     if bit_depth != BitDepth::Eight {
@@ -464,6 +474,20 @@ mod tests {
             .write_chunk(png::chunk::IDAT, &zlib_stored(&[0; 17]))
             .unwrap();
         writer.finish().unwrap();
+        assert!(matches!(decode_png(&bytes), Err(Error::Png(_))));
+    }
+
+    #[test]
+    fn palette_with_a_partial_entry_is_an_error() {
+        // PLTE holds 3 bytes per entry; 4 bytes are one entry and a stray byte.
+        let bytes = encode_fixture(
+            1,
+            1,
+            png::ColorType::Indexed,
+            png::BitDepth::Eight,
+            |info| info.palette = Some(vec![255, 0, 0, 7].into()),
+            &[0],
+        );
         assert!(matches!(decode_png(&bytes), Err(Error::Png(_))));
     }
 
