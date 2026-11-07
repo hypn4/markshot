@@ -1,6 +1,6 @@
 ---
 name: annotating-screenshots
-description: Use when the user wants a screenshot or other PNG annotated — arrows pointing at UI elements, boxes or ovals around them, private data blurred, erased or redacted, text highlighted, one area spotlighted, numbered step badges, or lines — or wants a previous annotation adjusted. Draws reference-style annotations deterministically with the markshot CLI.
+description: Use when the user wants a screenshot or other PNG annotated — arrows pointing at UI elements, boxes or ovals around them, private data blurred, erased or redacted, text highlighted, one area spotlighted, numbered step badges, or lines — or wants a previous annotation adjusted. Draws the annotations deterministically with the markshot CLI.
 compatibility: Requires the markshot CLI (macOS or Linux) on PATH, a shell, and the ability to view PNG images.
 metadata:
   cli: markshot
@@ -9,7 +9,7 @@ metadata:
 
 # Annotating screenshots
 
-`markshot` draws reference-style annotations on a PNG from a JSON spec. The same input, spec and binary always give the same PNG bytes, so you fix a render by editing values and rendering again.
+`markshot` draws annotations on a PNG from a JSON spec. The same input, spec and binary always give the same PNG bytes, so you fix a render by editing values and rendering again.
 
 ```
 markshot render <in.png> --spec <spec.json | -> -o <out.png> [--dpr N]

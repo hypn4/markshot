@@ -86,8 +86,8 @@ impl Mul<f64> for V2 {
     }
 }
 
-/// The center of the circle through `a`, `b`, `c` (the reference app's `a helper`, Arrow.md §2), or
-/// `None` when the points are (nearly) collinear or the result is not finite.
+/// The center of the circle through `a`, `b`, `c`, or `None` when the points are (nearly)
+/// collinear or the result is not finite.
 #[must_use]
 pub fn circumcenter(a: V2, b: V2, c: V2) -> Option<V2> {
     let d = 2.0 * (a.x * (b.y - c.y) + b.x * (c.y - a.y) + c.x * (a.y - b.y));

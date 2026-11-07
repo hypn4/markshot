@@ -1,6 +1,6 @@
 //! Text drawn as glyph outlines of the embedded Inter 4.1 fonts (OFL, `assets/fonts`), so it
-//! renders the same on every platform without system fonts (spec §3). Lengths are image px,
-//! y up. Glyphs are set by their advances alone: no kerning or other shaping.
+//! renders the same on every platform without system fonts. Lengths are image px, y up. Glyphs
+//! are set by their advances alone: no kerning or other shaping.
 
 use std::sync::LazyLock;
 
@@ -8,7 +8,7 @@ use ttf_parser::{Face, GlyphId, OutlineBuilder};
 
 use crate::geom::{PathData, Seg, V2};
 
-/// The embedded weights: the reference app labels counters in the system font's Regular or Medium.
+/// The embedded weights: counter numbers use both, grid labels Medium.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Weight {
     Regular,

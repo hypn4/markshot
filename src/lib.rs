@@ -1,4 +1,4 @@
-//! reference-style screenshot annotation renderer.
+//! Deterministic screenshot annotation renderer.
 
 pub mod canvas;
 pub mod color;

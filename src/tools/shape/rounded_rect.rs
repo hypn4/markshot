@@ -1,17 +1,17 @@
-//! RectOval.md §3.2 (`the original Oval tool`): the rounded rect under every rect, optionally jittered.
+//! The rounded rect under every rect, optionally jittered.
 
 use crate::geom::{PathData, V2};
 use crate::stroke::{Pt, bezier_path};
 
-/// RectOval.md §3.2: the rect `(x, y, w, h)` (y-up px, corner `(x, y)`, sides ≥ 0) with corners
-/// of `R = min(min(w, h)/3, cp·dpr)` px, as the reference app's open path of eight cubics from the bottom
-/// edge's left end, counter-clockwise. A `jitter` strength `s` above 0 moves each corner by up
-/// to `s·h/800` sideways and `s·w/800` up or down (draws `rnd[56..64]`) and bows the edges out;
+/// The rect `(x, y, w, h)` (y-up px, corner `(x, y)`, sides ≥ 0) with corners of
+/// `R = min(min(w, h)/3, cp·dpr)` px, as an open path of eight cubics from the bottom edge's
+/// left end, counter-clockwise. A `jitter` strength `s` above 0 moves each corner by up to
+/// `s·h/800` sideways and `s·w/800` up or down (draws `rnd[56..64]`) and bows the edges out;
 /// at 0 the edges are straight and each corner curve passes `R/8` inside the sharp corner.
 #[must_use]
 #[expect(
     clippy::too_many_arguments,
-    reason = "RectOval.md §3.2's inputs, and dpr"
+    reason = "the rect, the jitter, the corner size, dpr and the draws"
 )]
 pub fn rounded_rect(
     x: f64,
@@ -35,10 +35,10 @@ pub(super) fn elements(
     dpr: f64,
     rnd: &[f64; 100],
 ) -> [Pt; 9] {
-    // the reference app: a side of 0 counts as 1 px.
+    // A side of 0 counts as 1 px.
     let w = if w == 0.0 { 1.0 } else { w };
     let h = if h == 0.0 { 1.0 } else { h };
-    // the reference app quirk: a corner's x jitter scales with the height and its y jitter with the width.
+    // Intentional: a corner's x jitter scales with the height and its y jitter with the width.
     let corners: [V2; 4] = std::array::from_fn(|i| V2 {
         x: h * (jitter * (rnd[56 + 2 * i] - 0.5)) / 400.0,
         y: w * (jitter * (rnd[57 + 2 * i] - 0.5)) / 400.0,

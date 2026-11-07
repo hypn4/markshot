@@ -14,7 +14,7 @@ here="$repo/evals/annotating-screenshots"
 cargo build --release --locked --quiet --manifest-path "$repo/Cargo.toml"
 mkdir -p "$eval_dir/bin" "$eval_dir/runs"
 ln -sf "$repo/target/release/markshot" "$eval_dir/bin/markshot"
-cp "$repo/reference/reference-app/base.png" "$eval_dir/shot.png"
+cp "$here/shot.png" "$eval_dir/shot.png"
 cp -R "$repo/skills/annotating-screenshots" "$eval_dir/skill"
 
 for f in common.md s1.md s2.md s3.md s4.md s5.md; do

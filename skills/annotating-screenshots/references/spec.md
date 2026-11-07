@@ -26,7 +26,7 @@
 
 ## Size and dpr
 
-`size` is a step from 0 to 7 (default 2) that picks a thickness in points. Each point is `dpr` pixels. dpr comes from the PNG's DPI — 144 dpi, the macOS Retina capture default, gives 2; no DPI gives 1 — so a Retina screenshot gets strokes twice as wide in pixels, as in the reference app. Override it with `--dpr` or a top-level `"dpr"` (0.5–4) only when the PNG's DPI is wrong, e.g. a Retina capture saved without DPI.
+`size` is a step from 0 to 7 (default 2) that picks a thickness in points. Each point is `dpr` pixels. dpr comes from the PNG's DPI — 144 dpi, the macOS Retina capture default, gives 2; no DPI gives 1 — so a Retina screenshot gets strokes twice as wide in pixels, and they look the same size on screen. Override it with `--dpr` or a top-level `"dpr"` (0.5–4) only when the PNG's DPI is wrong, e.g. a Retina capture saved without DPI.
 
 ## Defaults
 

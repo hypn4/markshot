@@ -1,8 +1,8 @@
 # markshot
 
-A single-binary CLI that draws [the reference app](https://reference.cc)-style annotations on a PNG screenshot: arrows, rectangles, ovals, blur, highlighter strokes, spotlights, numbered counters and lines. It is built for AI coding agents. The agent writes a JSON spec, renders it, looks at the result, then fixes values in the resolved spec it gets back and renders again.
+A single-binary CLI that draws annotations on a PNG screenshot: arrows, rectangles, ovals, blur, highlighter strokes, spotlights, numbered counters and lines. It is built for AI coding agents. The agent writes a JSON spec, renders it, looks at the result, then fixes values in the resolved spec it gets back and renders again.
 
-- Matches the reference app's rendering: stroke widths, hand-drawn jitter, arrow outlines, highlighter blending, spotlight dimming and counter badges.
+- Made for screenshots. Thicknesses are in points and scale with the PNG's DPI, so annotations look the same size on a Retina capture as on a standard one. Rectangles, ovals and arrows can look hand-drawn, the highlighter blends by the brightness of what is under it, and badge digits switch between white and black to stay legible.
 - Deterministic. The same input, spec and binary give the same PNG bytes, and randomness such as hand-drawn jitter and mosaic blocks is seeded from each annotation's id.
 - Runs on macOS and Linux (arm64 and x86_64) as one self-contained binary; the Linux builds need glibc 2.34 or later. It keeps the input's DPI and ICC profile.
 
@@ -32,7 +32,7 @@ cargo install --path . --locked   # installs markshot into ~/.cargo/bin
 cargo build --release --locked    # or build target/release/markshot
 ```
 
-The release binary is 3,226,432 bytes (3.1 MiB), measured on aarch64-apple-darwin with `cargo build --release`.
+The release binary is 3,243,072 bytes (3.1 MiB), measured on aarch64-apple-darwin with `cargo build --release`.
 
 ## Example
 
@@ -75,10 +75,9 @@ The skill needs `markshot` on the agent's PATH. Validate it against the specific
 cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test
 ```
 
-`docs/` holds the design.
+[`docs/design.md`](docs/design.md) describes the design: the CLI, coordinates, defaults, every tool, the draw order, determinism and colour handling. The golden images in `tests/golden/` pin the rendering byte for byte.
 
 ## Notices
 
-- markshot is not affiliated with the reference app. the reference app design assets are copied from the reference app: the four shaped-arrow outlines and the counter tail paths.
 - Counter labels are laid out with SF Pro's numeric metrics (ascender, descender, digit height and tracking). No SF Pro outlines are included. The digits are drawn with Inter.
 - The embedded Inter fonts (`assets/fonts/Inter-Regular.ttf`, `assets/fonts/Inter-Medium.ttf`) are © The Inter Project Authors and licensed under the SIL Open Font License 1.1. See [`assets/fonts/OFL.txt`](assets/fonts/OFL.txt).

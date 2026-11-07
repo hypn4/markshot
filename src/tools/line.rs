@@ -1,5 +1,5 @@
-//! the reference app's Line tool (Line.md §3): a segment stroked with round caps, with an optional
-//! arrowhead or dot at each end, or dashed and then without them.
+//! The line tool: a segment stroked with round caps, with an optional arrowhead or dot at each
+//! end, or dashed and then without them.
 
 use tiny_skia::{BlendMode, LineCap, LineJoin};
 
@@ -17,7 +17,7 @@ pub const WIDTHS_PT: [f64; 10] = [1.0, 2.0, 3.0, 4.0, 6.0, 8.0, 11.0, 15.0, 21.0
 const LONG_LINE: f64 = 20.0;
 
 /// Draws `l` on the main surface: the segment, then the end shapes, stroked together as one
-/// path. (the reference app evens the x extent when zoomed out; zoom is fixed at 1 here.)
+/// path.
 ///
 /// # Panics
 /// When `l.size` is 10 or more; resolved sizes are 0 to 7.
@@ -84,7 +84,7 @@ pub fn head_len(len: f64, lw: f64, dpr: f64) -> f64 {
 }
 
 /// The angle between the line and each arrowhead wing, in radians: 50° from 20 px on, else
-/// 45°, both from the reference app's truncated π.
+/// 45°, both from the truncated π.
 #[must_use]
 pub fn half_angle(len: f64) -> f64 {
     if len >= LONG_LINE {
@@ -107,11 +107,11 @@ pub fn bullet_radius(len: f64, lw: f64) -> f64 {
     (len / 10.0).min(0.5 * lw + 1.0)
 }
 
-/// the reference app's pixel alignment at dpr 1: half a pixel when the width rounds to an odd number,
-/// plus half the width's fraction in hundredths. None at other dprs.
+/// Pixel alignment at dpr 1: half a pixel when the width rounds to an odd number, plus half
+/// the width's fraction in hundredths. None at other dprs.
 #[expect(
     clippy::float_cmp,
-    reason = "the reference app tests dpr == 1 exactly, and the rounded width is a whole number"
+    reason = "the alignment applies at exactly dpr 1, and the rounded width is a whole number"
 )]
 #[must_use]
 pub fn pixel_offset(lw: f64, dpr: f64) -> f64 {
@@ -183,7 +183,7 @@ mod tests {
 
     #[test]
     fn line_half_angle() {
-        // the reference app's truncated π: 3.1415926 / 4 and 3.1415926 · 5 / 18, not exactly 45° and 50°.
+        // The truncated π: 3.1415926 / 4 and 3.1415926 · 5 / 18, not exactly 45° and 50°.
         assert_eq!(half_angle(19.9), 0.785_398_15);
         assert!((half_angle(20.0) - 0.872_664_611_1).abs() < 1e-10);
         assert!((half_angle(500.0) - 0.872_664_611_1).abs() < 1e-10);

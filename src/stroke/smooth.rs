@@ -1,15 +1,14 @@
-//! §6.4 speed-adaptive smoothing.
+//! Speed-adaptive smoothing.
 
 use super::{Pt, clamp01, dot, norm};
 use crate::math::pow;
 
-/// §6.4 (`a helper`): a running average of positions, each output point being
-/// `avg = alpha·avg + (1 − alpha)·P[i]` with `alpha` = `strength` (0 = none) adapted per
-/// point: slow points (`res·speed` < 5) lean toward `1 − (1 − strength)²`, the last four ease
-/// off as `(alpha/1.5)^1…4`, the average never trails more than `10/res` behind, sharp corners
-/// (cos > 0.3 between the ways back to the average and on to the next point) are kept
-/// exactly, and straight runs smooth 3% harder. Other fields are copied. One point passes
-/// through.
+/// A running average of positions, each output point being `avg = alpha·avg + (1 − alpha)·P[i]`
+/// with `alpha` = `strength` (0 = none) adapted per point: slow points (`res·speed` < 5) lean
+/// toward `1 − (1 − strength)²`, the last four ease off as `(alpha/1.5)^1…4`, the average never
+/// trails more than `10/res` behind, sharp corners (cos > 0.3 between the ways back to the
+/// average and on to the next point) are kept exactly, and straight runs smooth 3% harder.
+/// Other fields are copied. One point passes through.
 #[must_use]
 pub fn smooth(pts: &[Pt], strength: f64, res: f64) -> Vec<Pt> {
     let n = pts.len();

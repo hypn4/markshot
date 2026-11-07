@@ -1,12 +1,10 @@
-//! the reference app's Blur tool (Blur.md §3): the rect, cut to the image, painted over with a mosaic of
-//! mean colours (`pixelate`) or with ramps between its border pixels (`erase`). Both read the
-//! original image only, its bytes as they are (spec §5.9), never other annotations.
+//! The blur tool: the rect, cut to the image, painted over with a mosaic of mean colours
+//! (`pixelate`) or with ramps between its border pixels (`erase`). Both read the original
+//! image only, its bytes as they are, never other annotations.
 //!
-//! the reference app's mosaic draws from Swift's system generator; here every draw comes from one
-//! [`Rng`] stream seeded by the blur's `seed`, in the reference app's order: the partition's, then
-//! one per block. `Double.random(in: 0..<1)` is [`Rng::next_unit`], drawn again while it
-//! is 1 (as Swift draws again when it hits the upper bound), and `Int.random(in: 0..<n)` is
-//! `⌊n·U⌋` of one such draw `U`.
+//! Every mosaic draw comes from one [`Rng`] stream seeded by the blur's `seed`: the
+//! partition's, then one per block. A unit draw `U` is [`Rng::next_unit`], drawn again while
+//! it is 1, and a draw below `n` is `⌊n·U⌋`.
 
 use crate::canvas::Canvas;
 use crate::math::pow;
@@ -36,7 +34,7 @@ pub fn draw(c: &mut Canvas, b: &ResolvedBlur) {
     c.put_rgba(corner(x0), corner(y0), int(width), int(height), &rgba);
 }
 
-/// Blur.md §3.2: the mosaic's block size in px for a `w` × `h` rect,
+/// The mosaic's block size in px for a `w` × `h` rect,
 /// `round(min(round(min(w, h)/6), 5·dpr)·1.35^size)`.
 #[must_use]
 pub fn block_size(w: f64, h: f64, size: u8, dpr: f64) -> u32 {
@@ -44,9 +42,9 @@ pub fn block_size(w: f64, h: f64, size: u8, dpr: f64) -> u32 {
     int((base * pow(1.35, f64::from(size))).round())
 }
 
-/// Blur.md §3.2 `mosaic`: a random partition of a `w` × `h` rect (y up, from its bottom-left
-/// corner) into blocks `max(s, 2)` to `3·max(s, 2)` px a side. Sides up to twice that least
-/// are never cut, so a rect thinner than the least gives blocks as thin as it is.
+/// A random partition of a `w` × `h` rect (y up, from its bottom-left corner) into blocks
+/// `max(s, 2)` to `3·max(s, 2)` px a side. Sides up to twice that least are never cut, so a
+/// rect thinner than the least gives blocks as thin as it is.
 #[must_use]
 pub fn partition(w: u32, h: u32, s: u32, rng: &mut Rng) -> Vec<Block> {
     let least = s.max(2);
@@ -91,7 +89,7 @@ fn first_side(len: u32, least: u32, rng: &mut Rng) -> u32 {
     (least + extra).min(3 * least)
 }
 
-/// Swift's `Double.random(in: 0..<1)` (`a helper`): a draw, again while it is 1.
+/// A draw in `[0, 1)`: [`Rng::next_unit`], drawn again while it is 1.
 fn unit(rng: &mut Rng) -> f64 {
     loop {
         let u = rng.next_unit();
@@ -101,14 +99,13 @@ fn unit(rng: &mut Rng) -> f64 {
     }
 }
 
-/// Swift's `Int.random(in: 0..<n)`: `⌊n·U⌋`.
+/// A draw below `n`: `⌊n·U⌋`.
 fn below(n: u32, rng: &mut Rng) -> u32 {
     int((f64::from(n) * unit(rng)).floor())
 }
 
-/// The y-up part of `rect` (y down) inside the image, at least 1 × 1 like the reference app's (Blur.md
-/// §4), or `None` when no part is inside, as when the rect only touches the image. Spec rects
-/// are whole pixels.
+/// The y-up part of `rect` (y down) inside the image, at least 1 × 1, or `None` when no part
+/// is inside, as when the rect only touches the image. Spec rects are whole pixels.
 fn clip(c: &Canvas, rect: Rect) -> Option<UpRect> {
     let (left, bottom, width, height) = c.up_rect(rect);
     let (x0, y0) = (left.max(0.0), bottom.max(0.0));
@@ -117,10 +114,9 @@ fn clip(c: &Canvas, rect: Rect) -> Option<UpRect> {
     (x1 > x0 && y1 > y0).then(|| (x0, y0, (x1 - x0).max(1.0), (y1 - y0).max(1.0)))
 }
 
-/// Blur.md §3.2: `rect` (inside the image) as a mosaic: the [`partition`] blocks, each filled
-/// with the mean original colour under it, or, when the rect is small for its blocks
-/// (`min(w, h)/7 < s`), under the block past a random side of it. Returns the `w × h` RGBA
-/// bitmap, rows top-down.
+/// `rect` (inside the image) as a mosaic: the [`partition`] blocks, each filled with the mean
+/// original colour under it, or, when the rect is small for its blocks (`min(w, h)/7 < s`),
+/// under the block past a random side of it. Returns the `w × h` RGBA bitmap, rows top-down.
 fn pixelate(c: &Canvas, rect: UpRect, size: u8, rng: &mut Rng) -> Vec<u8> {
     let (x0, y0, width, height) = rect;
     let s = block_size(width, height, size, c.dpr);
@@ -128,7 +124,7 @@ fn pixelate(c: &Canvas, rect: UpRect, size: u8, rng: &mut Rng) -> Vec<u8> {
     let shuffle = width.min(height) / 7.0 < f64::from(s);
     let mut out = Bitmap::new(int(width), int(height));
     for &block in &blocks {
-        // the reference app draws a direction for every block, shuffling or not.
+        // A direction is drawn for every block, shuffling or not.
         let direction = below(5, rng);
         let source = if shuffle {
             neighbour(&blocks, block, direction)
@@ -160,8 +156,7 @@ fn neighbour(blocks: &[Block], block: Block, direction: u32) -> Block {
     blocks.iter().rev().find(holds).copied().unwrap_or(block)
 }
 
-/// the reference app's `avgColorFast` (Blur.md §3.1): the mean original RGB, each channel truncated, of
-/// `block` in the rect at `(x0, y0)` (y up).
+/// The mean original RGB, each channel truncated, of `block` in the rect at `(x0, y0)` (y up).
 fn mean(c: &Canvas, x0: f64, y0: f64, (bx, by, bw, bh): Block) -> [u8; 3] {
     let mut sum = [0_u64; 3];
     for row in by..by + bh {
@@ -176,15 +171,15 @@ fn mean(c: &Canvas, x0: f64, y0: f64, (bx, by, bw, bh): Block) -> [u8; 3] {
     sum.map(|total| u8::try_from(total / count).expect("a mean of bytes is a byte"))
 }
 
-/// Blur.md §3.3: the y-up `rect` (whole pixels, at least 1 × 1) erased: each row a 1-px
-/// linear ramp between its outermost pixels, or each column one between its bottom and top
-/// pixels, whichever the differences along the rect's border pixels favour. Returns the
-/// `w × h` RGBA bitmap, rows top-down.
+/// The y-up `rect` (whole pixels, at least 1 × 1) erased: each row a 1-px linear ramp between
+/// its outermost pixels, or each column one between its bottom and top pixels, whichever the
+/// differences along the rect's border pixels favour. Returns the `w × h` RGBA bitmap, rows
+/// top-down.
 #[must_use]
 pub fn erase(c: &Canvas, rect: UpRect) -> Vec<u8> {
     let (x0, y0, width, height) = rect;
-    // the reference app's `getPixel(x, y)` reads column ⌊x⌋ of y-up row ⌈y⌉ − 1: at `bottom` the rect's
-    // bottom row, at `y1` its top row.
+    // `sample(x, y)` reads column ⌊x⌋ of y-up row ⌈y⌉ − 1: at `bottom` the rect's bottom row,
+    // at `y1` its top row.
     let pixel = |x: f64, y: f64| c.sample(x, y);
     let diff = |a, b| f64::from(dist(a, b));
     let (x1, y1) = (x0 + width, y0 + height);
@@ -210,7 +205,7 @@ pub fn erase(c: &Canvas, rect: UpRect) -> Vec<u8> {
             diff(pixel(x, bottom), pixel(x, y1))
         })
         .sum();
-    // the reference app quirk: the steps along the left and the right column are added to the
+    // Intentional: the steps along the left and the right column are added to the
     // bottom-vs-top sum, which is never reset, so that sum counts twice for columns.
     let s_v = s_tb
         + (int(y0) + 1..=int(y1 - 1.0))
@@ -252,8 +247,7 @@ fn dist(a: [u8; 3], b: [u8; 3]) -> u32 {
 }
 
 /// Pixel `index` of a 1-px linear gradient `len` px long from `from` to `to`: the colour at
-/// its centre, `(index + 0.5)/len` of the way, rounded. the reference app's CoreGraphics gradient also
-/// dithers, which this leaves out.
+/// its centre, `(index + 0.5)/len` of the way, rounded. There is no dithering.
 fn ramp(from: [u8; 3], to: [u8; 3], index: u32, len: u32) -> [u8; 3] {
     let along = (f64::from(index) + 0.5) / f64::from(len);
     std::array::from_fn(|channel| {
@@ -262,7 +256,7 @@ fn ramp(from: [u8; 3], to: [u8; 3], index: u32, len: u32) -> [u8; 3] {
     })
 }
 
-/// the reference app's `Int()` of a whole, non-negative coordinate or size.
+/// A whole, non-negative coordinate or size as an integer.
 #[expect(
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
@@ -282,8 +276,7 @@ fn byte(v: f64) -> u8 {
     v.round() as u8
 }
 
-/// the reference app's bitmap context: RGBA, transparent at first, rows top-down in memory but
-/// addressed y up.
+/// An RGBA bitmap, transparent at first, rows top-down in memory but addressed y up.
 struct Bitmap {
     width: usize,
     height: usize,
@@ -451,7 +444,7 @@ mod tests {
 
     #[test]
     fn block_sizes() {
-        // Blur.md §3.2's tables: a large rect at dpr 2 and at dpr 1, and one 24 px tall.
+        // A large rect at dpr 2 and at dpr 1, and one 24 px tall.
         let sizes = |w, h, dpr| -> Vec<u32> { (0..=7).map(|s| block_size(w, h, s, dpr)).collect() };
         assert_eq!(sizes(300.0, 200.0, 2.0), [10, 14, 18, 25, 33, 45, 61, 82]);
         assert_eq!(sizes(300.0, 200.0, 1.0), [5, 7, 9, 12, 17, 22, 30, 41]);
@@ -599,9 +592,9 @@ mod tests {
     }
 
     #[test]
-    fn erase_keeps_references_unreset_accumulator() {
+    fn erase_keeps_the_unreset_accumulator() {
         // Greys, bottom row 0 200 0 200 0, top row 0 200 200 0 0. Rows cost 360; columns
-        // 240, or 540 with the bottom-vs-top sum counted again as the reference app does. So rows win:
+        // 240, or 540 with the bottom-vs-top sum counted again, as `erase` does. So rows win:
         // ramps from black to black.
         let bottom = [0, 200, 0, 200, 0];
         let top = [0, 200, 200, 0, 0];
@@ -632,7 +625,7 @@ mod tests {
 
     #[test]
     fn one_pixel_image_is_left_as_it_is() {
-        // Review Focus 2: a 1 × 1 image is one block of its own colour, and its own ramp.
+        // A 1 × 1 image is one block of its own colour, and its own ramp.
         for mode in [BlurMode::Pixelate, BlurMode::Erase] {
             let mut c = canvas(1, 1, |_, _| [10, 20, 30]);
             draw(&mut c, &blur(mode, [0.0, 0.0, 1.0, 1.0], 1));

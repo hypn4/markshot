@@ -1,11 +1,10 @@
-//! Arrow.md §3.3: the circle a bent arrow follows, and §4.2's rule for bending it through a
-//! point.
+//! The circle a bent arrow follows, and the rule for bending it through a point.
 
 use crate::geom::{V2, circumcenter};
 use crate::math::{PI, PI_TRUNCATED, atan2, cos, sin};
 use crate::stroke::{Pt, norm};
 
-/// The circle through the tail, the reference app's curve point M and the tip.
+/// The circle through the tail, the curve point M and the tip.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub(super) struct Arc {
     pub center: V2,
@@ -17,9 +16,8 @@ pub(super) struct Arc {
 }
 
 impl Arc {
-    /// The circle through `p0`, `p1` and the reference app's curve point M, `dist` chords from `p0` at
-    /// `angle` off the chord. When the three are (nearly) on one line its center is their
-    /// centroid, as in the reference app.
+    /// The circle through `p0`, `p1` and the curve point M, `dist` chords from `p0` at `angle`
+    /// off the chord. When the three are (nearly) on one line its center is their centroid.
     pub fn new(p0: V2, p1: V2, angle: f64, dist: f64) -> Arc {
         let d = p1 - p0;
         let a = angle + atan2(d.y, d.x);
@@ -61,10 +59,10 @@ impl Arc {
     }
 }
 
-/// the reference app's curve-handle drag (Arrow.md §4.2) for an arrow from `p0` to `p1` (y-up px, apart)
-/// bent through `via`: `(midpa, midpd)`, the angle of `via` off the chord and its distance from
-/// `p0` in chords, so that the arc passes through `via`. Within 7 pt of the chord's line the
-/// arrow snaps straight: the angle is 0 and the distance is kept within 0.05–0.95.
+/// The bend of an arrow from `p0` to `p1` (y-up px, apart) through `via`:
+/// `(mid_angle, mid_dist)`, the angle of `via` off the chord and its distance from `p0` in
+/// chords, so that the arc passes through `via`. Within 7 pt of the chord's line the arrow
+/// snaps straight: the angle is 0 and the distance is kept within 0.05–0.95.
 #[must_use]
 pub fn via_to_mid(p0: V2, p1: V2, via: V2, dpr: f64) -> (f64, f64) {
     let chord = norm(p1 - p0);
@@ -77,7 +75,7 @@ pub fn via_to_mid(p0: V2, p1: V2, via: V2, dpr: f64) -> (f64, f64) {
     (wrap(angle, PI_TRUNCATED), along)
 }
 
-/// `a` wrapped into (−π, π] with the given π: the reference app uses both the full and a truncated one.
+/// `a` wrapped into (−π, π] with the given π: callers use both the full and the truncated one.
 pub(super) fn wrap(a: f64, pi: f64) -> f64 {
     let a = if a < -pi { a + 2.0 * pi } else { a };
     if a > pi { a - 2.0 * pi } else { a }
@@ -101,7 +99,7 @@ mod tests {
 
     #[test]
     fn via_near_chord_is_straight() {
-        // 5 px off a 200 px chord at dpr 2 snaps straight. the reference app still keeps the curve point's
+        // 5 px off a 200 px chord at dpr 2 snaps straight, still keeping the curve point's
         // distance from the tail, |via − p0| = 100.125 over the chord.
         let (angle, dist) = via_to_mid(v(0.0, 0.0), v(200.0, 0.0), v(100.0, 5.0), 2.0);
         assert_eq!(angle, 0.0);
@@ -156,9 +154,9 @@ mod tests {
     #[test]
     fn via_angle_is_wrapped() {
         // The chord points almost along −x and `via` is down-left of the tail: the raw angle
-        // difference is −5.7378, which the reference app wraps (with its π) to a slight left bend.
-        let (midpa, _) = via_to_mid(v(0.0, 0.0), v(-200.0, 1.0), v(-100.0, -60.0), 2.0);
-        assert!((midpa - 0.545_419_351_4).abs() < 1e-9, "{midpa}");
+        // difference is −5.7378, which wraps (with the truncated π) to a slight left bend.
+        let (mid_angle, _) = via_to_mid(v(0.0, 0.0), v(-200.0, 1.0), v(-100.0, -60.0), 2.0);
+        assert!((mid_angle - 0.545_419_351_4).abs() < 1e-9, "{mid_angle}");
     }
 
     #[test]
@@ -171,8 +169,8 @@ mod tests {
 
     #[test]
     fn collinear_points_fall_back_to_the_centroid() {
-        // midpa π puts M behind the tail, on the chord's line: the reference app then centres the circle
-        // on the three points' centroid.
+        // A mid angle of π puts M behind the tail, on the chord's line: the circle is then
+        // centred on the three points' centroid.
         let arc = Arc::new(v(0.0, 0.0), v(200.0, 0.0), std::f64::consts::PI, 0.5);
         assert!((arc.center.x - 100.0 / 3.0).abs() < 1e-9, "{arc:?}");
         assert!(arc.center.y.abs() < 1e-9, "{arc:?}");

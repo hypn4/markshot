@@ -1,7 +1,6 @@
-//! the reference app's shared freehand stroke engine (`FreehandHelper`, Highlighter.md §6): the point
-//! filters behind the highlighter, sketch arrows and hand-drawn rectangles and ovals. Each
-//! function ports one routine of the reference app; the section numbers are Highlighter.md's unless
-//! RectOval.md's are named.
+//! The freehand stroke engine shared by the highlighter, sketch arrows and hand-drawn
+//! rectangles and ovals: point filters, widths and the outline. The arithmetic (evaluation
+//! order, exact comparisons, NaN cases) is deliberate: the rendered pixels depend on it.
 
 mod flatten;
 mod handles;
@@ -22,10 +21,10 @@ pub use widths::{assign_widths, blur_weight, ema_weight, norm_weight};
 use crate::geom::{PathData, Seg, V2};
 use crate::math::atan2;
 
-/// 10° as the reference app writes it: the half-width of [`h_snap`]'s window.
+/// 10° rounded to 0.174533 rad: the half-width of [`h_snap`]'s window.
 const SNAP_WINDOW: f64 = 0.174_533;
 
-/// One stroke point (the reference app's 96-byte `Point`; its never-set `keep` flag is left out).
+/// One stroke point.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Pt {
     pub pos: V2,
@@ -35,8 +34,7 @@ pub struct Pt {
     pub speed: f64,
     /// Stroke width here ([`assign_widths`]).
     pub width: f64,
-    /// Incoming Bézier handle (second control of the segment ending here); `None` is
-    /// the reference app's unset (−999, −999).
+    /// Incoming Bézier handle (second control of the segment ending here); `None` is unset.
     pub a: Option<V2>,
     /// Outgoing Bézier handle (first control of the next segment); `None` is unset.
     pub b: Option<V2>,
@@ -73,11 +71,11 @@ impl Pt {
     }
 }
 
-/// §6.1 (`a helper`): each point's distance from the previous one (`len` and `speed`),
-/// the running length `cum_len` (continuing the first point's), and `weight` = 1 − speed
-/// normalized over the stroke, so slow ⇒ heavy. The first weight is then pinned to 0.7 and
-/// the last copies its neighbour's. Two points only get weight 1; one is left alone. If all
-/// points coincide the weights are NaN, as in the reference app ([`outline`] reads them as 0.5).
+/// Each point's distance from the previous one (`len` and `speed`), the running length
+/// `cum_len` (continuing the first point's), and `weight` = 1 − speed normalized over the
+/// stroke, so slow ⇒ heavy. The first weight is then pinned to 0.7 and the last copies its
+/// neighbour's. Two points only get weight 1; one is left alone. If all points coincide the
+/// weights are NaN ([`outline`] reads them as 0.5).
 pub fn metrics(pts: &mut [Pt]) {
     let n = pts.len();
     if n <= 1 {
@@ -105,11 +103,11 @@ pub fn metrics(pts: &mut [Pt]) {
     pts[n - 1].weight = pts[n - 2].weight;
 }
 
-/// §6.2 (`a helper`, shape correction "h"): pulls each point's y toward the first
-/// point's row by `w = clamp(1 − angle/10°, 0, 1)`, `angle` being its direction from the
-/// first point folded into 0–90°. The walk ends after the first point outside the window
-/// (`w` = 0) at least `10·res` along the stroke, so `cum_len` must be set ([`metrics`]).
-/// Two points or fewer pass through.
+/// Shape correction "h": pulls each point's y toward the first point's row by
+/// `w = clamp(1 − angle/10°, 0, 1)`, `angle` being its direction from the first point folded
+/// into 0–90°. The walk ends after the first point outside the window (`w` = 0) at least
+/// `10·res` along the stroke, so `cum_len` must be set ([`metrics`]). Two points or fewer pass
+/// through.
 #[must_use]
 pub fn h_snap(pts: &[Pt], res: f64) -> Vec<Pt> {
     let mut out = pts.to_vec();
@@ -128,15 +126,15 @@ pub fn h_snap(pts: &[Pt], res: f64) -> Vec<Pt> {
     out
 }
 
-/// §6.3 (`a helper`): scales positions about the origin of `raw` = (x, y, w, h) by
-/// `w/raw.w` and `h/raw.h`, i.e. into the drawn rect after a resize. A zero raw extent gives
-/// NaN, as in the reference app.
+/// Scales positions about the origin of `raw` = (x, y, w, h) by `w/raw.w` and `h/raw.h`,
+/// i.e. into the drawn rect after a resize. A zero raw extent gives NaN.
 #[must_use]
 pub fn map_rect(pts: &[Pt], raw: (f64, f64, f64, f64), w: f64, h: f64) -> Vec<Pt> {
     let (x, y, raw_w, raw_h) = raw;
     pts.iter()
         .map(|p| Pt {
-            // the reference app: multiplies by the new size before dividing by the raw one.
+            // Intentional: multiplies by the new size before dividing by the raw one, which
+            // rounds differently from scaling by `w/raw_w`.
             pos: V2 {
                 x: x + w * (p.pos.x - x) / raw_w,
                 y: y + h * (p.pos.y - y) / raw_h,
@@ -146,12 +144,11 @@ pub fn map_rect(pts: &[Pt], raw: (f64, f64, f64, f64), w: f64, h: f64) -> Vec<Pt
         .collect()
 }
 
-/// §6.12 (`a helper`): `moveTo(P0)`, then a cubic to each later point with controls
-/// `P[i−1].b` and `P[i].a` (the anchors when unset), everything shifted by `−origin`. Callers
-/// close outlines themselves.
+/// `moveTo(P0)`, then a cubic to each later point with controls `P[i−1].b` and `P[i].a` (the
+/// anchors when unset), everything shifted by `−origin`. Callers close outlines themselves.
 #[must_use]
 pub fn bezier_path(pts: &[Pt], origin: V2) -> PathData {
-    // the reference app: fewer than two points make an empty path, without even the moveTo.
+    // Fewer than two points make an empty path, without even the moveTo.
     if pts.len() < 2 {
         return PathData::default();
     }
@@ -167,7 +164,7 @@ pub fn bezier_path(pts: &[Pt], origin: V2) -> PathData {
     PathData(segs)
 }
 
-/// `|v|` the way the reference app computes it: `sqrt(x² + y²)`, not `hypot`.
+/// `|v|` as `sqrt(x² + y²)`, not `hypot`, whose rounding differs.
 pub(crate) fn norm(v: V2) -> f64 {
     dot(v, v).sqrt()
 }
@@ -176,13 +173,13 @@ fn dot(u: V2, v: V2) -> f64 {
     u.x * v.x + u.y * v.y
 }
 
-/// the reference app's clamp to 0–1 as compiled: `v < 0 ? 0 : fmin(v, 1)`.
+/// Clamps to 0–1 as `v < 0 ? 0 : fmin(v, 1)`, so NaN becomes 1.
 fn clamp01(v: f64) -> f64 {
     if v < 0.0 { 0.0 } else { v.min(1.0) }
 }
 
-/// `(min, max)` the way Swift's `min()`/`max()` find them: the first value, replaced by each
-/// later one below (above) it. `None` when empty.
+/// `(min, max)` by strict comparison: the first value, replaced by each later one below
+/// (above) it. `None` when empty.
 fn extremes(mut vals: impl Iterator<Item = f64>) -> Option<(f64, f64)> {
     let first = vals.next()?;
     Some(vals.fold((first, first), |(lo, hi), v| {

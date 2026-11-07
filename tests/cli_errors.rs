@@ -23,7 +23,7 @@ fn failure_prints_error_to_stderr_and_exits_1() {
 
 #[test]
 fn usage_errors_exit_1() {
-    // Spec §5.1 has two exit codes, 0 and 1; clap's own usage errors exit 2. Without a
+    // Two exit codes, 0 and 1 (docs/design.md, "CLI"); clap's own usage errors exit 2. Without a
     // subcommand clap prints the help instead of an `error:` line.
     for (args, error_line) in [
         ("render in.png --spec spec.json -o out.png --dpr abc", true),

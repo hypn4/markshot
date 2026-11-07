@@ -114,7 +114,7 @@ pub fn encode_png(
     Ok(out)
 }
 
-/// the reference app's device pixel ratio for an image DPI: `clamp(round(dpi / 72), 1, 3)`, 1 without DPI.
+/// The device pixel ratio for an image DPI: `clamp(round(dpi / 72), 1, 3)`, 1 without DPI.
 #[must_use]
 pub fn dpr_from_dpi(dpi: Option<f64>) -> f64 {
     dpi.map_or(1.0, |dpi| (dpi / 72.0).round().clamp(1.0, 3.0))

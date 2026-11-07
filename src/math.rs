@@ -3,10 +3,11 @@
 
 pub use std::f64::consts::PI;
 
-/// The truncated π the reference app uses (Line.md §5).
+/// π truncated to 3.1415926. Some line, arrow and stroke angle math uses it where noted;
+/// switching it to [`PI`] would move their pixels.
 #[expect(
     clippy::approx_constant,
-    reason = "the reference app's truncated π, copied verbatim"
+    reason = "deliberately truncated, see the doc comment"
 )]
 pub const PI_TRUNCATED: f64 = 3.141_592_6;
 

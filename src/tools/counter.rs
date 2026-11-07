@@ -1,9 +1,7 @@
-//! the reference app's Counter tool (Counter.md): a numbered badge. Its body, a circle or a bubble or pin
-//! whose tail points along the counter's angle, is filled in its color; its number goes on top,
-//! white Medium on dark colors and black Regular on light ones. the reference app sets the number in the
-//! system font (SF Pro); the embedded Inter stands in for it, laid out with SF's metrics and
-//! scaled to SF's digit height. Zoom is 1 and the counter is never hovered or selected, so the
-//! hover outline and the rotate knob are left out.
+//! The counter tool: a numbered badge. Its body, a circle or a bubble or pin whose tail points
+//! along the counter's angle, is filled in its color; its number goes on top, white Medium on
+//! dark colors and black Regular on light ones. The number is laid out with SF Pro's metrics;
+//! the embedded Inter draws its digits, scaled to SF's digit height.
 
 use std::sync::LazyLock;
 
@@ -17,26 +15,26 @@ use crate::spec::CounterStyle;
 use crate::svg_path::parse_mlc;
 use crate::text::{self, Weight};
 
-/// Diameters in points, by size (Counter.md §1 `diameters`).
+/// Diameters in points, by size.
 pub const DIAM: [f64; 10] = [
     22.0, 28.0, 36.0, 48.0, 64.0, 84.0, 112.0, 150.0, 200.0, 266.0,
 ];
 
-/// The bubble's and the pin's outlines, Counter.md §3.1's SVG A and B verbatim: a circle of
-/// radius 25 about (50, 50) with the tail along +y.
+/// The bubble's and the pin's outlines as SVG paths: a circle of radius 25 about (50, 50) with
+/// the tail along +y.
 pub const TAIL_SVG: [&str; 2] = [
     "M25,50 C25,36.1928813 36.1928813,25 50,25 C63.8071187,25 75,36.1928813 75,50 C75,69.9607329 55,73.75 52.5,85 C52.0565531,86.9955109 51.0150513,87.5 50,87.5 C48.9849487,87.5 47.9371276,86.9670742 47.5,85 C45,73.75 25,69.998403 25,50",
     "M49.9987059,88.7457631 C49.9987059,88.7457631 75.2211928,68.1295281 74.9970444,49.9983385 C74.9970444,36.1921374 63.804907,25 49.9987059,25 C36.1925048,25 25.0003675,36.1921374 25.0003675,49.9983385 C24.7508105,68.2337185 49.9987059,88.7457631 49.9987059,88.7457631",
 ];
 
-/// A counter placed by the point its tail marks is centered this many radii back from it
-/// (Counter.md §2).
+/// A counter placed by the point its tail marks is centered this many radii back from it.
 pub const TAIL_OFFSET: f64 = 1.65;
 
-/// the reference app's quarter turn in `pathFromSVG` (`a helper`), truncated.
+/// π/2 to eight decimals, 1.57079633: the quarter turn that points the outlines' tail (+y)
+/// along the counter's angle.
 #[expect(
     clippy::approx_constant,
-    reason = "the reference app's truncated π/2, copied verbatim"
+    reason = "π/2 to eight decimals is deliberate, see the doc comment"
 )]
 const QUARTER_TURN: f64 = 1.570_796_33;
 
@@ -53,7 +51,7 @@ const BLACK: Rgb = Rgb {
 };
 
 /// SF Pro's ascender and descender in em (`hhea` 1980 and 432 of 2048 units in
-/// `/System/Library/Fonts/SFNS.ttf`): the line box of the reference app's label (Counter.md §3.3).
+/// `/System/Library/Fonts/SFNS.ttf`): the line box of the label.
 const SF_ASCENDER: f64 = 1980.0 / 2048.0;
 const SF_DESCENDER: f64 = 432.0 / 2048.0;
 
@@ -155,9 +153,9 @@ const SF_TRACKING: [(f64, f64); 21] = [
 
 /// [`TAIL_SVG`], parsed once.
 static TAILS: LazyLock<[PathData; 2]> =
-    LazyLock::new(|| TAIL_SVG.map(|s| parse_mlc(s).expect("the reference app's counter outlines parse")));
+    LazyLock::new(|| TAIL_SVG.map(|s| parse_mlc(s).expect("the counter outlines parse")));
 
-/// A counter's radius in px (Counter.md §6 `R`): half its diameter, times dpr.
+/// A counter's radius in px: half its diameter, times dpr.
 ///
 /// # Panics
 /// When `size` is 10 or more; resolved sizes are 0 to 7.
@@ -166,9 +164,9 @@ pub fn radius(size: u8, dpr: f64) -> f64 {
     DIAM[usize::from(size)] / 2.0 * dpr
 }
 
-/// Where the reference app centers a counter of radius `r` clicked at `at` (y-up px; Counter.md §2):
-/// `1.65·r` back from it along the tail, which points `angle_deg_screen` degrees on screen
-/// (0 right, 90 down). A circle has no tail and is centered on `at`.
+/// The center of a counter of radius `r` whose tail marks `at` (y-up px): `1.65·r` back from
+/// it along the tail, which points `angle_deg_screen` degrees on screen (0 right, 90 down). A
+/// circle has no tail and is centered on `at`.
 #[must_use]
 pub fn center_from_at(at: V2, angle_deg_screen: f64, r: f64, style: CounterStyle) -> V2 {
     let offset = match style {
@@ -179,8 +177,8 @@ pub fn center_from_at(at: V2, angle_deg_screen: f64, r: f64, style: CounterStyle
 }
 
 /// The label's weight, size in px and ink for a counter filled `fill` showing `count` on a
-/// diameter of `d` points (Counter.md §3.3): white Medium on fills of luminance up to 0.6 and
-/// black Regular on lighter ones, `0.55·d·dpr` px for one digit and 10% less for more.
+/// diameter of `d` points: white Medium on fills of luminance up to 0.6 and black Regular on
+/// lighter ones, `0.55·d·dpr` px for one digit and 10% less for more.
 #[must_use]
 pub fn label_style(fill: Rgb, count: u32, d: f64, dpr: f64) -> (Weight, f64, Rgb) {
     let px = d * 0.5 * dpr * 1.1 * if count > 9 { 0.9 } else { 1.0 };
@@ -191,8 +189,8 @@ pub fn label_style(fill: Rgb, count: u32, d: f64, dpr: f64) -> (Weight, f64, Rgb
     }
 }
 
-/// Draws `k` on the main surface (Counter.md §3, §6): its body filled in its color, then its
-/// number in the [`label_style`], laid out like the reference app's text layer (see [`label`]).
+/// Draws `k` on the main surface: its body filled in its color, then its number in the
+/// [`label_style`], laid out by [`label`].
 ///
 /// # Panics
 /// When `k.size` is 10 or more; resolved sizes are 0 to 7.
@@ -211,9 +209,8 @@ pub fn draw(c: &mut Canvas, k: &ResolvedCounter) {
     c.main().fill(&glyphs, opaque(ink), FillRule::Winding);
 }
 
-/// The body's outline in y-up px (Counter.md §3.1) about `center`: a circle of radius `r`, or
-/// the bubble or pin outline scaled to it and turned so that its tail points `angle` degrees on
-/// screen.
+/// The body's outline in y-up px about `center`: a circle of radius `r`, or the bubble or pin
+/// outline scaled to it and turned so that its tail points `angle` degrees on screen.
 fn body(center: V2, angle: f64, r: f64, style: CounterStyle) -> PathData {
     let svg = match style {
         CounterStyle::Circle => {
@@ -224,8 +221,8 @@ fn body(center: V2, angle: f64, r: f64, style: CounterStyle) -> PathData {
         CounterStyle::Bubble => &TAILS[0],
         CounterStyle::Pin => &TAILS[1],
     };
-    // the reference app turns each point about the SVG's center, in polar form, so that the tail, along
-    // +y, points along the tail's y-up angle, and scales the radius 25 to `r`.
+    // Each point turns about the SVG's center, in polar form, so that the tail, along +y,
+    // points along the tail's y-up angle, and the radius 25 scales to `r`.
     let turn = -angle.to_radians() - QUARTER_TURN;
     svg.map(|p| {
         let q = p - V2 { x: 50.0, y: 50.0 };
@@ -234,12 +231,11 @@ fn body(center: V2, angle: f64, r: f64, style: CounterStyle) -> PathData {
     })
 }
 
-/// `number` at `px` px per em as the reference app sets it on a counter of `d` points at `center` (y-up
-/// px; Counter.md §3.3), in a text layer of the system font. The layer is as big as
-/// `CATextLayer.preferredFrameSize` ([`label_box`]). It is centered on whole pixels, then moved
-/// right by 0.3k and up by 0.5k (k = dpr·d/28), and its baseline runs the ascender below its
-/// top. The layout takes SF Pro's metrics at that size, tracking included; each Inter digit,
-/// scaled to SF's digit height, is centered on SF's ink.
+/// `number` at `px` px per em on a counter of `d` points at `center` (y-up px). Its box
+/// ([`label_box`]) is centered on whole pixels, then moved right by 0.3k and up by 0.5k
+/// (k = dpr·d/28), and its baseline runs the ascender below its top. The layout takes SF Pro's
+/// metrics at that size, tracking included; each Inter digit, scaled to SF's digit height, is
+/// centered on SF's ink.
 fn label(number: u32, weight: Weight, px: f64, center: V2, d: f64, dpr: f64) -> PathData {
     let em = px / 2048.0;
     let digits = number.to_string();
@@ -265,9 +261,9 @@ fn label(number: u32, weight: Weight, px: f64, center: V2, d: f64, dpr: f64) -> 
     path
 }
 
-/// the reference app's label box for `digits` at `px` px per em (Counter.md §3.3,
-/// `CATextLayer.preferredFrameSize`): the tracked advance plus 1 px wide and the ascender plus
-/// descender tall, each rounded up, in SF Pro's metrics. Kerning between digits is left out.
+/// The label box for `digits` at `px` px per em, as `CATextLayer.preferredFrameSize` sizes it:
+/// the tracked advance plus 1 px wide and the ascender plus descender tall, each rounded up,
+/// in SF Pro's metrics. Kerning between digits is left out.
 fn label_box(digits: &str, weight: Weight, px: f64) -> (f64, f64) {
     let advance: f64 = digits
         .bytes()
@@ -406,7 +402,6 @@ mod tests {
         }
     }
 
-
     #[test]
     fn tail_points_along_the_angle() {
         // R 36: the bubble's tip is 1.5·R = 54 px from the center, the pin's 1.55·R, toward the
@@ -435,9 +430,9 @@ mod tests {
     }
 
     #[test]
-    fn label_is_laid_out_markshots_text_layer() {
+    fn label_is_laid_out_with_sf_metrics() {
         // "11" in Medium at 39.6 px on d 36 at dpr 2 (k = 72/28). SF's "1" advances 935.5/2048 em
-        // plus 19 of tracking (18.456 px), so the layer is ceil(2 × 18.456 + 1) = 38 px wide and
+        // plus 19 of tracking (18.456 px), so the box is ceil(2 × 18.456 + 1) = 38 px wide and
         // ceil((1980 + 432)/2048 × 39.6) = 47 px tall. Centered on (398, 702) and rounded half
         // away from zero, then nudged, its left is 379 + 0.3k and its bottom 679 + 0.5k, so the
         // baseline, 38.285 px below its top, is at 689.0006. Each "1" is centered on SF's ink,

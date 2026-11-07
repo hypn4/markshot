@@ -1,6 +1,6 @@
-//! The `line` and `double` arrows (Arrow.md §3.4): a shaft with an open chevron at the tip (and
-//! at the tail), stroked with square caps and miter joins. The shaft is pulled in half the width
-//! at both ends, so its caps end flush with the arrow's ends.
+//! The `line` and `double` arrows: a shaft with an open chevron at the tip (and at the tail),
+//! stroked with square caps and miter joins. The shaft is pulled in half the width at both
+//! ends, so its caps end flush with the arrow's ends.
 
 use crate::geom::{PathData, Seg, V2};
 use crate::math::{PI, PI_TRUNCATED, atan2, cos, sin, tan};
@@ -9,7 +9,7 @@ use crate::tools::line::{half_angle, head_len, pixel_offset};
 use super::Geometry;
 use super::curve::{Arc, wrap};
 
-/// A quarter turn as this routine has it: neither π/2 nor the reference app's truncated π halved.
+/// The quarter turn used here, 1.57079645: neither π/2 nor the truncated π halved.
 const QUARTER_TURN: f64 = 1.570_796_45;
 
 /// The path to stroke `lw` px wide; `double` adds the chevron at the tail.
@@ -52,7 +52,10 @@ pub(super) fn path(g: &Geometry, lw: f64, double: bool) -> PathData {
             v += PI_TRUNCATED;
         }
         let v = wrap(v, PI_TRUNCATED);
-        (0.0, v * ((PI_TRUNCATED - v.abs()) * -0.15 / PI_TRUNCATED + 1.0))
+        (
+            0.0,
+            v * ((PI_TRUNCATED - v.abs()) * -0.15 / PI_TRUNCATED + 1.0),
+        )
     };
     let start = V2 {
         x: g.p0.x + off,

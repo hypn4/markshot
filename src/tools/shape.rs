@@ -1,11 +1,9 @@
-//! the reference app's Rectangle and Oval tools (RectOval.md): one class that draws a rounded rect (§3.2)
-//! or a squircle (§3.3), stroked and optionally filled, or hand-drawn: a stroke of varying
-//! width around the shape whose outline is filled in the color (§3.4–3.6).
+//! The rect and oval tools: a rounded rect or a squircle, stroked and optionally filled, or
+//! hand-drawn: a stroke of varying width around the shape whose outline is filled in the
+//! color.
 //!
-//! `fill` is the reference app's fill code: `sketch` (−1) hand-drawn, `outline` (0) the border alone,
-//! `semi` and `solid` (40, 100) the border over the color at `fill_alpha`, by default 0.4 and 1.
-//! Zoom is 1 and the shape is never hovered or selected, so the hover blue and the knobs are
-//! left out.
+//! `fill` picks the style: `sketch` hand-drawn, `outline` the border alone, `semi` and `solid`
+//! the border over the color at `fill_alpha`, by default 0.4 and 1.
 
 mod handdrawn;
 mod rounded_rect;
@@ -26,8 +24,8 @@ pub use squircle::squircle;
 /// Stroke widths in points, by size.
 pub const WIDTHS: [f64; 10] = [1.0, 2.0, 3.0, 4.0, 6.0, 8.0, 11.0, 15.0, 21.0, 30.0];
 
-/// The rect's jitter strength (RectOval.md §3.2 `s`) while hand-drawn: in the hand-drawn
-/// outline and in the plain rect drawn instead on small shapes.
+/// The rect's jitter strength while hand-drawn: in the hand-drawn outline and in the plain
+/// rect drawn instead on small shapes.
 const JITTER: f64 = 1.3;
 
 /// Hand-drawn needs a shorter side over this many px; smaller shapes are drawn plain.
@@ -44,9 +42,9 @@ pub enum ShapeKind {
     Oval,
 }
 
-/// Draws `s` on the main surface (RectOval.md §4). A `sketch` over 40 px on its shorter side
-/// is hand-drawn; anything else is the plain outline, filled at `fill_alpha` (by default 0.4
-/// for `semi` and 1 for `solid`), then stroked with round joins.
+/// Draws `s` on the main surface. A `sketch` over 40 px on its shorter side is hand-drawn;
+/// anything else is the plain outline, filled at `fill_alpha` (by default 0.4 for `semi` and 1
+/// for `solid`), then stroked with round joins.
 ///
 /// # Panics
 /// When `s.size` is 10 or more; resolved sizes are 0 to 7.
@@ -71,7 +69,7 @@ pub fn draw(c: &mut Canvas, s: &ResolvedShape, kind: ShapeKind) {
         c.main().fill(&outline, ink, FillRule::Winding);
         return;
     }
-    // the reference app: a small rect keeps the hand-drawn jitter.
+    // Intentional: a small sketch rect keeps the hand-drawn jitter.
     let jitter = if handdrawn { JITTER } else { 0.0 };
     let path = plain_path(kind, rect, jitter, 2.0 * wpt, dpr, &rnd);
     let fill_alpha = match s.fill {
@@ -92,8 +90,8 @@ pub fn draw(c: &mut Canvas, s: &ResolvedShape, kind: ShapeKind) {
     c.main().stroke(&path, ink, &style);
 }
 
-/// The outline of `kind` on `rect` when not hand-drawn: §3.2's rect with corners of `cp`
-/// points, or §3.3's squircle.
+/// The outline of `kind` on `rect` when not hand-drawn: the rounded rect with corners of `cp`
+/// points, or the squircle.
 fn plain_path(
     kind: ShapeKind,
     (x, y, w, h): (f64, f64, f64, f64),
@@ -108,11 +106,11 @@ fn plain_path(
     }
 }
 
-/// RectOval.md §3: the stroke width in px of a `w × h` shape whose size is `wpt` points wide:
-/// `wpt`, at most a tenth of the shorter side, times dpr.
+/// The stroke width in px of a `w × h` shape whose size is `wpt` points wide: `wpt`, at most a
+/// tenth of the shorter side, times dpr.
 #[must_use]
 pub fn stroke_px(w: f64, h: f64, wpt: f64, dpr: f64) -> f64 {
-    // the reference app quirk: a tenth of the shorter side in px caps a width in points.
+    // Intentional: a tenth of the shorter side in px caps a width in points.
     (w.abs().min(h.abs()) / 10.0).min(wpt) * dpr
 }
 
@@ -165,9 +163,9 @@ mod tests {
         rgba[i..i + 4].try_into().unwrap()
     }
 
-    /// `target`'s plain outline (RectOval.md §3.2 with jitter `jitter` and 6-point corners,
-    /// or §3.3) stroked `width` px in its color with round joins, as the reference app draws a shape that
-    /// is not hand-drawn; on a white canvas as `png` makes it.
+    /// `target`'s plain outline (the rounded rect with jitter `jitter` and 6-point corners, or
+    /// the squircle) stroked `width` px in its color with round joins, as a shape that is not
+    /// hand-drawn is drawn; on a white canvas as `png` makes it.
     fn plain(
         target: &ResolvedShape,
         kind: ShapeKind,
@@ -205,8 +203,8 @@ mod tests {
 
     #[test]
     fn sketch_falls_back_when_small() {
-        // A shorter side of 40 px is not over 40 (RectOval.md §4): the sketch is the plain
-        // outline, 6 px wide (min(40/10, 3 pt)·2), the rect still with the hand-drawn jitter.
+        // A shorter side of 40 px is not over 40: the sketch is the plain outline, 6 px wide
+        // (min(40/10, 3 pt)·2), the rect still with the hand-drawn jitter.
         let s = shape(Fill::Sketch, [30.0, 20.0, 40.0, 200.0]);
         for kind in [ShapeKind::Rect, ShapeKind::Oval] {
             assert!(
@@ -249,8 +247,7 @@ mod tests {
 
     #[test]
     fn semi_and_solid_fill_inside_the_border() {
-        // #FF0C01 at 0.4 over white is (255, 157.8, 153.4); the reference app's semi pixel is
-        // (255, 158, 153).
+        // #FF0C01 at 0.4 over white is (255, 157.8, 153.4), so (255, 158, 153).
         for (fill, want) in [
             (Fill::Outline, WHITE),
             (Fill::Semi, [255, 158, 153, 255]),

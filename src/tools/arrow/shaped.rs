@@ -1,5 +1,5 @@
-//! The `shaped` arrow (Arrow.md §3.1–3.2): one of the reference app's four SVG outlines, its tail pinned to
-//! the tail and its head to the tip; bent, a tapered band along the arc under the outline's head.
+//! The `shaped` arrow: one of four SVG outlines, its tail pinned to the tail and its head to the
+//! tip; bent, a tapered band along the arc under the outline's head.
 
 use crate::geom::{PathData, Seg, V2};
 use crate::math::{PI, atan2, cos, sin};
@@ -21,8 +21,8 @@ pub(super) fn paths(g: &Geometry, variant: usize) -> Vec<PathData> {
     }
 }
 
-/// Arrow.md §3.1: the outline with x ≤ 50 placed at the tail (scale `kTail`), the rest at the
-/// tip (scale `kHead`), both turned along the arrow; only the shaft between them stretches.
+/// The outline with x ≤ 50 placed at the tail (scale `kTail`), the rest at the tip (scale
+/// `kHead`), both turned along the arrow; only the shaft between them stretches.
 fn straight(g: &Geometry, variant: usize) -> PathData {
     let d = g.p1 - g.p0;
     let theta = atan2(d.y, d.x);
@@ -46,9 +46,9 @@ fn straight(g: &Geometry, variant: usize) -> PathData {
     })
 }
 
-/// Arrow.md §3.2: a band along the arc, tapering linearly from the tail's width to the neck's
-/// and ending `h` before the tip, and the outline's head (cut flat across the neck) set on the
-/// tangent at the band's end, so its point lands near, not on, the tip. Returns both, to union.
+/// A band along the arc, tapering linearly from the tail's width to the neck's and ending `h`
+/// before the tip, and the outline's head (cut flat across the neck) set on the tangent at the
+/// band's end, so its point lands near, not on, the tip. Returns both, to union.
 fn curved(g: &Geometry, variant: usize) -> [PathData; 2] {
     let (w1, w2, h) = ARR_PROFILES[variant];
     let arc = Arc::new(g.p0, g.p1, g.mid_angle, g.mid_dist);
@@ -87,7 +87,7 @@ fn curved(g: &Geometry, variant: usize) -> [PathData; 2] {
 /// all belong to the head (and the first move), then closed.
 fn head(g: &Geometry, variant: usize, tip: V2, phi: f64) -> PathData {
     let sizek = SIZEK[g.size];
-    // the reference app scales the whole head by kHead, and would pin a tail point to the arrow's tail.
+    // The whole head scales by kHead, and a tail point would be pinned to the arrow's tail.
     let at = |q: V2| {
         if q.x <= SPLIT {
             place(g.p0, q, phi, sizek, g.k_head, g.dpr)
@@ -123,7 +123,7 @@ fn head(g: &Geometry, variant: usize, tip: V2, phi: f64) -> PathData {
 }
 
 /// Outline point `q` (SVG units from `anchor`) scaled by `sizek·k·dpr` and turned by `theta`,
-/// through polar coordinates as the reference app computes it.
+/// through polar coordinates rather than a rotation, which rounds differently.
 fn place(anchor: V2, q: V2, theta: f64, sizek: f64, k: f64, dpr: f64) -> V2 {
     let r = sizek * (norm(q) * k) * dpr;
     let a = theta + atan2(q.y, q.x);

@@ -23,6 +23,8 @@ Every key must be `true`. Also read the agent's reply: the checker can't judge w
 
 ## What does each scenario test?
 
+Every scenario starts from `shot.png`, a 1602×1002 PNG at 144 dpi (dpr 2): a white area with two lines of black text, six colour blocks with text (red `Blur 123`, green `Erase me`, blue `Secret 42`, yellow `Text AaBb`, purple `Hidden`, orange `Mosaic 7`), a `#808080` band with black text and a `#1E1E1E` band with white text. The block and text boxes in `check.py` were measured on it; measure them again if `shot.png` changes.
+
 | Scenario | Request | What must hold |
 |---|---|---|
 | s1 | redact a label, box another, number two targets | blur covers the text, box frames the text, badges sit at their targets, no warnings, rendered from the original |
@@ -33,12 +35,12 @@ Every key must be `true`. Also read the agent's reply: the checker can't judge w
 
 ## What did they show?
 
-Measured when the skill was restructured (Claude Opus, one run per cell unless noted):
+Measured when the skill was restructured, on an earlier screenshot with the same layout (Claude Opus, one run per cell unless noted):
 
 | Variant | s1 | s2 | s3 | s4 | s5 |
 |---|---|---|---|---|---|
 | control (no skill) | pass | pass | pass | 1 of 2 (tail 3 px off) | grey shipped as navy, explained |
-| previous `markshot` skill | pass | pass | pass | 2 of 2, but the tail tip was found by test renders or estimated | switched to a hue, explained |
+| previous skill | pass | pass | pass | 2 of 2, but the tail tip was found by test renders or estimated | switched to a hue, explained |
 | this skill, first draft | pass | pass, but changed `angle` unasked | pass | 2 of 3; all three changed `angle` unasked | switched to a hue, explained |
 | this skill | pass | 2 of 2, nothing changed unasked | — | 3 of 3 with one render, tip exact; nothing changed unasked | — |
 

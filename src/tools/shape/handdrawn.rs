@@ -1,5 +1,5 @@
-//! RectOval.md §3.4–3.6: the hand-drawn rect and oval, a stroke of varying width around the
-//! shape whose outline is filled in the shape's color.
+//! The hand-drawn rect and oval: a stroke of varying width around the shape whose outline is
+//! filled in the shape's color.
 
 use crate::geom::{PathData, Seg, V2};
 use crate::math::{PI_TRUNCATED, cos, sin};
@@ -11,17 +11,17 @@ use crate::stroke::{
 use super::JITTER;
 use super::rounded_rect::elements;
 
-/// RectOval.md §3.4: the hand-drawn rect's corner size in points for a stroke `wpt` points
-/// wide: `max(1.1k − 0.004k², 10)` with `k = 6·wpt` (12 for no stroke).
+/// The hand-drawn rect's corner size in points for a stroke `wpt` points wide:
+/// `max(1.1k − 0.004k², 10)` with `k = 6·wpt` (12 for no stroke).
 #[must_use]
 pub fn hd_corner(wpt: f64) -> f64 {
     let k = if wpt == 0.0 { 12.0 } else { wpt * 6.0 };
     (1.1 * k - 0.004 * k * k).max(10.0)
 }
 
-/// RectOval.md §3.4: the hand-drawn rect on `rect` (y-up px, corner first) as a closed
-/// outline, for a `wpt`-point stroke drawn `stroke` px wide: its width varies by up to ±30%
-/// (less on thick strokes), widest at the corners.
+/// The hand-drawn rect on `rect` (y-up px, corner first) as a closed outline, for a
+/// `wpt`-point stroke drawn `stroke` px wide: its width varies by up to ±30% (less on thick
+/// strokes), widest at the corners.
 pub(super) fn rect(
     rect: (f64, f64, f64, f64),
     wpt: f64,
@@ -34,8 +34,8 @@ pub(super) fn rect(
     outline_path(line, stroke, thinning, true, rnd)
 }
 
-/// RectOval.md §3.5: the hand-drawn oval on `rect` (y-up px, corner first) as a closed
-/// outline, for a stroke `stroke` px wide, 0.75–1.25 times that.
+/// The hand-drawn oval on `rect` (y-up px, corner first) as a closed outline, for a stroke
+/// `stroke` px wide, 0.75–1.25 times that.
 pub(super) fn oval(
     rect: (f64, f64, f64, f64),
     stroke: f64,
@@ -51,7 +51,8 @@ pub(super) fn oval(
 /// [`hd_corner`], its inner points moved up to half a point each way by draws 27 and 28; the
 /// ends stay, so the start shows a small kink.
 fn wobbly_rect(rect: (f64, f64, f64, f64), wpt: f64, dpr: f64, rnd: &[f64; 100]) -> [Pt; 9] {
-    // `the original Oval tool` passes the jitter too (1.3 loaded; RectOval.md §3.4).
+    // The rounded rect underneath gets the hand-drawn jitter too, as the plain rect of a small
+    // sketch does.
     let mut line = elements(rect, JITTER, hd_corner(wpt), dpr, rnd);
     let off = V2 {
         x: (rnd[27] - 0.5) * dpr,
@@ -88,7 +89,7 @@ fn spiral((left, bottom, w, h): (f64, f64, f64, f64), stroke: f64, rnd: &[f64; 1
     } else {
         (0.0, 2.0 * PI_TRUNCATED)
     };
-    #[expect(clippy::approx_constant, reason = "the reference app's 6.28, copied verbatim")]
+    #[expect(clippy::approx_constant, reason = "6.28, not 2π, is deliberate")]
     let start = rnd[37] * 6.28;
     let gap = short * 0.5 * 0.5;
     (0..1000_u16)
@@ -107,10 +108,10 @@ fn spiral((left, bottom, w, h): (f64, f64, f64, f64), stroke: f64, rnd: &[f64; 1
         .collect()
 }
 
-/// RectOval.md §3.6 (`the original Oval tool`) and the path around it: the points' widths vary by up to
-/// `±thinning` around `stroke` with their weights ([`weigh`]: corners when `corner_boost`, a
-/// slow wave and the draws), blurred four times and normalized; the closed outline of that
-/// stroke with round ends. Fewer than two points give an empty path.
+/// The varying width and the path around it: the points' widths vary by up to `±thinning`
+/// around `stroke` with their weights ([`weigh`]: corners when `corner_boost`, a slow wave and
+/// the draws), blurred four times and normalized; the closed outline of that stroke with round
+/// ends. Fewer than two points give an empty path.
 fn outline_path(
     mut pts: Vec<Pt>,
     stroke: f64,
@@ -132,8 +133,8 @@ fn outline_path(
     path
 }
 
-/// RectOval.md §3.6's raw weights: `corner + cos(9.42·i/n) + 1 + 12·rnd[(84 + i) % 100]`, the
-/// corner term being `4000·(1 − |cos|)` of the turn at each point when `corner_boost`.
+/// The raw weights: `corner + cos(9.42·i/n) + 1 + 12·rnd[(84 + i) % 100]`, the corner term
+/// being `4000·(1 − |cos|)` of the turn at each point when `corner_boost`.
 fn weigh(pts: &mut [Pt], corner_boost: bool, rnd: &[f64; 100]) {
     #[expect(
         clippy::cast_precision_loss,

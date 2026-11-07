@@ -25,11 +25,12 @@ const DEFAULT_SIZE: u8 = 2;
 const MAX_SIZE: u8 = 7;
 /// The four `shaped` arrow outlines are 0 to 3.
 const MAX_ARROW_VARIANT: u8 = 3;
-/// Highlighter caps 0 to 3 are those the reference app's toolbar cycles through; 3 is its default.
+/// The highlighter takes caps 0 to 3 (round, flattened round, notched, double lobe); 3 is the
+/// default.
 const MAX_HIGHLIGHT_CAP: u8 = 3;
 const DEFAULT_HIGHLIGHT_CAP: u8 = 3;
 const DEFAULT_SPOTLIGHT_DIM: f64 = 0.214;
-/// the reference app's default tail direction, −3π/4 with y up, in screen degrees.
+/// The default tail direction, −3π/4 with y up, in screen degrees.
 const DEFAULT_COUNTER_ANGLE: f64 = 135.0;
 /// Scaled coordinates whose aspect ratio is off the image's by more than this get a warning.
 const ASPECT_TOLERANCE: f64 = 0.01;
@@ -581,8 +582,8 @@ impl Resolver<'_> {
                 self.coords.limit + counter::TAIL_OFFSET * r + 0.5,
             )?,
             (Some(at), None) => {
-                // Like a click in the reference app: the badge sits opposite its tail. Only `at` is
-                // bounded.
+                // `at` is the point the tail marks; the badge sits opposite its tail. Only `at`
+                // is bounded.
                 let [x, y] = self.point("at", at)?;
                 let at_up = V2 {
                     x,

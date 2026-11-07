@@ -1,4 +1,4 @@
-//! Annotation colors: sRGB components in 0–1, hex parsing, and the color math the reference app applies.
+//! Annotation colors: sRGB components in 0–1, hex parsing, and the color math the tools apply.
 
 use crate::error::Error;
 use crate::math::pow;
@@ -52,13 +52,13 @@ impl Rgb {
         )
     }
 
-    /// Rec. 601 luma of the (gamma-encoded) components, as the reference app uses it.
+    /// Rec. 601 luma of the (gamma-encoded) components.
     #[must_use]
     pub fn luminance(self) -> f64 {
         0.299 * self.r + 0.587 * self.g + 0.114 * self.b
     }
 
-    /// the reference app's full saturation (Highlighter.md §4): min → 0, max → 1,
+    /// Full saturation: min → 0, max → 1,
     /// mid → (mid − min) / max(max − min, 0.01). Ties resolve in r, g, b order.
     #[must_use]
     pub fn saturate(self) -> Rgb {
@@ -156,7 +156,7 @@ mod tests {
     }
 
     #[test]
-    fn saturate_matches_reference() {
+    fn saturate_maps_min_to_0_and_max_to_1() {
         let s = parse_hex("#FFF68D").unwrap().saturate();
         assert_rgb_near(s, [1.0, 0.92105, 0.0], 1e-4);
     }

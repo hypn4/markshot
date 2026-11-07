@@ -1,20 +1,20 @@
-//! §6.7 flatten: the Bézier path through the points as a polyline.
+//! Flattening: the Bézier path through the points as a polyline.
 
 use super::{Pt, dot, norm};
 
-/// §6.7 flatten (`a helper` + `a helper`, as RectOval.md §3.1): the Bézier path
-/// through the points as a polyline. Unset handles become their anchors. Each segment emits
-/// its start point, the cubic sampled at `t = k/N` (`N = ⌈1.2·chord/step⌉`, `k < N`) wherever
-/// at least `step` past the last emitted point — weight interpolated, other fields zero,
-/// handles unset — and its end point: just the start for a zero chord, both ends for a
-/// 1.2·chord under `step`. Joints therefore repeat, and the last point is appended once more.
+/// The Bézier path through the points as a polyline. Unset handles become their anchors.
+/// Each segment emits its start point, the cubic sampled at `t = k/N`
+/// (`N = ⌈1.2·chord/step⌉`, `k < N`) wherever at least `step` past the last emitted point —
+/// weight interpolated, other fields zero, handles unset — and its end point: just the start
+/// for a zero chord, both ends for a 1.2·chord under `step`. Joints therefore repeat, and the
+/// last point is appended once more.
 ///
 /// `step` must be positive and finite; the output grows as `1.2·chord/step`, so callers keep
 /// both the points and `step` bounded (the resolver bounds coordinates and dpr).
 #[must_use]
 pub fn flatten(pts: &[Pt], step: f64) -> Vec<Pt> {
     debug_assert!(step > 0.0 && step.is_finite(), "flatten step {step}");
-    // the reference app: fewer than two points pass through as they are.
+    // Fewer than two points pass through as they are.
     if pts.len() < 2 {
         return pts.to_vec();
     }

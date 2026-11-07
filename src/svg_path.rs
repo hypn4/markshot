@@ -1,5 +1,5 @@
-//! Parser for the absolute `M`/`L`/`C` SVG path strings copied from the reference app (arrow outlines,
-//! counter tails).
+//! Parser for the absolute `M`/`L`/`C` SVG path strings of the bundled outlines (arrow
+//! outlines, counter tails).
 
 use crate::error::Error;
 use crate::geom::{PathData, Seg, V2};
@@ -161,7 +161,7 @@ mod tests {
     }
 
     #[test]
-    fn parses_reference_counter_tail() {
+    fn parses_a_counter_tail() {
         let s = "M25,50 C25,36.1928813 36.1928813,25 50,25 C63.8071187,25 75,36.1928813 75,50 \
                  C75,69.9607329 55,73.75 52.5,85 C52.0565531,86.9955109 51.0150513,87.5 50,87.5 \
                  C48.9849487,87.5 47.9371276,86.9670742 47.5,85 C45,73.75 25,69.998403 25,50";

@@ -1,9 +1,8 @@
-//! RectOval.md §3.3 (`the original Oval tool`): the reference app's oval, a squircle fuller than an ellipse.
+//! The oval: a squircle fuller than an ellipse.
 
 use crate::geom::{PathData, Seg, V2};
 
-/// RectOval.md §3.3's squircle in the unit square: where it starts, then each cubic's two
-/// handles and end (the reference app's literals).
+/// The squircle in the unit square: where it starts, then each cubic's two handles and end.
 const START: (f64, f64) = (0.22, 0.06);
 const CUBICS: [[(f64, f64); 3]; 8] = [
     [(0.38, -0.02), (0.62, -0.02), (0.78, 0.06)],
@@ -16,10 +15,10 @@ const CUBICS: [[(f64, f64); 3]; 8] = [
     [(0.0934, 0.1533), (0.1533, 0.0934), (0.22, 0.06)],
 ];
 
-/// RectOval.md §3.3: the squircle in the rect `(x, y, w, h)` (y-up px, corner `(x, y)`, sides
-/// positive) as the reference app's open path of eight cubics. It touches the rect's mid-edges. Along a
-/// long side the coefficients are pulled toward the ends by `0.75·short/long + 0.25`, so the
-/// ends stay round while the long sides stretch. Zoom is 1, so the width is not evened.
+/// The squircle in the rect `(x, y, w, h)` (y-up px, corner `(x, y)`, sides positive) as an
+/// open path of eight cubics. It touches the rect's mid-edges. Along a long side the
+/// coefficients are pulled toward the ends by `0.75·short/long + 0.25`, so the ends stay round
+/// while the long sides stretch.
 #[must_use]
 pub fn squircle(x: f64, y: f64, w: f64, h: f64) -> PathData {
     let aspect = (w / h).abs();

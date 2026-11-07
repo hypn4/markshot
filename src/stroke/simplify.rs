@@ -1,15 +1,14 @@
-//! RectOval.md §3.5 point simplification (Ramer–Douglas–Peucker).
+//! Point simplification (Ramer–Douglas–Peucker).
 
 use super::{Pt, norm};
 use crate::geom::V2;
 
-/// RectOval.md §3.5 (`a helper`, recursing in `a helper`): Ramer–Douglas–Peucker as
-/// the reference app runs it. The ends are kept; within each span between kept points, the point farthest
-/// from the span is kept when farther than `eps`, and both halves are searched again. A
-/// point's distance is the larger of its distance to the span's segment and a fiftieth of its
-/// distance to the nearer end, so long straight runs keep points too; of equally far points
-/// the first wins. Points are copied whole. One point passes through. (the reference app's argument is
-/// `eps/4`.)
+/// Ramer–Douglas–Peucker with a distance floor. The ends are kept; within each span between
+/// kept points, the point farthest from the span is kept when farther than `eps`, and both
+/// halves are searched again. A point's distance is the larger of its distance to the span's
+/// segment and a fiftieth of its distance to the nearer end, so long straight runs keep points
+/// too; of equally far points the first wins. Points are copied whole. One point passes
+/// through.
 #[must_use]
 pub fn simplify(pts: &[Pt], eps: f64) -> Vec<Pt> {
     let n = pts.len();
@@ -26,7 +25,7 @@ pub fn simplify(pts: &[Pt], eps: f64) -> Vec<Pt> {
 }
 
 /// Marks the points to keep strictly between `lo` and `hi`: the farthest, then those on either
-/// side of it (the reference app recurses on the left part and loops on the right).
+/// side of it (recursing on the left part and looping on the right).
 fn split(pts: &[Pt], mut lo: usize, hi: usize, eps: f64, keep: &mut [bool]) {
     while hi - lo >= 2 {
         let (from, to) = (pts[lo].pos, pts[hi].pos);

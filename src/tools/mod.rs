@@ -1,5 +1,5 @@
-//! One module per the reference app tool. Each draws a resolved annotation on the [`Canvas`]; the math
-//! runs in y-up image pixels, as in the the reference app notes.
+//! One module per annotation tool. Each draws a resolved annotation on the [`Canvas`]; the
+//! math runs in y-up image pixels.
 //!
 //! [`Canvas`]: crate::canvas::Canvas
 

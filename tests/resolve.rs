@@ -358,7 +358,7 @@ fn fill_alpha_is_kept_only_when_given() {
 }
 
 #[test]
-fn counter_at_places_the_center_like_a_reference_click() {
+fn counter_at_places_the_center_opposite_the_tail() {
     let center = |extra: &str, dpr: f64| {
         let json = format!(
             r#"{{"dpr": {dpr}, "annotations": [{{"type": "counter", "at": [100, 100]{extra}}}]}}"#

@@ -1,13 +1,13 @@
-//! §6.6 Bézier handles through the points.
+//! Bézier handles through the points.
 
 use super::{Pt, dot, norm};
 use crate::geom::V2;
 
-/// §6.6 (`a helper`): Catmull-Rom-like Bézier handles. Each inner point gets handles
-/// parallel to its neighbours' chord, `t`·(its segment length) long on each side, with
-/// tension `t = 0.3 + 0.04·(1 − weight)`, or 0.1 at turns sharper than cos −0.1. The first
-/// point's `a` and the last's `b` sit on their anchors; their other handles lie 20% of the
-/// way to the neighbour's (both at the midpoint for two points). One point is left alone.
+/// Catmull-Rom-like Bézier handles. Each inner point gets handles parallel to its neighbours'
+/// chord, `t`·(its segment length) long on each side, with tension
+/// `t = 0.3 + 0.04·(1 − weight)`, or 0.1 at turns sharper than cos −0.1. The first point's `a`
+/// and the last's `b` sit on their anchors; their other handles lie 20% of the way to the
+/// neighbour's (both at the midpoint for two points). One point is left alone.
 pub fn handles(pts: &mut [Pt]) {
     let n = pts.len();
     if n <= 1 {

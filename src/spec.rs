@@ -64,7 +64,7 @@ pub enum Annotation {
     Arrow(ArrowSpec),
     /// A rectangle.
     Rect(ShapeSpec),
-    /// the reference app's oval inside `rect`: a squircle-like rounded shape, fuller than an ellipse.
+    /// An oval inside `rect`: a squircle-like rounded shape, fuller than an ellipse.
     Oval(ShapeSpec),
     /// Hides what is under `rect`.
     Blur(BlurSpec),
@@ -72,8 +72,7 @@ pub enum Annotation {
     Highlight(HighlightSpec),
     /// Dims the image except inside `rect`.
     Spotlight(SpotlightSpec),
-    /// A numbered badge, placed by `at` (the point its tail marks, like a click in the reference app) or
-    /// by `center`.
+    /// A numbered badge, placed by `at` (the point its tail marks) or by `center`.
     Counter(CounterSpec),
     /// A straight line.
     Line(LineSpec),
@@ -252,7 +251,7 @@ pub enum SpotShape {
     /// A rounded rectangle.
     #[default]
     Rect,
-    /// the reference app's oval: a squircle-like rounded shape, fuller than an ellipse.
+    /// An oval: a squircle-like rounded shape, fuller than an ellipse.
     Oval,
 }
 

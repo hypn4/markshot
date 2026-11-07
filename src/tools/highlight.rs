@@ -1,5 +1,5 @@
-//! the reference app's Highlighter (Highlighter.md): a filled marker stroke through the points, built by
-//! the shared stroke engine and blended by the brightness of the screenshot under it.
+//! The highlighter: a filled marker stroke through the points, built by the shared stroke
+//! engine and blended by the brightness of the screenshot under it.
 
 use tiny_skia::{BlendMode, FillRule};
 
@@ -15,12 +15,12 @@ use crate::stroke::{
 /// Stroke widths in points, by size.
 pub const WIDTHS_PT: [f64; 8] = [14.0, 20.0, 28.0, 38.0, 54.0, 76.0, 108.0, 154.0];
 
-/// The highlighter's smoothing and width variability (Highlighter.md §1.1).
+/// The highlighter's smoothing and width variability.
 const SMOOTHING: f64 = 0.9;
 const VARIABILITY: f64 = 0.05;
 
-/// Draws `h` on the main surface: the outline of the reference app's stroke through the points, filled
-/// with the blend that the original image under it calls for (Highlighter.md §3–4).
+/// Draws `h` on the main surface: the outline of the stroke through the points, filled with
+/// the blend that the original image under it calls for.
 ///
 /// # Panics
 /// When `h.size` is 8 or more; resolved sizes are 0 to 7.
@@ -39,40 +39,38 @@ pub fn draw(c: &mut Canvas, h: &ResolvedHighlight) {
     c.main().fill(&path, ink, FillRule::Winding);
 }
 
-/// the reference app's blend for a background of luminance `lum` (Highlighter.md §4 `recolor()`):
-/// `(mode, alpha, saturate)`, where `saturate` means the color is drawn fully saturated.
-/// Up to 0.33 the color is screened at 33%, up to 0.66 laid over at 25%, and above that
-/// multiplied as it is. `None` (fewer than four samples) keeps the reference app's initial multiply.
+/// The blend for a background of luminance `lum`: `(mode, alpha, saturate)`, where `saturate`
+/// means the color is drawn fully saturated. Up to 0.33 the color is screened at 33%, up to
+/// 0.66 laid over at 25%, and above that multiplied as it is. `None` (fewer than four samples)
+/// multiplies too.
 #[must_use]
 pub fn blend_for(lum: Option<f64>) -> (BlendMode, f64, bool) {
     match lum {
-        // Highlighter.md §4: `screenBlendMode`, which the saved
-        // reference/reference-app/cases/highlight-dark.png confirms.
         Some(l) if l <= 0.33 => (BlendMode::Screen, 0.33, true),
         Some(l) if l <= 0.66 => (BlendMode::SourceOver, 0.25, true),
         _ => (BlendMode::Multiply, 1.0, false),
     }
 }
 
-/// Highlighter.md §3 `rebuild()` at zoom 1 (resolution `1/dpr`), with shape correction "h":
-/// the outline polygon (the reference app's `shape`) of the stroke through `points` (y-up px).
+/// The outline polygon of the stroke through `points` (y-up px), at resolution `1/dpr`, with
+/// shape correction "h".
 ///
-/// the reference app's arithmetic turns some inputs into NaN, which would blank the stroke:
+/// The stroke arithmetic turns some inputs into NaN, which would blank the stroke:
 /// - points all on one spot (`metrics` divides by the range of speeds): repeated points are
-///   dropped, so these draw the click dot;
+///   dropped, so these draw the single-point dot;
 /// - a point whose neighbours coincide, i.e. an exact reversal (`handles` divides by their
 ///   distance): its handles are dropped, making it a sharp corner;
-/// - a raw rect with no width or height (`mapRect` divides by it), as horizontal and vertical
-///   strokes at whole pixels have: `mapRect` is left out, being the identity here anyway since
-///   the drawn rect is the raw one.
+/// - a raw rect with no width or height (`map_rect` divides by it), as horizontal and vertical
+///   strokes at whole pixels have: `map_rect` is left out, being the identity here anyway
+///   since the drawn rect is the raw one.
 fn rebuild(points: &[V2], size: u8, cap: u8, dpr: f64) -> Vec<Pt> {
     let res = 1.0 / dpr;
     let mut p: Vec<Pt> = points.iter().copied().map(Pt::new).collect();
     p.dedup_by_key(|q| q.pos);
-    // the reference app (mouseUp): a click becomes a stroke 1 px to the right.
+    // A single point becomes a stroke 1 px to the right.
     if p.len() == 1 {
-        let click = Pt::new(p[0].pos + V2 { x: 1.0, y: 0.0 });
-        p.push(click);
+        let end = Pt::new(p[0].pos + V2 { x: 1.0, y: 0.0 });
+        p.push(end);
     }
     metrics(&mut p);
     p = h_snap(&p, res);
@@ -98,13 +96,10 @@ fn rebuild(points: &[V2], size: u8, cap: u8, dpr: f64) -> Vec<Pt> {
     outline(&assign_widths(&p, w, VARIABILITY), cap, w)
 }
 
-/// Highlighter.md §4: the interquartile mean of the original image's luminance under the
-/// outline points, or `None` for fewer than four samples. Points off the image are skipped,
-/// as the reference app skips those outside its pixel buffer.
-///
-/// the reference app skips this when the raw rect has no width or height, keeping the blend its last
-/// drag picked for the same stroke; whole-pixel points would hit that on every horizontal
-/// stroke, so the check is left out.
+/// The interquartile mean of the original image's luminance under the outline points, or
+/// `None` for fewer than four samples. Points off the image are skipped. A stroke whose
+/// bounding box has no width or height, as every horizontal one at whole pixels has, is
+/// sampled like any other.
 fn luminance_under(c: &Canvas, shape: &[Pt]) -> Option<f64> {
     let mut lum: Vec<f64> = shape
         .iter()
@@ -207,7 +202,7 @@ mod tests {
         assert_eq!(blend_for(Some(0.9)), (BlendMode::Multiply, 1.0, false));
         assert_eq!(blend_for(Some(0.5)), (BlendMode::SourceOver, 0.25, true));
         assert_eq!(blend_for(Some(0.2)), (BlendMode::Screen, 0.33, true));
-        // Fewer than four samples: the reference app's initial state.
+        // Fewer than four samples: multiplied, as on a light background.
         assert_eq!(blend_for(None), (BlendMode::Multiply, 1.0, false));
         // The dark band ends at 0.33 inclusive, the light one starts above 0.66.
         assert_eq!(blend_for(Some(0.33)), (BlendMode::Screen, 0.33, true));
@@ -236,8 +231,8 @@ mod tests {
 
     #[test]
     fn single_point_draws_dot() {
-        // the reference app turns a click into a 1 px stroke: a dot as tall as the stroke is wide, its
-        // caps reaching about 20 px to each side.
+        // A single point becomes a 1 px stroke: a dot as tall as the stroke is wide, its caps
+        // reaching about 20 px to each side.
         let rows = render(white(200, 200), &highlight(&[[100.0, 100.0]]));
         assert_eq!(rows[100][100], ON_WHITE);
         for (x, y) in [(100, 60), (100, 140), (55, 100), (146, 100)] {
@@ -247,7 +242,7 @@ mod tests {
 
     #[test]
     fn repeated_points_are_dropped() {
-        // All points on one spot draw the click dot (their speeds would all be 0, which
+        // All points on one spot draw the single-point dot (their speeds would all be 0, which
         // makes NaN weights); a repeat elsewhere changes nothing.
         let on_white = |points: &[Point]| render(white(200, 200), &highlight(points));
         assert_eq!(on_white(&[[100.0, 100.0]; 3]), on_white(&[[100.0, 100.0]]));
@@ -273,23 +268,23 @@ mod tests {
 
     #[test]
     fn self_crossing_stroke_fills_its_crossing() {
-        // The outline winds twice around the crossing at (100, 100): the reference app fills non-zero,
-        // so it is covered once, not left as a hole.
+        // The outline winds twice around the crossing at (100, 100): filled non-zero, it is
+        // covered once, not left as a hole.
         let z = highlight(&[[40.0, 40.0], [160.0, 160.0], [160.0, 40.0], [40.0, 160.0]]);
         assert_eq!(render(white(200, 200), &z)[100][100], ON_WHITE);
     }
 
     #[test]
     fn vertical_stroke_is_drawn() {
-        // Its bounding box has no width, which the reference app's mapRect would divide by.
+        // Its bounding box has no width, which `map_rect` would divide by.
         let rows = render(white(100, 200), &highlight(&[[50.0, 40.0], [50.0, 160.0]]));
         assert_eq!(rows[100], band(100, 22..78));
     }
 
     #[test]
-    fn blend_follows_the_background_markshot() {
-        // The bands of the reference renders (reference/reference-app/README.md): on white,
-        // #808080 and #1E1E1E the reference app saved (255,246,141), (160,155,96) and (104,98,30).
+    fn blend_follows_the_background() {
+        // The default color on white, #808080 and #1E1E1E: multiplied, laid over at 25% and
+        // screened at 33% (the last two saturated).
         let mut c = canvas(200, 300, 2.0, |y| [255, 128, 30][y as usize / 100]);
         for y in [50.0, 150.0, 250.0] {
             draw(&mut c, &highlight(&[[40.0, y], [160.0, y]]));

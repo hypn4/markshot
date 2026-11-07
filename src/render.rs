@@ -1,4 +1,4 @@
-//! The render pipeline: resolve the spec, then draw in the reference app's z-order (spec §5.6).
+//! The render pipeline: resolve the spec, then draw in a fixed z-order (see [`render`]).
 
 use serde::Serialize;
 
@@ -24,9 +24,9 @@ pub struct Report {
 }
 
 /// Draws `spec` on `src` and encodes the result as PNG, keeping the source's DPI and ICC
-/// profile. The order is the reference app's: ① every blur, ② the spotlight curtain, ③ everything else
-/// in spec order, spotlight borders included. A profile other than sRGB or Display P3 is
-/// treated as sRGB, with a warning (spec §5.9).
+/// profile. The order is fixed: ① every blur, ② the spotlight curtain, ③ everything else in
+/// spec order, spotlight borders included. A profile other than sRGB or Display P3 is treated
+/// as sRGB, with a warning.
 ///
 /// # Errors
 /// [`Error::Spec`] when the spec does not resolve, [`Error::Png`] when encoding fails.
@@ -127,9 +127,9 @@ mod tests {
 
     #[test]
     fn blur_rect_clamped_to_image() {
-        // Review Focus 1: only the 20 × 20 inside the image is erased, between that part's own
-        // border pixels. R is 200 in column 99 and G 255 in row 80, so each row ramps R from
-        // 0 to 200 in steps of 10 at its own G; past the image it would ramp to black.
+        // Only the 20 × 20 inside the image is erased, between that part's own border pixels.
+        // R is 200 in column 99 and G 255 in row 80, so each row ramps R from 0 to 200 in steps
+        // of 10 at its own G; past the image it would ramp to black.
         let color = |x: u32, y: u32| [u8::from(x == 99) * 200, u8::from(y == 80) * 255, 0];
         let spec = r#"{"annotations": [
             {"type": "blur", "mode": "erase", "rect": [80, 80, 50, 50]}
@@ -201,8 +201,8 @@ mod tests {
 
     #[test]
     fn zero_size_rect_skipped() {
-        // Review Focus 2: a rect or oval without width or height is left out with a warning,
-        // drawing nothing, while the rest of the spec is drawn.
+        // A rect or oval without width or height is left out with a warning, drawing nothing,
+        // while the rest of the spec is drawn.
         let (png, report) = render_annotations(&[
             r#"{"type": "rect", "rect": [10, 10, 0, 50]}"#,
             r#"{"type": "oval", "rect": [10, 80, 50, 0]}"#,
@@ -280,7 +280,7 @@ mod tests {
 
     #[test]
     fn spotlight_partly_outside_is_drawn_clipped() {
-        // Review Focus 1: the hole is cut where it is inside the image, with a warning.
+        // The hole is cut where it is inside the image, with a warning.
         let spotlight = r#"{"type": "spotlight", "size": 0, "rect": [60, 60, 80, 80]}"#;
         let (png, report) = render_annotations(&[spotlight]).unwrap();
         assert_eq!(

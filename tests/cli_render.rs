@@ -339,8 +339,9 @@ fn icc_profile(description: &str) -> Vec<u8> {
 
 #[test]
 fn other_colour_profiles_warn() {
-    // Spec §5.9: a profile other than sRGB or Display P3 (here a display's own, as macOS tags
-    // some captures) is treated as sRGB, with a warning; the profile is kept.
+    // A profile other than sRGB or Display P3 (here a display's own, as macOS tags some
+    // captures) is treated as sRGB, with a warning (docs/design.md, "Colour handling"); the
+    // profile is kept.
     let dir = work_dir("other_colour_profiles_warn");
     let src = common::fixture(600, 400);
     let spec = json!({"annotations": [{"type": "line", "from": [40, 60], "to": [560, 340]}]});

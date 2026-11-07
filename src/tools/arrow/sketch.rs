@@ -1,5 +1,5 @@
-//! The `sketch` arrow (Arrow.md §3.5–3.7): a hand-drawn stroke and a two-wing head, built by the
-//! shared stroke engine and randomised by the seed.
+//! The `sketch` arrow: a hand-drawn stroke and a two-wing head, built by the shared stroke
+//! engine and randomised by the seed.
 
 use crate::geom::{PathData, Seg, V2};
 use crate::math::{PI, atan2, cos, sin};
@@ -10,22 +10,21 @@ use super::curve::Arc;
 use super::profiles::WIDTHS;
 use super::{Geometry, taper};
 
-/// The width curves a sketch picks from (Arrow.md §1.2 `EASE_PICK`): thin in the middle, thick
-/// to thin, thick–thin–thick.
+/// The width curves a sketch picks from: thin in the middle, thick to thin, thick–thin–thick.
 const EASE_PICK: [u8; 3] = [1, 3, 6];
 
-/// Cosine and sine of 36° and of 0.4 rad, the head's fixed handle turns, as the reference app stores them.
+/// Cosine and sine of 36° and of 0.4 rad, the head's fixed handle turns, precomputed.
 const COS_36: f64 = 0.809_016_994_374_947_5;
 const SIN_36: f64 = 0.587_785_252_292_473_1;
 const COS_0_4: f64 = 0.921_060_994_002_885_1;
 const SIN_0_4: f64 = 0.389_418_342_308_650_5;
 
-/// The arrow's filled paths: straight, the stroke and the head in one path (the reference app adds them up
-/// without a union); bent, the two of them.
+/// The arrow's filled paths: straight, the stroke and the head in one path (appended, not
+/// unioned); bent, the two of them.
 pub(super) fn paths(g: &Geometry, seed: u64) -> Vec<PathData> {
     let rnd = rnd100(seed);
-    // Arrow.md §3.5: a little wider than the line arrow's points, at most a fifteenth of the
-    // length; the head is 20·√w long, scaled like the shaped arrow's.
+    // A little wider than the line arrow's points, at most a fifteenth of the length; the head
+    // is 20·√w long, scaled like the shaped arrow's.
     let w = ((WIDTHS[g.size] * 0.7 + 1.3) * g.dpr).min(g.len / 15.0);
     let sketch = Sketch {
         g,
@@ -44,7 +43,7 @@ pub(super) fn paths(g: &Geometry, seed: u64) -> Vec<PathData> {
     vec![sketch.straight()]
 }
 
-/// [`EASE_PICK`]'s index for draw `r`: `Int(2.99·r)`.
+/// [`EASE_PICK`]'s index for draw `r`: `2.99·r`, truncated.
 #[expect(
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
@@ -68,8 +67,8 @@ struct Sketch<'a> {
 }
 
 impl Sketch<'_> {
-    /// Arrow.md §3.5: one slightly bowed cubic (or a wobbly line) from the tail to short of the
-    /// tip, and the head pointing back along the arrow.
+    /// One slightly bowed cubic (or a wobbly line) from the tail to short of the tip, and the
+    /// head pointing back along the arrow.
     fn straight(&self) -> PathData {
         let (g, rnd, w) = (self.g, &self.rnd, self.w);
         let d = g.p1 - g.p0;
@@ -106,9 +105,8 @@ impl Sketch<'_> {
         path
     }
 
-    /// Arrow.md §3.5's wobbly shaft to `end`: nine points along it, jittered across by up to
-    /// 0.375% of its length (30% of that next to the ends, none at them), smoothed by
-    /// [`handles`].
+    /// The wobbly shaft to `end`: nine points along it, jittered across by up to 0.375% of its
+    /// length (30% of that next to the ends, none at them), smoothed by [`handles`].
     fn wobble(&self, end: V2) -> Vec<Pt> {
         let (p0, rnd) = (self.g.p0, &self.rnd);
         let d = end - p0;
@@ -133,8 +131,8 @@ impl Sketch<'_> {
         pts
     }
 
-    /// Arrow.md §3.7: the stroke along the arc to short of the tip, and the head on the tip,
-    /// aimed at the arc about `h` behind it.
+    /// The stroke along the arc to short of the tip, and the head on the tip, aimed at the arc
+    /// about `h` behind it.
     fn curved(&self, arc: &Arc) -> Vec<PathData> {
         let (g, w, h) = (self.g, self.w, self.h);
         // +1: clockwise from the tail (angles fall).
@@ -166,8 +164,8 @@ impl Sketch<'_> {
             y: last.y - (last.y - prev.y) / 3.0,
         });
         let body = self.stroke(flatten(&pts, 2.0 * g.dpr));
-        // The head looks back along the chord of the arc's last `h` (the reference app aims it through a
-        // point the arrow's length away).
+        // The head looks back along the chord of the arc's last `h`, aimed through a point the
+        // arrow's length away.
         let phi =
             end + sgn * -PI * 0.5 + h * ((sgn + sgn) * PI) / (arc.radius * (2.0 * PI)) * 0.5 + -PI;
         let chord = norm(g.p0 - g.p1);
@@ -183,8 +181,8 @@ impl Sketch<'_> {
         vec![body, self.head(g.p1, aim)]
     }
 
-    /// Arrow.md §3.6: the head, its point on `tip` and its wings back toward `aim`: a curved
-    /// stroke from one wing's end through `tip` to the other's, and closed, on along the base.
+    /// The head, its point on `tip` and its wings back toward `aim`: a curved stroke from one
+    /// wing's end through `tip` to the other's, and closed, on along the base.
     fn head(&self, tip: V2, aim: V2) -> PathData {
         let rnd = &self.rnd;
         let (w1, w2) = wings(rnd, self.closed, tip, aim, self.w);
@@ -219,8 +217,8 @@ impl Sketch<'_> {
     }
 }
 
-/// Arrow.md §3.6: the ends of the head's wings, from its point `tip` back toward `aim`: as far
-/// as `aim` (times 0.8–1.2 each when open), turned either way off `aim`'s direction.
+/// The ends of the head's wings, from its point `tip` back toward `aim`: as far as `aim`
+/// (times 0.8–1.2 each when open), turned either way off `aim`'s direction.
 fn wings(rnd: &[f64; 100], closed: bool, tip: V2, aim: V2, w: f64) -> (V2, V2) {
     let span = aim - tip;
     let (back, len) = (atan2(span.y, span.x), norm(span));
@@ -233,10 +231,10 @@ fn wings(rnd: &[f64; 100], closed: bool, tip: V2, aim: V2, w: f64) -> (V2, V2) {
         a2 = a1;
         (f1, f2) = (1.0, 1.0);
     }
-    // the reference app quirk: a1 and a2 are radians already, yet the wings turn π times that: they spread
+    // Intentional: a1 and a2 are radians already, yet the wings turn π times that: they spread
     // (9 + e + 2r)·π degrees each way, about 28–35° (closed 19–23°), not 9–11°.
     let w1 = wing(tip, span, turn(a1 * PI), len * f1);
-    // the reference app turns the second wing off `aim` rebuilt from its angle and length.
+    // Intentional: the second wing turns off `aim` rebuilt from its angle and length.
     let span = V2 {
         x: tip.x + len * cos(back) - tip.x,
         y: tip.y + len * sin(back) - tip.y,
@@ -258,7 +256,7 @@ fn wing(tip: V2, span: V2, (c, s): (f64, f64), len: f64) -> V2 {
     }
 }
 
-/// `from + k·(to − from)` as the reference app computes it: by angle and length.
+/// `from + k·(to − from)`, computed by angle and length.
 fn toward(from: V2, to: V2, k: f64) -> V2 {
     let d = to - from;
     let (a, r) = (atan2(d.y, d.x), norm(d) * k);
@@ -297,8 +295,8 @@ mod tests {
     }
 
     #[test]
-    fn wing_spread_keeps_references_extra_pi() {
-        // With every draw 0.5 and w ≤ 4, the reference app's half-angle is (9 + 0 + 2·0.5)° = 10°, in
+    fn wing_spread_keeps_the_extra_pi() {
+        // With every draw 0.5 and w ≤ 4, the half-angle is (9 + 0 + 2·0.5)° = 10°, in
         // radians, then multiplied by π once more: 10π²/180 = 0.548311 rad (31.4°), not 10°.
         // Open wings are (0.8 + 0.4·0.5) = 1× as long as the head.
         let rnd = [0.5; 100];

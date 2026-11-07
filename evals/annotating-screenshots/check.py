@@ -17,7 +17,7 @@ def rerender_matches(run):
     return open(f'{run}/_re.png','rb').read()==open(f'{run}/out.png','rb').read()
 def s1(run):
     rep,A,dpr=load(run); res={}
-    blue=(1113,279,1266,306); green=(1375,80,1519,105); yellow=(1373,279,1533,306)
+    blue=(1114,279,1266,306); green=(1375,80,1519,105); yellow=(1373,279,1533,306)
     blurs=[a for a in A if a['type']=='blur']; rects=[a for a in A if a['type'] in('rect','oval')]; cs=sorted([a for a in A if a['type']=='counter'],key=lambda a:a['number'])
     res['blur_covers_secret']=any(contains(b['rect'],blue) for b in blurs)
     res['box_around_erase']=any(contains(r['rect'],green) and r['rect'][2]<400 and r['rect'][3]<200 for r in rects)

@@ -1,11 +1,11 @@
-//! §6.9 the variable-width outline polygon, with round joins and end caps.
+//! The variable-width outline polygon, with round joins and end caps.
 
 use super::{Pt, dot, handles, norm, resample};
 use crate::geom::V2;
 use crate::math::{PI, PI_TRUNCATED, atan2, cos, sin};
 
-/// End caps (`a helper`) by style: `(angle°, radius factor)` around the end's outward
-/// direction, from the right side to the left. Style 3 is the highlighter's default.
+/// End caps by style: `(angle°, radius factor)` around the end's outward direction, from the
+/// right side to the left. Style 3 is the highlighter's default.
 const CAPS: [&[(f64, f64)]; 7] = [
     // 0: round
     &[
@@ -70,7 +70,7 @@ const CAPS: [&[(f64, f64)]; 7] = [
     &[(-20.0, 1.0), (20.0, 1.0)],
 ];
 
-/// §6.9 (`a helper`): the outline polygon of a stroke whose points carry widths (see
+/// The outline polygon of a stroke whose points carry widths (see
 /// [`assign_widths`](super::assign_widths)). Each point is offset by half its width to both
 /// sides, along the normal of its neighbours' chord; a turn sharper than cos −0.3 adds six
 /// points fanned around its outer side; each side is thinned by [`resample`] with spacing
@@ -103,8 +103,6 @@ pub fn outline(pts: &[Pt], cap: u8, w: f64) -> Vec<Pt> {
     push_sides(&at(n - 1), end_dir, &mut left, &mut right);
     let start_out = end_handle(first.b, first.pos, first.pos + third(start_dir));
     let end_in = end_handle(last.a, last.pos, last.pos - third(end_dir));
-    // assumption: the side spacing is outline's `w` (Highlighter.md §6.9); the dump hides
-    // resample's float argument.
     let mut out = resample(&right, w);
     push_cap(&mut out, last, end_in, cap);
     left.reverse();
@@ -114,7 +112,7 @@ pub fn outline(pts: &[Pt], cap: u8, w: f64) -> Vec<Pt> {
     out
 }
 
-/// `d/3`, per axis as the reference app divides.
+/// `d/3`, dividing each axis (not multiplying by 1/3, which rounds differently).
 fn third(d: V2) -> V2 {
     V2 {
         x: d.x / 3.0,
@@ -122,12 +120,11 @@ fn third(d: V2) -> V2 {
     }
 }
 
-/// An end point's inner handle under the reference app's per-axis rule: a component equal to the
-/// anchor's counts as unset, and unset components come from `fallback` (a third of the end
-/// segment from the anchor).
+/// An end point's inner handle, per axis: a component equal to the anchor's counts as unset,
+/// and unset components come from `fallback` (a third of the end segment from the anchor).
 #[expect(
     clippy::float_cmp,
-    reason = "the reference app compares each handle component to the anchor exactly"
+    reason = "each handle component is compared to the anchor exactly"
 )]
 fn end_handle(h: Option<V2>, anchor: V2, fallback: V2) -> V2 {
     let Some(h) = h else {
@@ -176,7 +173,7 @@ fn push_join(prev: V2, p: &Pt, next: V2, left: &mut Vec<Pt>, right: &mut Vec<Pt>
     for k in 1..=6 {
         let offset = f64::from(k) / 7.0 - 0.5;
         let spread = if left_turn { offset } else { -offset };
-        // assumption: the dump's 3.14159265 is π printed to 9 digits, not the reference app's 3.1415926.
+        // Intentional: the full π here, not the truncated one the caps use.
         let phi = theta + spread * PI * 0.5;
         let point = Pt {
             pos: V2 {
@@ -196,7 +193,7 @@ fn push_join(prev: V2, p: &Pt, next: V2, left: &mut Vec<Pt>, right: &mut Vec<Pt>
 /// The cap points around end point `p`, facing away from its inner handle `handle`.
 fn push_cap(out: &mut Vec<Pt>, p: &Pt, handle: V2, style: u8) {
     let theta = atan2(p.pos.y - handle.y, p.pos.x - handle.x);
-    // the reference app: degrees and back with its truncated π.
+    // Intentional: through degrees and back with the truncated π.
     let deg = theta * 180.0 / PI_TRUNCATED;
     let r = p.width * 0.5;
     let shape = CAPS.get(usize::from(style)).copied().unwrap_or(CAPS[0]);

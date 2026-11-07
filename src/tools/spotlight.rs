@@ -1,8 +1,8 @@
-//! the reference app's Spotlight tool (Spotlight.md): a black curtain over the image with a hole for
-//! every spotlight, and each spotlight's border. The curtain is drawn once, after the blurs
-//! and before every other annotation, so it dims the image and the blurs but no annotation;
-//! the borders are drawn with the annotations, in spec order. A hole is the outline its
-//! border is stroked along: the reference app's rounded rect (RectOval.md §3.2) or squircle (§3.3).
+//! The spotlight tool: a black curtain over the image with a hole for every spotlight, and
+//! each spotlight's border. The curtain is drawn once, after the blurs and before every other
+//! annotation, so it dims the image and the blurs but no annotation; the borders are drawn
+//! with the annotations, in spec order. A hole is the outline its border is stroked along: the
+//! shape tools' rounded rect or squircle.
 
 use tiny_skia::{BlendMode, FillRule, LineCap, LineJoin};
 
@@ -23,10 +23,10 @@ const BLACK: Rgb = Rgb {
     b: 0.0,
 };
 
-/// The outline of `s` in y-up px (Spotlight.md §3.3): the edge of its hole and the centre line
-/// of its border. A rect gets unjittered corners of `min(cp·dpr, md/3)` px, `cp` being 12 at
-/// size 0 and twice the border width in points otherwise; an oval is the squircle. `None` for
-/// an empty rect, which the reference app gives no hole.
+/// The outline of `s` in y-up px: the edge of its hole and the centre line of its border. A
+/// rect gets unjittered corners of `min(cp·dpr, md/3)` px, `cp` being 12 at size 0 and twice
+/// the border width in points otherwise; an oval is the squircle. `None` for an empty rect,
+/// which gets no hole.
 ///
 /// # Panics
 /// When `s.size` is 10 or more; resolved sizes are 0 to 7.
@@ -47,9 +47,8 @@ pub fn outline(c: &Canvas, s: &ResolvedSpotlight) -> Option<PathData> {
     })
 }
 
-/// Draws the curtain (Spotlight.md §3.1–3.2): black at `dim` over the whole image, its corners
-/// square as without a backdrop, with the union of the spotlights' outlines cut out. Without
-/// spotlights there is none.
+/// Draws the curtain: black at `dim` over the whole image, with square corners and the union
+/// of the spotlights' outlines cut out. Without spotlights there is none.
 ///
 /// # Panics
 /// When a spotlight's size is 10 or more; resolved sizes are 0 to 7.
@@ -63,12 +62,11 @@ pub fn draw_curtain(c: &mut Canvas, spots: &[&ResolvedSpotlight], dim: f64) {
         alpha: dim,
         blend: BlendMode::SourceOver,
     };
-    // reference: the layer keeps 8-bit alpha, round(dim·255)/255, as the reference app saves it: 55/255
-    // for the default 0.214, so that outside the holes every value v becomes round(v·200/255)
-    // (reference/reference-app/cases/spotlight-*.png against base.png).
+    // The layer keeps 8-bit alpha, round(dim·255)/255: 55/255 for the default 0.214, so that
+    // outside the holes every value v becomes round(v·200/255).
     curtain.fill(&whole(c), ink, FillRule::Winding);
     // Rects and squircles both run counter-clockwise, so where holes overlap they wind twice
-    // and the nonzero rule cuts their union, as the reference app does on macOS 13 and later.
+    // and the nonzero rule cuts their union.
     let holes = spots.iter().filter_map(|s| outline(c, s));
     let clear = Ink {
         alpha: 1.0,
@@ -83,8 +81,8 @@ pub fn draw_curtain(c: &mut Canvas, spots: &[&ResolvedSpotlight], dim: f64) {
     c.composite(&curtain);
 }
 
-/// Draws the border of `s` (Spotlight.md §3.3): its outline stroked in its color with butt caps
-/// and round joins, `min(w0, md/10)·dpr` px wide like a shape's, so none at size 0.
+/// Draws the border of `s`: its outline stroked in its color with butt caps and round joins,
+/// `min(w0, md/10)·dpr` px wide like a shape's, so none at size 0.
 ///
 /// # Panics
 /// When `s.size` is 10 or more; resolved sizes are 0 to 7.
@@ -246,10 +244,10 @@ mod tests {
 
     #[test]
     fn rect_radius() {
-        // Corners of min(((w0 == 0) ? 12 : 2·w0)·dpr, md/3) px (Spotlight.md §6) at dpr 2: a
-        // 200 × 100 rect at size 2 (w0 = 3 pt) gets min(12, 33.3) = 12, at size 0 min(24, 33.3)
-        // = 24, and a 200 × 30 rect at size 2 gets 30/3 = 10. The outline starts on the bottom
-        // edge (y-up), a corner in from the left.
+        // Corners of min(((w0 == 0) ? 12 : 2·w0)·dpr, md/3) px at dpr 2: a 200 × 100 rect at
+        // size 2 (w0 = 3 pt) gets min(12, 33.3) = 12, at size 0 min(24, 33.3) = 24, and a
+        // 200 × 30 rect at size 2 gets 30/3 = 10. The outline starts on the bottom edge (y-up),
+        // a corner in from the left.
         let c = white();
         for (size, h, r) in [(2, 100.0, 12.0), (0, 100.0, 24.0), (2, 30.0, 10.0)] {
             let s = spot([0.0, 10.0, 200.0, h], size, SpotShape::Rect);
@@ -266,7 +264,7 @@ mod tests {
 
     #[test]
     fn empty_rect_has_no_outline() {
-        // the reference app cuts no hole for a spotlight without width and height.
+        // A spotlight without width and height cuts no hole.
         let c = white();
         for shape in [SpotShape::Rect, SpotShape::Oval] {
             let s = spot([50.0, 50.0, 0.0, 0.0], 2, shape);
@@ -275,11 +273,10 @@ mod tests {
     }
 
     #[test]
-    fn dims_as_reference_saves() {
-        // reference: the reference app saves the default dim as black at 55/255, so outside the holes
-        // every value v becomes round(v·200/255): 255 → 200, 128 → 100, 30 → 24
-        // (reference/reference-app/cases/spotlight-*.png against base.png). One column per
-        // value; the hole is below the image.
+    fn default_dim_is_stored_as_8_bit_alpha() {
+        // The default dim is black at 55/255, so outside the holes every value v becomes
+        // round(v·200/255): 255 → 200, 128 → 100, 30 → 24. One column per value; the hole is
+        // below the image.
         let mut c = grey(256, 1, |x, _| u8::try_from(x).unwrap());
         let s = spot([0.0, 10.0, 20.0, 20.0], 2, SpotShape::Rect);
         draw_curtain(&mut c, &[&s], 0.214);

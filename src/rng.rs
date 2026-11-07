@@ -1,4 +1,5 @@
-//! the reference app's sketch RNG (Arrow.md §1.3 = RectOval.md §1) and the default seed derived from an id.
+//! The seeded generator that sketches and pixelation draw from, and the default seed derived
+//! from an id.
 
 const FNV_OFFSET_BASIS: u64 = 0xcbf2_9ce4_8422_2325;
 const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
@@ -7,7 +8,7 @@ const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
 /// integers up to it exact, so a seed in a resolved spec survives being edited with them.
 pub const MAX_SEED: u64 = (1 << 53) - 1;
 
-/// the reference app's xorshift-multiply generator; the multiplied value is the next state.
+/// A xorshift-multiply generator; the multiplied value is the next state.
 #[derive(Clone, Debug)]
 pub struct Rng(u64);
 
@@ -27,14 +28,14 @@ impl Rng {
         self.0 = x;
         #[expect(
             clippy::cast_possible_truncation,
-            reason = "the reference app keeps the low 32 bits (UInt32(truncatingIfNeeded:))"
+            reason = "a draw keeps the low 32 bits of the state"
         )]
         let low = x as u32;
         f64::from(low) / 4_294_967_295.0
     }
 }
 
-/// The `rnd` table the reference app regenerates from a seed: the first 100 draws.
+/// The `rnd` table that sketches index: the first 100 draws from `seed`.
 #[must_use]
 pub fn rnd100(seed: u64) -> [f64; 100] {
     let mut rng = Rng::new(seed);
@@ -82,7 +83,7 @@ mod tests {
 
     #[test]
     fn zero_seed_stays_zero() {
-        // xorshift has 0 as a fixed point; the reference app saves a missing seed as 0.
+        // xorshift has 0 as a fixed point: seed 0 draws nothing but zeros.
         assert_eq!(rnd100(0), [0.0; 100]);
     }
 

@@ -1,9 +1,9 @@
-//! §6.7–6.8 weight filters and stroke widths, and RectOval.md §3.6's weight blur.
+//! Weight filters, the weight blur and stroke widths.
 
 use super::{Pt, clamp01, extremes};
 
-/// §6.7 (`a helper`): a running average of the weights, `w = k·w_prev + (1 − k)·w`,
-/// seeded with the first weight. Two points or fewer are left alone.
+/// A running average of the weights, `w = k·w_prev + (1 − k)·w`, seeded with the first
+/// weight. Two points or fewer are left alone.
 pub fn ema_weight(pts: &mut [Pt], k: f64) {
     if pts.len() <= 2 {
         return;
@@ -15,10 +15,10 @@ pub fn ema_weight(pts: &mut [Pt], k: f64) {
     }
 }
 
-/// §6.7 (`a helper`): blends each weight with its min–max normalization onto `lo..hi`,
+/// Blends each weight with its min–max normalization onto `lo..hi`,
 /// `w = (1 − mix)·w + mix·(lo + (hi − lo)·(w − min)/(max − min))`. Equal weights all become
 /// `(lo + hi)/2`, whatever `mix`.
-#[expect(clippy::float_cmp, reason = "the reference app tests max == min exactly")]
+#[expect(clippy::float_cmp, reason = "equal extremes are tested exactly")]
 pub fn norm_weight(pts: &mut [Pt], lo: f64, hi: f64, mix: f64) {
     let Some((min, max)) = extremes(pts.iter().map(|p| p.weight)) else {
         return;
@@ -34,9 +34,8 @@ pub fn norm_weight(pts: &mut [Pt], lo: f64, hi: f64, mix: f64) {
     }
 }
 
-/// RectOval.md §3.6 (`a helper`): a circular box blur of the weights. Each becomes the
-/// mean of the `2·half + 1` weights centred on it, the window wrapping around the ends, with
-/// `half = ⌊min(n − 1, span)/2⌋`.
+/// A circular box blur of the weights. Each becomes the mean of the `2·half + 1` weights
+/// centred on it, the window wrapping around the ends, with `half = ⌊min(n − 1, span)/2⌋`.
 pub fn blur_weight(pts: &mut [Pt], span: usize) {
     let n = pts.len();
     if n == 0 {
@@ -51,18 +50,18 @@ pub fn blur_weight(pts: &mut [Pt], span: usize) {
     let count = window as f64;
     let weights: Vec<f64> = pts.iter().map(|p| p.weight).collect();
     for (i, p) in pts.iter_mut().enumerate() {
-        // the reference app: summed afresh for each point, from the window's first weight on.
+        // Intentional: summed afresh for each point, from the window's first weight on, not as
+        // a sliding sum, whose rounding differs.
         let sum = (0..window).fold(0.0, |sum, k| sum + weights[(i + n - half + k) % n]);
         p.weight = sum / count;
     }
 }
 
-/// §6.8 (`a helper`): `width = w·(1 − v + 2v·weight)` for variability `v`, which is
-/// damped on strokes shorter than five widths: `v·clamp((L/w − 1)/4, 0, 1)` with `L` the last
-/// point's `cum_len` (skipped when `L` is 0 and for two points of equal weight). One point is
-/// left alone.
+/// `width = w·(1 − v + 2v·weight)` for variability `v`, which is damped on strokes shorter
+/// than five widths: `v·clamp((L/w − 1)/4, 0, 1)` with `L` the last point's `cum_len`
+/// (skipped when `L` is 0 and for two points of equal weight). One point is left alone.
 #[must_use]
-#[expect(clippy::float_cmp, reason = "the reference app compares the two weights exactly")]
+#[expect(clippy::float_cmp, reason = "the two weights are compared exactly")]
 pub fn assign_widths(pts: &[Pt], w: f64, variability: f64) -> Vec<Pt> {
     let n = pts.len();
     if n <= 1 {

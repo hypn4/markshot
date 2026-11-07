@@ -1,10 +1,6 @@
-//! the reference app's Arrow tool (Arrow.md): a filled outline (`shaped`), a stroked shaft with open
-//! chevrons (`line`, `double`) or a hand-drawn stroke with a two-wing head (`sketch`), straight
-//! or bent through `via`.
-//!
-//! the reference app's arrow type is the style: 0 `shaped`, 1 `line`, 2 `double`, 4 `sketch`; its `style`
-//! is `variant`, the `shaped` outline. Zoom is 1, so nothing is evened (Arrow.md §3.0), and the
-//! arrow is never drawn reversed or highlighted.
+//! The arrow tool: a filled outline (`shaped`), a stroked shaft with open chevrons (`line`,
+//! `double`) or a hand-drawn stroke with a two-wing head (`sketch`), straight or bent through
+//! `via`. `variant` picks the `shaped` outline.
 
 mod curve;
 mod line_arrow;
@@ -25,7 +21,7 @@ pub use curve::via_to_mid;
 pub use profiles::{ARR_PROFILES, SIZEK, SVG_PROFILES, WIDTHS};
 
 /// Draws `a` on the main surface: `shaped` and `sketch` filled, `line` and `double` stroked, all
-/// in the arrow's color. An arrow without length draws nothing, as the reference app hides it.
+/// in the arrow's color. An arrow without length draws nothing.
 ///
 /// # Panics
 /// When `a.size` is 10 or more or `a.variant` 4 or more; resolved values are at most 7 and 3.
@@ -57,22 +53,22 @@ pub fn draw(c: &mut Canvas, a: &ResolvedArrow) {
     }
 }
 
-/// Fills each path on its own (non-zero). the reference app unions a bent arrow's band and head; in an
-/// opaque color, filling them one after the other is the same.
+/// Fills each path on its own (non-zero). In an opaque color this is the same as filling the
+/// union of a bent arrow's band and head.
 fn fill(c: &mut Canvas, paths: &[PathData], ink: Ink) {
     for path in paths {
         c.main().fill(path, ink, FillRule::Winding);
     }
 }
 
-/// Arrow.md §3.0: the stroke width in px of an arrow `len` px long: the size's width in points,
-/// at most a tenth of the length, times dpr, grown on long arrows by
-/// `sqrt((len/dpr + 550)/600)` kept within 1–1.5. At dpr 1, widths over 4 px are rounded.
+/// The stroke width in px of an arrow `len` px long: the size's width in points, at most a
+/// tenth of the length, times dpr, grown on long arrows by `sqrt((len/dpr + 550)/600)` kept
+/// within 1–1.5. At dpr 1, widths over 4 px are rounded.
 ///
 /// # Panics
 /// When `size` is 10 or more.
 #[must_use]
-#[expect(clippy::float_cmp, reason = "the reference app tests dpr == 1 exactly")]
+#[expect(clippy::float_cmp, reason = "the rounding applies at exactly dpr 1")]
 pub fn stroke_width(len: f64, size: u8, dpr: f64) -> f64 {
     let grow = ((len / dpr + 550.0) / 600.0).sqrt().clamp(1.0, 1.5);
     let width = (len / 10.0).min(WIDTHS[usize::from(size)]) * dpr * grow;
@@ -83,10 +79,9 @@ pub fn stroke_width(len: f64, size: u8, dpr: f64) -> f64 {
     }
 }
 
-/// Arrow.md §3.0: `(kHead, kTail)`, the scales of the head and the tail of an arrow whose ends
-/// are `len0` px apart. Past 520 px the head grows (to 1.25×) as the tail shrinks (to 0.8×);
-/// under the size's threshold (200 px up to size 5, `112·SIZEK` above) both shrink with the
-/// length.
+/// `(kHead, kTail)`, the scales of the head and the tail of an arrow whose ends are `len0` px
+/// apart. Past 520 px the head grows (to 1.25×) as the tail shrinks (to 0.8×); under the
+/// size's threshold (200 px up to size 5, `112·SIZEK` above) both shrink with the length.
 ///
 /// # Panics
 /// When `size` is 10 or more.
@@ -109,7 +104,7 @@ pub fn head_tail_k(len0: f64, size: u8) -> (f64, f64) {
     k
 }
 
-/// What every style draws from: the ends (y-up px), the reference app's bend and the length factors.
+/// What every style draws from: the ends (y-up px), the bend and the length factors.
 struct Geometry {
     /// The tail.
     p0: V2,
@@ -119,8 +114,8 @@ struct Geometry {
     len: f64,
     size: usize,
     dpr: f64,
-    /// the reference app's curve point M (Arrow.md §1 `midpa`, `midpd`): its angle off the chord (0:
-    /// straight) and its distance from the tail in chords.
+    /// The curve point M: its angle off the chord (0: straight) and its distance from the tail
+    /// in chords.
     mid_angle: f64,
     mid_dist: f64,
     k_head: f64,
@@ -147,9 +142,8 @@ impl Geometry {
     }
 }
 
-/// Arrow.md §3.8's taper (`a helper`, then the arrow's loop): each point's length along the
-/// stroke, `t` = that over the whole length (kept as the weight), and the width
-/// `w0 + (w1 − w0)·ease(t)`. One point is left alone.
+/// The taper: each point's length along the stroke, `t` = that over the whole length (kept as
+/// the weight), and the width `w0 + (w1 − w0)·ease(t)`. One point is left alone.
 fn taper(pts: &mut [Pt], w0: f64, w1: f64, ease_kind: u8) {
     if pts.len() < 2 {
         return;
@@ -167,9 +161,8 @@ fn taper(pts: &mut [Pt], w0: f64, w1: f64, ease_kind: u8) {
     }
 }
 
-/// the reference app's easing curves (`a helper`) the arrows use: 1 thin in the middle, 3 thick to
-/// thin, 6 thick–thin–thick (thinnest at 0.8); anything else, as 0, is linear. (Kinds 2, 4 and 5
-/// are never picked for arrows and left out.)
+/// The easing curves the arrows use: 1 thin in the middle, 3 thick to thin, 6 thick–thin–thick
+/// (thinnest at 0.8); anything else, as 0, is linear. (Kinds 2, 4 and 5 are unused.)
 fn ease(kind: u8, t: f64) -> f64 {
     match kind {
         1 => cos(t * (2.0 * PI)) * 0.5 + 0.5,

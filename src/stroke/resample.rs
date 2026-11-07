@@ -1,11 +1,11 @@
-//! §6.5 minimum-spacing resampling.
+//! Minimum-spacing resampling.
 
 use super::{Pt, dot};
 
-/// §6.5 (`a helper`): thins the stroke to points more than `0.33·spacing` apart. Keeps
-/// the first point and each inner one that far from the last kept; the last point is then
-/// appended, or replaces the last kept one when closer than that (unless that is the first).
-/// Points are copied whole. Two points or fewer pass through.
+/// Thins the stroke to points more than `0.33·spacing` apart. Keeps the first point and each
+/// inner one that far from the last kept; the last point is then appended, or replaces the
+/// last kept one when closer than that (unless that is the first). Points are copied whole.
+/// Two points or fewer pass through.
 #[must_use]
 pub fn resample(pts: &[Pt], spacing: f64) -> Vec<Pt> {
     let n = pts.len();
@@ -16,7 +16,7 @@ pub fn resample(pts: &[Pt], spacing: f64) -> Vec<Pt> {
     let min2 = min * min;
     let mut out = vec![pts[0]];
     let mut last = pts[0].pos;
-    // the reference app: the walk stops before the last point, which is handled below.
+    // The walk stops before the last point, which is handled below.
     for p in &pts[1..n - 1] {
         let d = last - p.pos;
         if min2 < dot(d, d) {

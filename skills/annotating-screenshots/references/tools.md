@@ -27,7 +27,7 @@ Each example is a complete spec for an 800×600 screenshot. `markshot schema` li
 
 ## rect / oval — frame something
 
-`fill`: `sketch` (default, a hand-drawn border), `outline`, `semi` (a border plus a fill at `fill_alpha`, default 0.4) and `solid` (an opaque box: use it with `"color": "#000000"` to redact). Shapes whose shorter side is 40 px or less get a plain border even with `sketch`, as in the reference app. An oval is the reference app's squircle, fuller than a true ellipse.
+`fill`: `sketch` (default, a hand-drawn border), `outline`, `semi` (a border plus a fill at `fill_alpha`, default 0.4) and `solid` (an opaque box: use it with `"color": "#000000"` to redact). Shapes whose shorter side is 40 px or less get a plain border even with `sketch`. An oval is a squircle that touches the middle of each side of `rect`, fuller than a true ellipse.
 
 ```json
 {"annotations": [
