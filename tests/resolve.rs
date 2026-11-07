@@ -1027,3 +1027,15 @@ fn text_resolves_with_its_defaults_and_its_box_bounds_it() {
         }]
     );
 }
+
+#[test]
+fn auto_angle_keeps_the_badge_inside_the_crop() {
+    // With a crop, "outside" means outside the crop: a counter marking a point 10 px inside the
+    // crop's right edge, where the default 135° would put its badge (radius 18) past that edge
+    // though still on the image, gets a badge that stays within the crop.
+    let json = r#"{"crop": [0, 0, 300, 300], "annotations": [
+        {"type": "counter", "at": [290, 150], "angle": "auto"}
+    ]}"#;
+    let (angle, [x, _]) = counter_placement(json, 400, 300);
+    assert!(x + 18.0 <= 300.0, "{angle}: badge centre x {x}");
+}
