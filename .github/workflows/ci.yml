@@ -27,6 +27,15 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # AGENTS.md: repository text uses no em dash (U+2014) and no middle dot (U+00B7).
+      - name: Check punctuation
+        shell: bash
+        run: |
+          # UTF-8 bytes in octal, so the check also runs in bash 3.2 and never matches itself.
+          if git grep -nI -e "$(printf '\342\200\224')" -e "$(printf '\302\267')"; then
+            echo "::error::Replace the em dashes and middle dots listed above (see AGENTS.md)."
+            exit 1
+          fi
       # Installs the toolchain and components pinned in rust-toolchain.toml, with a dependency cache.
       - uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30 # v2.0.1
         with:

@@ -1,0 +1,58 @@
+name: Bug report
+description: markshot draws something wrong, fails, or rejects a valid spec.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        markshot is deterministic, so a report with the exact command, spec and input reproduces anywhere. Report security problems privately, see SECURITY.md.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `markshot --version`.
+      placeholder: markshot 0.1.0
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - macOS, Apple silicon
+        - Linux x86_64
+        - Linux arm64
+        - Windows x86_64
+        - Windows arm64
+        - Built from source on another platform
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command
+      description: The exact command you ran.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: spec
+    attributes:
+      label: Spec
+      description: The JSON spec you passed with `--spec`.
+      render: json
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened
+      description: The output, error message or image you got. Attach the input PNG (or a smaller one that shows the same problem) and the output PNG.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true

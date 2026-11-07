@@ -1,0 +1,30 @@
+name: Feature request
+description: Propose a new tool, option or behaviour change.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: What do you want to annotate?
+      description: The screenshot task you or your agent are trying to do. A sample image helps.
+    validations:
+      required: true
+  - type: textarea
+    id: gap
+    attributes:
+      label: Why can't the current tools do it?
+      description: What you tried with the existing spec, and where it falls short.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed spec or CLI change
+      description: The fields, defaults or commands you have in mind, and whether existing specs would render differently.
+      render: json
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contribution
+      options:
+        - label: I'd like to implement this once the design is agreed.

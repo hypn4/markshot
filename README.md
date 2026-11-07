@@ -94,11 +94,7 @@ The skill holds the render-and-fix workflow, coordinates, a tool picker and comm
 
 ## How is it developed and released?
 
-Run the same checks CI runs:
-
-```sh
-cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test
-```
+[`CONTRIBUTING.md`](CONTRIBUTING.md) explains how to report bugs, propose changes and open pull requests. [`AGENTS.md`](AGENTS.md) holds the rules every change follows, for people and AI agents alike: the checks to run, the determinism and spec invariants, and the commit format.
 
 - **CI** runs fmt, clippy and rustdoc once, then the whole test suite natively on all five release platforms. The golden images in `tests/golden/` pin the rendering byte for byte, so every platform must draw the same bytes.
 - **Releases** start when a `v*` tag is pushed. Each platform builds natively and runs the tests with the shipped release profile; then one job publishes the binaries, `SHA256SUMS`, the attestation and release notes generated from the commits by git-cliff's GitHub template. No changelog file is kept in the repository.

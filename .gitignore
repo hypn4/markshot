@@ -1,3 +1,4 @@
-.omp/*.lock
+.omp
 /target
 .superpowers/
+CLAUDE.local.md
