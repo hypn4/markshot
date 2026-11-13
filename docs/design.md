@@ -9,6 +9,8 @@ A user gives a coding agent a screenshot and a request in plain words: "put an a
 - **A CLI and a skill.** Coding agents already run shell commands, a CLI costs little context, and it is easy to test. The [Agent Skills](https://agentskills.io/specification) skill teaches the workflow.
 - **Render, look, fix.** markshot does not detect UI elements. The agent picks the coordinates, renders, views the PNG and edits the resolved spec it got back, which keeps drawing the same image until a value changes.
 
+The skill keeps the portable name `annotating-screenshots`. Agents discover its `name` and `description` before loading the instructions; `metadata.cli: markshot` is informational, not an invocation alias. The description ties markshot to screenshot annotation and excludes installation-only help and image-format conversion. Installing the binary does not register the skill; installation and explicit invocation are documented in the [README](../README.md#how-do-i-teach-my-ai-agent-to-use-it).
+
 ## Goals and non-goals
 
 Goals:
@@ -159,4 +161,4 @@ Blur and highlight read the input image's pixels, never another annotation's.
 - `tests/resolve.rs` and the `cli_*` tests: coordinate spaces, rounding, defaults, ids and seeds, bounds, warnings, error locations, exit codes, the grid, the schema, and that rendering a report's spec again gives identical bytes.
 - `tests/skill_examples.rs`: the skill's frontmatter and links, and that every JSON example in it renders on an 800×600 screenshot without warnings.
 - `fuzz/`: `cargo fuzz` targets that feed arbitrary bytes to `decode_png` and arbitrary specs to `render` on a fixed 64×48 image; any `Ok` or `Err` passes, a panic, abort, timeout or allocation over 2 GB fails. `.github/workflows/fuzz.yml` runs each for 10 minutes every week.
-- [`evals/annotating-screenshots/`](../evals/annotating-screenshots/README.md): agent scenarios for the skill, scored by `check.py`; rerun them after changing the skill.
+- [`evals/annotating-screenshots/`](../evals/annotating-screenshots/README.md): application scenarios scored by `check.py`, plus a short manual discovery check. Discovery uses normal registered metadata without a forced skill-read instruction; application scenarios explicitly load the skill to measure output quality.
