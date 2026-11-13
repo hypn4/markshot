@@ -129,13 +129,16 @@ In a clone, `rust-toolchain.toml` selects Rust 1.99 and `cargo build --release -
 
 ## How do I teach my AI agent to use it?
 
-Install the bundled skill, [`skills/annotating-screenshots/`](skills/annotating-screenshots/SKILL.md). It follows the [Agent Skills](https://agentskills.io/specification) standard, which Claude Code, Codex, GitHub Copilot, VS Code, Cursor, Gemini CLI and [other agents](https://agentskills.io/clients) load. Once installed, the agent picks it up whenever you ask it to annotate a screenshot. `markshot` itself must be on the agent's PATH.
+Install the bundled skill, [`skills/annotating-screenshots/`](skills/annotating-screenshots/SKILL.md). It follows the [Agent Skills](https://agentskills.io/specification) standard, which Claude Code, Codex, GitHub Copilot, VS Code, Cursor, Gemini CLI and [other agents](https://agentskills.io/clients) load. Its description covers screenshot annotations with or without the `markshot` name; automatic selection depends on the agent and model.
+
+**The CLI and skill are separate installs.** Installing the markshot binary does not register the skill, and installing the skill does not put `markshot` on the agent's PATH.
 
 ### With the `skills` CLI
 
 Needs Node.js 22.20+. Run it in your project, or add `-g` to install it for all your projects:
 
 ```sh
+npx skills find markshot                                             # search the catalog, not install
 npx skills add hypn4/markshot --skill annotating-screenshots           # pick the agents interactively
 npx skills add hypn4/markshot --skill annotating-screenshots -a claude-code -a codex -y
 ```
@@ -157,7 +160,22 @@ Copy the whole directory, `SKILL.md` and its `references/`, into a skills folder
 mkdir -p ~/.agents/skills && cp -R skills/annotating-screenshots ~/.agents/skills/
 ```
 
-Project skills take precedence over user skills with the same name. To confirm the agent sees it, list its skills (for example `/skills` in Claude Code or VS Code) or ask it which skills it has.
+Restart or reload your agent after installing. Loading paths and duplicate-name precedence are agent-specific; a directory in this repository is not automatically an installed skill.
+
+### How do I confirm discovery or invoke it directly?
+
+| Agent | Confirm registration | Explicit invocation |
+|---|---|---|
+| [Codex](https://developers.openai.com/codex/skills/) | Open `/skills` | `$annotating-screenshots` followed by the annotation request |
+| [Claude Code](https://code.claude.com/docs/en/skills) | Find it in the `/` menu | Start the message with `/annotating-screenshots` |
+
+For an implicit-selection check, start a fresh session and ask:
+
+```text
+Use markshot to annotate screenshot.png with an arrow pointing at the Save button.
+```
+
+Inspect the agent's tool log for a successful read of this skill's `SKILL.md`. A catalog search result or an agent saying it knows markshot is not proof that it loaded the skill. `metadata.cli: markshot` is informational, not a portable `$markshot` or `/markshot` alias.
 
 ### What is in the skill?
 
@@ -174,7 +192,7 @@ Project skills take precedence over user skills with the same name. To confirm t
 |---|---|
 | **CI** | fmt, clippy and rustdoc run once, then the whole test suite runs natively on all five release platforms. The golden images in `tests/golden/` pin the rendering byte for byte, so every platform must draw the same bytes. |
 | **Releases** | Pushing a `v*` tag starts them. Each platform builds natively and runs the tests with the shipped release profile; then one job publishes the binaries, `SHA256SUMS`, the attestation and release notes generated from the commits by git-cliff's GitHub template. No changelog file is kept in the repository. |
-| **The skill** | `uvx --from skills-ref agentskills validate skills/annotating-screenshots` validates it, and `cargo test` checks its frontmatter, links and examples. [`evals/annotating-screenshots/`](evals/annotating-screenshots/README.md) holds the agent scenarios it was tested with; rerun them after changing the skill. |
+| **The skill** | `uvx --from skills-ref agentskills validate skills/annotating-screenshots` validates it, and `cargo test` checks its frontmatter, links and examples. [`evals/annotating-screenshots/`](evals/annotating-screenshots/README.md) documents a short manual discovery check and the annotation application scenarios; rerun them after changing the skill. |
 
 ## License and notices
 

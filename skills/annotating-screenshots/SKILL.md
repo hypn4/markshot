@@ -1,10 +1,10 @@
 ---
 name: annotating-screenshots
-description: Use when the user wants a screenshot or other PNG annotated (arrows pointing at UI elements, boxes or ovals around them, private data blurred, erased or redacted, text highlighted, one area spotlighted, numbered step badges, short text labels, or lines), or wants a previous annotation adjusted. Draws the annotations deterministically with the markshot CLI.
+description: Use when the user wants markshot CLI annotations on a screenshot or PNG (arrows, boxes, ovals, private-data blur, erase or redaction, highlights, spotlights, numbered counters or badges, text labels or lines), or edits to earlier annotations, even without naming markshot. Annotation tasks only, not installation-only help or image-format conversion.
 compatibility: Requires the markshot CLI 0.4.0 or later (macOS, Linux or Windows) on PATH, a POSIX-style shell for the examples, and the ability to view PNG images.
 metadata:
   cli: markshot
-  version: "1.6"
+  version: "1.7"
 ---
 
 # Annotating screenshots

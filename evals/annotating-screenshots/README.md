@@ -1,6 +1,6 @@
 # Evaluations for the annotating-screenshots skill
 
-Application scenarios for `skills/annotating-screenshots/`. Run them whenever the skill changes: each one is a fresh agent given a user request, the CLI and (or not) the skill, and its result is scored by `check.py`.
+Application scenarios for `skills/annotating-screenshots/` measure the images an agent produces after an explicit skill-read instruction. They do not prove automatic discovery; use the short manual check below for that.
 
 ## How do I run them?
 
@@ -32,6 +32,18 @@ Application scenarios for `skills/annotating-screenshots/`. Run them whenever th
    `score` runs `check.py` on every run directory and prints one row per run: `pass` when every key is `true`, else `FAIL` and the keys that are `false`. Values in parentheses are for you to judge (s5's colour, s7's toggle frames). It exits with 1 when any run fails.
 
 Then read each agent's reply: the checker can't judge what it told the user. To score a single run by hand: `EVAL_DIR=/tmp/skill-eval uv run --with pillow python evals/annotating-screenshots/check.py s4 /tmp/skill-eval/runs/skill-s4`.
+
+## How do I check automatic discovery?
+
+Install this checkout's whole skill directory in the agent's normal skills path and restart or reload it. Use a fresh session and your own screenshot for each request, without naming the skill or telling the agent to read it.
+
+| Request | Expected behaviour |
+|---|---|
+| "Use markshot to point an arrow at Save in screenshot.png." | Load the annotation skill |
+| "Box Save and hide the email address in screenshot.png." | Load it without the brand name |
+| "Explain how to install markshot; do not edit any images." | Answer installation help without activating the annotation workflow |
+
+Keep forced-read prompts and grading files outside the test's working directory. Check the actual tool log for a successful `SKILL.md` body read, not just a directory listing or the agent's claim. `markshot` alone is ambiguous and does not have to activate the skill. Selection depends on the host and model.
 
 ## What does each scenario test?
 
